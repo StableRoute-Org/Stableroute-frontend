@@ -5,8 +5,22 @@ import { Footer } from "@/components/Footer";
 import { ToastProvider } from "@/components/ToastProvider";
 
 export const metadata: Metadata = {
-  title: "StableRoute — Liquidity Router",
+  title: {
+    default: "StableRoute",
+    template: "%s — StableRoute",
+  },
   description: "Stablecoin liquidity routing on Stellar",
+  applicationName: "StableRoute",
+  openGraph: {
+    title: "StableRoute",
+    description: "Liquidity routing for stablecoin and fiat-backed tokens on Stellar.",
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: "StableRoute",
+    description: "Liquidity routing for stablecoin and fiat-backed tokens on Stellar.",
+  },
 };
 
 export default function RootLayout({
