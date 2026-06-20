@@ -44,6 +44,13 @@ Next.js app for [StableRoute](https://github.com/your-org/stableroute) — Stell
 | `npm test` | Run Jest tests |
 | `npm run lint` | Next.js ESLint |
 
+## Theme bootstrapping
+
+The root layout includes a tiny inline script that reads `stableroute.theme`
+before React hydrates. It applies the `dark` class to `<html>` immediately for
+stored dark preferences and for `system` when `prefers-color-scheme: dark`
+matches, which avoids a light-to-dark flash on first paint.
+
 ## CI/CD
 
 On every push/PR to `main`, GitHub Actions runs:
