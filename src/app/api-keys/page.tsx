@@ -1,15 +1,43 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Button } from "@/components/Button";
+import { useToast } from "@/components/ToastProvider";
 import { apiGet, apiPost, apiDelete } from "@/lib/apiClient";
 
 type Item = { prefix: string; label: string; createdAt: number };
 
+/**
+ * Copy sensitive text without logging or persisting it beyond the caller's state.
+ */
+async function copyTextToClipboard(text: string) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+
+  const input = document.createElement("textarea");
+  input.value = text;
+  input.setAttribute("readonly", "");
+  input.style.position = "fixed";
+  input.style.top = "-1000px";
+  document.body.appendChild(input);
+  input.select();
+  const copied = typeof document.execCommand === "function" && document.execCommand("copy");
+  document.body.removeChild(input);
+
+  if (!copied) {
+    throw new Error("Clipboard is not available");
+  }
+}
+
 export default function ApiKeysPage() {
+  const toast = useToast();
   const [items, setItems] = useState<Item[] | null>(null);
   const [label, setLabel] = useState("");
   const [created, setCreated] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [copying, setCopying] = useState(false);
 
   const load = () =>
     apiGet<{ items: Item[] }>("/api/v1/api-keys")
@@ -29,6 +57,19 @@ export default function ApiKeysPage() {
       await load();
     } catch (err) {
       setError((err as Error).message);
+    }
+  };
+
+  const onCopyCreatedKey = async () => {
+    if (!created || copying) return;
+    setCopying(true);
+    try {
+      await copyTextToClipboard(created);
+      toast.push("API key copied");
+    } catch {
+      toast.push("Could not copy API key", "error");
+    } finally {
+      setCopying(false);
     }
   };
 
@@ -59,7 +100,18 @@ export default function ApiKeysPage() {
       {created && (
         <div role="status" className="rounded border border-emerald-300 bg-emerald-50 p-3 text-sm dark:border-emerald-900 dark:bg-emerald-950">
           <p className="font-medium">Copy now — shown only once:</p>
-          <code className="break-all">{created}</code>
+          <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <code className="break-all">{created}</code>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={onCopyCreatedKey}
+              disabled={copying}
+              className="self-start"
+            >
+              {copying ? "Copying…" : "Copy"}
+            </Button>
+          </div>
         </div>
       )}
       {error && <p role="alert" className="text-sm text-rose-600">{error}</p>}
