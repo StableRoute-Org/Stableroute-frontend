@@ -1,20 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
-import { apiGet } from "@/lib/apiClient";
+import { Spinner } from "@/components/Spinner";
+import { useApi } from "@/lib/useApi";
 
 type Pair = { source: string; destination: string };
+type PairsResponse = { pairs: Pair[] };
 
+/**
+ * Keeps the dashboard list aligned with the shared read-only API state model.
+ */
 export default function PairsPage() {
-  const [pairs, setPairs] = useState<Pair[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    apiGet<{ pairs: Pair[] }>("/api/v1/pairs")
-      .then((b) => setPairs(b.pairs))
-      .catch((e) => setError(e.message));
-  }, []);
+  const state = useApi<PairsResponse>("/api/v1/pairs");
+  const pairs = state.status === "ok" ? state.data.pairs : null;
 
   return (
     <main
@@ -31,12 +29,12 @@ export default function PairsPage() {
           New pair
         </Link>
       </header>
-      {error && (
+      {state.status === "loading" && <Spinner label="Loading pairs" />}
+      {state.status === "error" && (
         <p role="alert" className="text-sm text-rose-600">
-          {error}
+          {state.error}
         </p>
       )}
-      {!pairs && !error && <p>Loading…</p>}
       {pairs && pairs.length === 0 && (
         <p className="text-sm text-neutral-600 dark:text-neutral-400">
           No pairs registered yet.
@@ -45,8 +43,11 @@ export default function PairsPage() {
       {pairs && pairs.length > 0 && (
         <ul className="divide-y divide-neutral-200 dark:divide-neutral-800">
           {pairs.map((p) => (
-            <li key={`${p.source}::${p.destination}`} className="py-3 font-mono text-sm">
-              {p.source} → {p.destination}
+            <li
+              key={`${p.source}::${p.destination}`}
+              className="py-3 font-mono text-sm"
+            >
+              {p.source} -&gt; {p.destination}
             </li>
           ))}
         </ul>
