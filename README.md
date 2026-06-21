@@ -7,6 +7,7 @@ Next.js app for [StableRoute](https://github.com/your-org/stableroute) — Stell
 - **Next.js 15** (App Router) with **React 19**
 - **TailwindCSS** for styling
 - Starter landing page; Stellar wallet integration can be added here
+- Event log filtering by event type and payload substring
 
 ## Prerequisites
 
