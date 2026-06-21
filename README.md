@@ -56,9 +56,7 @@ Ensure these pass locally before pushing.
 
 ## Contributing
 
-1. Fork the repo and create a branch from `main`.
-2. Add tests for new UI/behavior; keep `npm run build` and `npm test` passing.
-3. Open a PR; CI must be green.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for branch naming, local checks, testing conventions, and the pull request checklist.
 
 ## License
 
