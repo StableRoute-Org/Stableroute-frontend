@@ -8,7 +8,7 @@ const sections = [
   { h: "GET /api/v1/pairs", p: "List every registered pair. ETag caching." },
   {
     h: "PATCH /api/v1/pairs/:src/:dest/fee_bps",
-    p: "Set the per-pair routing fee in basis points (0..1000).",
+    p: "Set the per-pair routing fee in basis points (0..1000) with { fee_bps }.",
   },
   {
     h: "GET /api/v1/quote",
