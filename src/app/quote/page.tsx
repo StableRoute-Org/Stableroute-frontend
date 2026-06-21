@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { useToast } from "@/components/ToastProvider";
+import { apiGet, type ApiError } from "@/lib/apiClient";
 
 type Quote = {
   source_asset: string;
@@ -10,10 +12,8 @@ type Quote = {
   route: string[];
 };
 
-const API_BASE =
-  process.env.NEXT_PUBLIC_STABLEROUTE_API_BASE ?? "http://localhost:3001";
-
 export default function QuotePage() {
+  const toast = useToast();
   const [sourceAsset, setSourceAsset] = useState("");
   const [destAsset, setDestAsset] = useState("");
   const [amount, setAmount] = useState("");
@@ -37,16 +37,21 @@ export default function QuotePage() {
 
     setLoading(true);
     try {
-      const url = `${API_BASE}/api/v1/quote?source_asset=${encodeURIComponent(sourceAsset)}&dest_asset=${encodeURIComponent(destAsset)}&amount=${encodeURIComponent(amount)}`;
-      const res = await fetch(url);
-      const body = await res.json();
-      if (!res.ok) {
-        setError(body?.message ?? "quote request failed");
-        return;
-      }
-      setQuote(body as Quote);
+      const params = new URLSearchParams({
+        source_asset: sourceAsset,
+        dest_asset: destAsset,
+        amount,
+      });
+      const body = await apiGet<Quote>(`/api/v1/quote?${params.toString()}`);
+      setQuote(body);
+      toast.push(`Quote ready for ${body.source_asset} → ${body.dest_asset}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "network error");
+      const apiError = err as Partial<ApiError>;
+      const message =
+        apiError.message ||
+        (err instanceof Error && err.message ? err.message : "quote request failed");
+      setError(message);
+      toast.push(message, "error");
     } finally {
       setLoading(false);
     }
