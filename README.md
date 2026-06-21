@@ -44,6 +44,10 @@ Next.js app for [StableRoute](https://github.com/your-org/stableroute) — Stell
 | `npm test` | Run Jest tests |
 | `npm run lint` | Next.js ESLint |
 
+## Data fetching
+
+Read-only dashboard pages should use `src/lib/useApi.ts` instead of duplicating `useEffect`, `useState`, and `apiGet` in each page. The hook exposes a `loading | error | ok` state union so pages can consistently map pending requests to `Spinner`, failures to `role="alert"`, and successful responses to list rendering.
+
 ## CI/CD
 
 On every push/PR to `main`, GitHub Actions runs:
