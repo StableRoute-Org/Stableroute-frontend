@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { apiGet } from "@/lib/apiClient";
+import { Spinner } from "@/components/Spinner";
+import { useApi } from "@/lib/useApi";
 
 type AppEvent = {
   id: string;
@@ -10,15 +10,15 @@ type AppEvent = {
   payload: Record<string, unknown>;
 };
 
-export default function EventsPage() {
-  const [items, setItems] = useState<AppEvent[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
+type EventsResponse = { items: AppEvent[] };
 
-  useEffect(() => {
-    apiGet<{ items: AppEvent[] }>("/api/v1/events?limit=100")
-      .then((b) => setItems(b.items))
-      .catch((e) => setError(e.message));
-  }, []);
+/**
+ * Uses the shared read-only API hook so loading, error, and ok states match
+ * other dashboard fetch surfaces.
+ */
+export default function EventsPage() {
+  const state = useApi<EventsResponse>("/api/v1/events?limit=100");
+  const items = state.status === "ok" ? state.data.items : null;
 
   return (
     <main
@@ -27,23 +27,30 @@ export default function EventsPage() {
       className="mx-auto flex min-h-[60vh] max-w-4xl flex-col gap-6 p-8 focus:outline-none"
     >
       <h1 className="text-3xl font-semibold tracking-tight">Event log</h1>
-      {error && <p role="alert" className="text-sm text-rose-600">{error}</p>}
+      {state.status === "loading" && <Spinner label="Loading events" />}
+      {state.status === "error" && (
+        <p role="alert" className="text-sm text-rose-600">
+          {state.error}
+        </p>
+      )}
       {items && items.length === 0 && (
-        <p className="text-sm text-neutral-600 dark:text-neutral-400">No events.</p>
+        <p className="text-sm text-neutral-600 dark:text-neutral-400">
+          No events.
+        </p>
       )}
       {items && items.length > 0 && (
         <ol className="flex flex-col gap-2">
-          {items.map((e) => (
+          {items.map((event) => (
             <li
-              key={e.id}
+              key={event.id}
               className="rounded border border-neutral-200 p-3 font-mono text-xs dark:border-neutral-800"
             >
               <div className="flex justify-between text-neutral-500">
-                <span>{e.type}</span>
-                <span>{new Date(e.ts).toISOString()}</span>
+                <span>{event.type}</span>
+                <span>{new Date(event.ts).toISOString()}</span>
               </div>
               <pre className="mt-2 whitespace-pre-wrap break-words">
-                {JSON.stringify(e.payload, null, 2)}
+                {JSON.stringify(event.payload, null, 2)}
               </pre>
             </li>
           ))}
