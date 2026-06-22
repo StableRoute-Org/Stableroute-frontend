@@ -1,7 +1,10 @@
 import {
   ApiTimeoutError,
   apiDelete,
+  apiFetch,
   apiGet,
+  apiPatch,
+  apiPost,
   isApiTimeoutError,
 } from "../apiClient";
 
@@ -47,6 +50,91 @@ describe("apiClient", () => {
       })
     );
     expect(clearTimeoutSpy).toHaveBeenCalled();
+  });
+
+  it("merges caller headers with the default Content-Type", async () => {
+    const mockFetch = jest.fn().mockResolvedValueOnce(jsonResponse({ ok: true }));
+    globalThis.fetch = mockFetch as unknown as typeof globalThis.fetch;
+
+    await apiFetch("/with-headers", {
+      headers: { Authorization: "Bearer token" },
+      timeoutMs: 0,
+    });
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      "http://localhost:3001/with-headers",
+      expect.objectContaining({
+        headers: {
+          Authorization: "Bearer token",
+          "Content-Type": "application/json",
+        },
+      })
+    );
+  });
+
+  it("composes URLs from NEXT_PUBLIC_STABLEROUTE_API_BASE at import time", async () => {
+    jest.resetModules();
+    const originalBase = process.env.NEXT_PUBLIC_STABLEROUTE_API_BASE;
+    process.env.NEXT_PUBLIC_STABLEROUTE_API_BASE = "https://api.example.test";
+    const mockFetch = jest.fn().mockResolvedValueOnce(jsonResponse({ ok: true }));
+    globalThis.fetch = mockFetch as unknown as typeof globalThis.fetch;
+
+    const { apiGet: isolatedApiGet } = await import("../apiClient");
+    await isolatedApiGet("/env", { timeoutMs: 0 });
+
+    expect(mockFetch).toHaveBeenCalledWith(
+      "https://api.example.test/env",
+      expect.any(Object)
+    );
+
+    if (originalBase === undefined) {
+      delete process.env.NEXT_PUBLIC_STABLEROUTE_API_BASE;
+    } else {
+      process.env.NEXT_PUBLIC_STABLEROUTE_API_BASE = originalBase;
+    }
+    jest.resetModules();
+  });
+
+  it("sets method and body for mutating helpers", async () => {
+    const mockFetch = jest
+      .fn()
+      .mockResolvedValue(jsonResponse({ ok: true })) as unknown as typeof globalThis.fetch;
+    globalThis.fetch = mockFetch;
+
+    await apiPost("/pairs", { source: "USDC" }, { timeoutMs: 0 });
+    await apiPatch("/pairs/USDC/EURC", { fee_bps: 10 }, { timeoutMs: 0 });
+    await apiDelete("/pairs/USDC/EURC", { timeoutMs: 0 });
+
+    expect(mockFetch).toHaveBeenNthCalledWith(
+      1,
+      "http://localhost:3001/pairs",
+      expect.objectContaining({
+        body: JSON.stringify({ source: "USDC" }),
+        method: "POST",
+      })
+    );
+    expect(mockFetch).toHaveBeenNthCalledWith(
+      2,
+      "http://localhost:3001/pairs/USDC/EURC",
+      expect.objectContaining({
+        body: JSON.stringify({ fee_bps: 10 }),
+        method: "PATCH",
+      })
+    );
+    expect(mockFetch).toHaveBeenNthCalledWith(
+      3,
+      "http://localhost:3001/pairs/USDC/EURC",
+      expect.objectContaining({ method: "DELETE" })
+    );
+  });
+
+  it("passes network rejections through unchanged", async () => {
+    const networkError = new Error("network down");
+    globalThis.fetch = jest
+      .fn()
+      .mockRejectedValueOnce(networkError) as unknown as typeof globalThis.fetch;
+
+    await expect(apiGet("/network", { timeoutMs: 0 })).rejects.toBe(networkError);
   });
 
   it("throws a typed timeout error when the timeout aborts fetch", async () => {

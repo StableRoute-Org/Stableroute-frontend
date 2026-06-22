@@ -54,11 +54,11 @@ export async function apiFetch<T>(
 
   try {
     const res = await fetch(`${API_BASE}${path}`, {
+      ...fetchInit,
       headers: {
         "Content-Type": "application/json",
         ...(fetchInit.headers ?? {}),
       },
-      ...fetchInit,
       signal: controller.signal,
     });
     if (res.status === 204) return undefined as T;
