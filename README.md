@@ -62,7 +62,7 @@ The frontend communicates with the StableRoute API backend.
 3. Build and test:
    ```bash
    npm run build
-   npm test
+   npm run test:coverage
    ```
 4. Run locally:
    ```bash
@@ -77,8 +77,43 @@ The frontend communicates with the StableRoute API backend.
 | `npm run dev` | Start dev server (Next.js) |
 | `npm run build` | Production build |
 | `npm run start` | Run production server |
-| `npm test` | Run Jest tests |
+| `npm test` | Run Jest tests (no coverage) |
+| `npm run test:coverage` | Run Jest with coverage report + threshold gate |
+| `npm run test:watch` | Run Jest in watch mode |
 | `npm run lint` | Next.js ESLint |
+
+## Test Coverage Policy
+
+Coverage is enforced by `coverageThreshold` in `jest.config.js` and gated in CI via `npm run test:coverage`. The current thresholds are set at a realistic baseline that passes on `main` today:
+
+| Metric | Current gate | Target |
+|--------|-------------|--------|
+| Statements | 40 % | 95 % |
+| Branches | 30 % | 95 % |
+| Functions | 40 % | 95 % |
+| Lines | 40 % | 95 % |
+
+**Branches start lower** because many page-level conditional renders (loading / error states) are not yet exercised.
+
+### Road-map to 95 %
+
+| Phase | Work | Expected coverage |
+|-------|------|-------------------|
+| 1 | Tests for `lib/apiClient` and `lib/useApi` | ~55 % |
+| 2 | Smoke tests for remaining page components | ~70 % |
+| 3 | Variant and prop coverage for `Button`, `TextField`, `StatTile`, etc. | ~80 % |
+| 4 | Branch coverage for error / loading / empty states | ~90 % |
+| 5 | Edge-case coverage across all modules | 95 % |
+
+**Rule:** thresholds must only ever increase. Raise them in `jest.config.js` in lock-step with each phase, and update this table accordingly.
+
+To run coverage locally:
+
+```bash
+npm run test:coverage
+```
+
+The command prints a per-file summary and exits non-zero if any threshold is missed — the same behaviour CI enforces on every PR.
 
 ## CI/CD
 
@@ -86,15 +121,16 @@ On every push/PR to `main`, GitHub Actions runs:
 
 - `npm ci`
 - `npm run build`
-- `npm test`
+- `npm run test:coverage` — enforces coverage thresholds; PRs are blocked if any threshold is missed
 
 Ensure these pass locally before pushing.
 
 ## Contributing
 
 1. Fork the repo and create a branch from `main`.
-2. Add tests for new UI/behavior; keep `npm run build` and `npm test` passing.
-3. Open a PR; CI must be green.
+2. Add tests for new UI/behaviour; keep `npm run build` and `npm run test:coverage` passing.
+3. Open a PR targeting `StableRoute-Org/Stableroute-frontend`; CI must be green.
+4. If your PR adds significant new code, raise the coverage thresholds in `jest.config.js` to reflect the new coverage level and update the table in this README.
 
 ## License
 
