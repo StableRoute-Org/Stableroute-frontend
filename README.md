@@ -25,6 +25,10 @@ Each route is defined under `src/app` and connects to its respective UI page:
 - **`/docs`** ([docs/page.tsx](src/app/docs/page.tsx)): Documentation page describing the API endpoints and usage.
 - **`/about`** ([about/page.tsx](src/app/about/page.tsx)): Static about page describing the protocol.
 
+## Footer Navigation
+
+The shared footer keeps the StableRoute tagline visible on every page, renders the current copyright year dynamically, and links to `/docs`, `/about`, and the StableRoute Discord community.
+
 ## Configuration & API Integration
 
 The frontend communicates with the StableRoute API backend.
