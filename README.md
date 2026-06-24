@@ -84,6 +84,21 @@ The frontend communicates with the StableRoute API backend.
 | `npm test` | Run Jest tests |
 | `npm run lint` | Next.js ESLint |
 
+## Accessibility
+
+### Reduced Motion
+
+The app respects the user's `prefers-reduced-motion` OS setting. When enabled, all CSS animations and transitions are disabled via a global media query in [`src/app/globals.css`](src/app/globals.css). The loading spinner retains its `role="status"` semantics so screen-reader users still receive feedback.
+
+To test:
+- **Windows:** Settings → Ease of Access → Display → "Show animations in Windows"
+- **macOS:** System Settings → Accessibility → Display → "Reduce motion"
+- **Browser DevTools:** Ctrl+Shift+P → "Show Rendering" → Emulate CSS media feature `prefers-reduced-motion: reduce`
+
+### ARIA Live Regions
+
+Dynamic list updates (loading → loaded / loading → empty) on the pairs, events, api-keys, and webhooks pages are wrapped in `aria-live="polite"` regions so screen-reader users are notified when content arrives. Error messages continue to use `role="alert"` for assertive announcements.
+
 ## CI/CD
 
 On every push/PR to `main`, GitHub Actions runs:
