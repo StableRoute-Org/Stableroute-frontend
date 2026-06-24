@@ -35,7 +35,13 @@ The frontend communicates with the StableRoute API backend.
 
 ### Environment Variables
 
-- **`NEXT_PUBLIC_STABLEROUTE_API_BASE`**: Specifies the base URL of the StableRoute API backend (defaults to `http://localhost:3001` if unset).
+- **`NEXT_PUBLIC_STABLEROUTE_API_BASE`**: Full absolute URL for the StableRoute API backend. If unset, the app falls back to `http://localhost:3001` for local development. Use an `https://` URL in production.
+
+Copy [`.env.example`](.env.example) to `.env.local` when you need to point the dashboard at a backend other than the localhost default. Do not commit real environment files.
+
+### Client Persistence
+
+- **`stableroute.theme`**: `localStorage` key used by the theme toggle. Allowed values are `light`, `dark`, and `system`; missing or invalid values resolve to `system`.
 
 ### API Endpoints Consumed
 
@@ -63,12 +69,17 @@ The frontend communicates with the StableRoute API backend.
    ```bash
    npm install
    ```
-3. Build and test:
+3. Copy the example environment file if your backend is not running on the default `http://localhost:3001`:
+   ```bash
+   cp .env.example .env.local
+   ```
+   Then update `NEXT_PUBLIC_STABLEROUTE_API_BASE` in `.env.local`.
+4. Build and test:
    ```bash
    npm run build
    npm test
    ```
-4. Run locally:
+5. Run locally:
    ```bash
    npm run dev
    ```

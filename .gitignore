@@ -3,6 +3,7 @@ node_modules/
 out/
 .env
 .env.*
+!.env.example
 *.log
 coverage/
 .DS_Store
