@@ -21,7 +21,7 @@ Each route is defined under `src/app` and connects to its respective UI page:
 - **`/api-keys`** ([api-keys/page.tsx](src/app/api-keys/page.tsx)): Dashboard to create, list, and revoke API keys.
 - **`/events`** ([events/page.tsx](src/app/events/page.tsx)): Audit log page rendering the system event log history.
 - **`/webhooks`** ([webhooks/page.tsx](src/app/webhooks/page.tsx)): Webhook manager for listing and adding event subscribers.
-- **`/settings`** ([settings/page.tsx](src/app/settings/page.tsx)): User settings interface hosting the light/dark appearance toggle.
+- **`/settings`** ([settings/page.tsx](src/app/settings/page.tsx)): User settings interface hosting the light/dark appearance toggle, a live theme preview, and the current API base configuration.
 - **`/docs`** ([docs/page.tsx](src/app/docs/page.tsx)): Documentation page describing the API endpoints and usage.
 - **`/about`** ([about/page.tsx](src/app/about/page.tsx)): Static about page describing the protocol.
 
