@@ -21,6 +21,9 @@ describe("ApiKeysPage", () => {
   it("renders api keys in a single polite live region", async () => {
     globalThis.fetch = jest.fn().mockResolvedValueOnce({
       ok: true,
+      text: async () => JSON.stringify({
+        items: [{ prefix: "sk_abc", label: "Production", createdAt: Date.now() }],
+      }),
       json: async () => ({
         items: [{ prefix: "sk_abc", label: "Production", createdAt: Date.now() }],
       }),
@@ -38,6 +41,7 @@ describe("ApiKeysPage", () => {
   it("announces empty state via live region", async () => {
     globalThis.fetch = jest.fn().mockResolvedValueOnce({
       ok: true,
+      text: async () => JSON.stringify({ items: [] }),
       json: async () => ({ items: [] }),
     } as unknown as Response);
 
@@ -59,6 +63,7 @@ describe("ApiKeysPage", () => {
   it("has exactly one aria-live=polite region", async () => {
     globalThis.fetch = jest.fn().mockResolvedValueOnce({
       ok: true,
+      text: async () => JSON.stringify({ items: [] }),
       json: async () => ({ items: [] }),
     } as unknown as Response);
 

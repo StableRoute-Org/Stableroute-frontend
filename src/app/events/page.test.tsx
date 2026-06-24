@@ -21,6 +21,9 @@ describe("EventsPage", () => {
   it("renders events in a single polite live region", async () => {
     globalThis.fetch = jest.fn().mockResolvedValueOnce({
       ok: true,
+      text: async () => JSON.stringify({
+        items: [{ id: "evt1", ts: Date.now(), type: "pair.registered", payload: {} }],
+      }),
       json: async () => ({
         items: [{ id: "evt1", ts: Date.now(), type: "pair.registered", payload: {} }],
       }),
@@ -38,6 +41,7 @@ describe("EventsPage", () => {
   it("announces empty state via live region", async () => {
     globalThis.fetch = jest.fn().mockResolvedValueOnce({
       ok: true,
+      text: async () => JSON.stringify({ items: [] }),
       json: async () => ({ items: [] }),
     } as unknown as Response);
 
@@ -59,6 +63,7 @@ describe("EventsPage", () => {
   it("has exactly one aria-live=polite region", async () => {
     globalThis.fetch = jest.fn().mockResolvedValueOnce({
       ok: true,
+      text: async () => JSON.stringify({ items: [] }),
       json: async () => ({ items: [] }),
     } as unknown as Response);
 

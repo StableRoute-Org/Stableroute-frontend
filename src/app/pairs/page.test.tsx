@@ -21,6 +21,7 @@ describe("PairsPage", () => {
   it("renders pairs in a single polite live region", async () => {
     globalThis.fetch = jest.fn().mockResolvedValueOnce({
       ok: true,
+      text: async () => JSON.stringify({ pairs: [{ source: "USDC", destination: "EURC" }] }),
       json: async () => ({ pairs: [{ source: "USDC", destination: "EURC" }] }),
     } as unknown as Response);
 
@@ -36,6 +37,7 @@ describe("PairsPage", () => {
   it("announces empty state via live region", async () => {
     globalThis.fetch = jest.fn().mockResolvedValueOnce({
       ok: true,
+      text: async () => JSON.stringify({ pairs: [] }),
       json: async () => ({ pairs: [] }),
     } as unknown as Response);
 
@@ -57,6 +59,7 @@ describe("PairsPage", () => {
   it("has exactly one aria-live=polite region", async () => {
     globalThis.fetch = jest.fn().mockResolvedValueOnce({
       ok: true,
+      text: async () => JSON.stringify({ pairs: [] }),
       json: async () => ({ pairs: [] }),
     } as unknown as Response);
 

@@ -48,6 +48,12 @@ The frontend communicates with the StableRoute API backend.
 - **`/api/v1/events`**: Retrieves system event audit logs (`GET`).
 - **`/api/v1/webhooks`**: Creates (`POST`), lists (`GET`), and revokes (`DELETE` at `/api/v1/webhooks/:id`) webhook subscriptions.
 
+## Formatting Conventions
+The application uses shared formatting helpers in `src/lib/format.ts`:
+- `formatNumber`: Adds locale-specific thousands separators to numeric counts.
+- `formatStroops`: Scales stroops to XLM (1 XLM = 1e7 stroops) for human-readable display.
+- `formatTime`: Formats timestamps into `HH:MM:SS` strings.
+
 ## Prerequisites
 
 - Node.js 18+

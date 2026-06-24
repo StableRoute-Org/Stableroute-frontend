@@ -21,6 +21,9 @@ describe("WebhooksPage", () => {
   it("renders webhooks in a single polite live region", async () => {
     globalThis.fetch = jest.fn().mockResolvedValueOnce({
       ok: true,
+      text: async () => JSON.stringify({
+        items: [{ id: "wh1", url: "https://example.com/hook", events: ["pair.registered"], createdAt: Date.now() }],
+      }),
       json: async () => ({
         items: [{ id: "wh1", url: "https://example.com/hook", events: ["pair.registered"], createdAt: Date.now() }],
       }),
@@ -38,6 +41,7 @@ describe("WebhooksPage", () => {
   it("announces empty state via live region", async () => {
     globalThis.fetch = jest.fn().mockResolvedValueOnce({
       ok: true,
+      text: async () => JSON.stringify({ items: [] }),
       json: async () => ({ items: [] }),
     } as unknown as Response);
 
@@ -59,6 +63,7 @@ describe("WebhooksPage", () => {
   it("has exactly one aria-live=polite region", async () => {
     globalThis.fetch = jest.fn().mockResolvedValueOnce({
       ok: true,
+      text: async () => JSON.stringify({ items: [] }),
       json: async () => ({ items: [] }),
     } as unknown as Response);
 

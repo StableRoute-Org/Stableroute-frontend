@@ -1,0 +1,9 @@
+This PR wires the unused format helpers into the stats display.
+
+- Render `stats.totalPairs` through `formatNumber` for locale thousands separators.
+- Replace hand-rolled markup in `src/app/stats/page.tsx` with `StatTile` component.
+- Added comprehensive tests in `src/app/stats/page.test.tsx`.
+- Updated `README.md` to document the formatting conventions.
+- Fixed a bug in several existing tests where the fetch mock was missing the `.text()` method, which is required by `apiFetch`.
+
+Closes #10
