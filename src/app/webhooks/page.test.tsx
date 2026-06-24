@@ -1,6 +1,13 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import WebhooksPage from "./page";
 
+function jsonResponse(body: unknown): Response {
+  return {
+    ok: true,
+    text: async () => JSON.stringify(body),
+  } as unknown as Response;
+}
+
 describe("WebhooksPage", () => {
   let originalFetch: typeof globalThis.fetch;
 
@@ -19,12 +26,18 @@ describe("WebhooksPage", () => {
   });
 
   it("renders webhooks in a single polite live region", async () => {
-    globalThis.fetch = jest.fn().mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        items: [{ id: "wh1", url: "https://example.com/hook", events: ["pair.registered"], createdAt: Date.now() }],
-      }),
-    } as unknown as Response);
+    globalThis.fetch = jest.fn().mockResolvedValueOnce(
+      jsonResponse({
+        items: [
+          {
+            id: "wh1",
+            url: "https://example.com/hook",
+            events: ["pair.registered"],
+            createdAt: Date.now(),
+          },
+        ],
+      })
+    );
 
     render(<WebhooksPage />);
     await waitFor(() => {
@@ -36,10 +49,7 @@ describe("WebhooksPage", () => {
   });
 
   it("announces empty state via live region", async () => {
-    globalThis.fetch = jest.fn().mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ items: [] }),
-    } as unknown as Response);
+    globalThis.fetch = jest.fn().mockResolvedValueOnce(jsonResponse({ items: [] }));
 
     render(<WebhooksPage />);
     await waitFor(() => {
@@ -57,10 +67,7 @@ describe("WebhooksPage", () => {
   });
 
   it("has exactly one aria-live=polite region", async () => {
-    globalThis.fetch = jest.fn().mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ items: [] }),
-    } as unknown as Response);
+    globalThis.fetch = jest.fn().mockResolvedValueOnce(jsonResponse({ items: [] }));
 
     render(<WebhooksPage />);
     await waitFor(() => {

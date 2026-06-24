@@ -1,6 +1,13 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import EventsPage from "./page";
 
+function jsonResponse(body: unknown): Response {
+  return {
+    ok: true,
+    text: async () => JSON.stringify(body),
+  } as unknown as Response;
+}
+
 describe("EventsPage", () => {
   let originalFetch: typeof globalThis.fetch;
 
@@ -19,12 +26,11 @@ describe("EventsPage", () => {
   });
 
   it("renders events in a single polite live region", async () => {
-    globalThis.fetch = jest.fn().mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
+    globalThis.fetch = jest.fn().mockResolvedValueOnce(
+      jsonResponse({
         items: [{ id: "evt1", ts: Date.now(), type: "pair.registered", payload: {} }],
-      }),
-    } as unknown as Response);
+      })
+    );
 
     render(<EventsPage />);
     await waitFor(() => {
@@ -36,10 +42,7 @@ describe("EventsPage", () => {
   });
 
   it("announces empty state via live region", async () => {
-    globalThis.fetch = jest.fn().mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ items: [] }),
-    } as unknown as Response);
+    globalThis.fetch = jest.fn().mockResolvedValueOnce(jsonResponse({ items: [] }));
 
     render(<EventsPage />);
     await waitFor(() => {
@@ -57,10 +60,7 @@ describe("EventsPage", () => {
   });
 
   it("has exactly one aria-live=polite region", async () => {
-    globalThis.fetch = jest.fn().mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({ items: [] }),
-    } as unknown as Response);
+    globalThis.fetch = jest.fn().mockResolvedValueOnce(jsonResponse({ items: [] }));
 
     render(<EventsPage />);
     await waitFor(() => {
