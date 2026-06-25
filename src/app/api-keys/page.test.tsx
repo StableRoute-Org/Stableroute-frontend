@@ -2,26 +2,26 @@ import { render, screen, waitFor } from "@testing-library/react";
 import ApiKeysPage from "./page";
 
 describe("ApiKeysPage", () => {
-  let originalFetch: typeof globalThis.fetch;
+  let originalFetch: typeof global.fetch;
 
   beforeEach(() => {
-    originalFetch = globalThis.fetch;
+    originalFetch = global.fetch;
   });
 
   afterEach(() => {
-    globalThis.fetch = originalFetch;
+    global.fetch = originalFetch;
   });
 
   it("shows loading before data arrives", () => {
-    globalThis.fetch = jest.fn(() => new Promise(() => {})) as unknown as typeof globalThis.fetch;
+    global.fetch = jest.fn(() => new Promise(() => {})) as unknown as typeof global.fetch;
     render(<ApiKeysPage />);
     expect(screen.getByText("Loading…")).toBeInTheDocument();
   });
 
   it("renders api keys in a single polite live region", async () => {
-    globalThis.fetch = jest.fn().mockResolvedValueOnce({
+    global.fetch = jest.fn().mockResolvedValueOnce({
       ok: true,
-      json: async () => ({
+      text: async () => JSON.stringify({
         items: [{ prefix: "sk_abc", label: "Production", createdAt: Date.now() }],
       }),
     } as unknown as Response);
@@ -36,9 +36,9 @@ describe("ApiKeysPage", () => {
   });
 
   it("announces empty state via live region", async () => {
-    globalThis.fetch = jest.fn().mockResolvedValueOnce({
+    global.fetch = jest.fn().mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ items: [] }),
+      text: async () => JSON.stringify({ items: [] }),
     } as unknown as Response);
 
     render(<ApiKeysPage />);
@@ -48,7 +48,7 @@ describe("ApiKeysPage", () => {
   });
 
   it("surfaces errors with role=alert", async () => {
-    globalThis.fetch = jest.fn().mockRejectedValueOnce(new Error("Unauthorized"));
+    global.fetch = jest.fn().mockRejectedValueOnce(new Error("Unauthorized"));
 
     render(<ApiKeysPage />);
     await waitFor(() => {
@@ -57,9 +57,9 @@ describe("ApiKeysPage", () => {
   });
 
   it("has exactly one aria-live=polite region", async () => {
-    globalThis.fetch = jest.fn().mockResolvedValueOnce({
+    global.fetch = jest.fn().mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ items: [] }),
+      text: async () => JSON.stringify({ items: [] }),
     } as unknown as Response);
 
     render(<ApiKeysPage />);

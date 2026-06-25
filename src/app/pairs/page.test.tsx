@@ -2,26 +2,26 @@ import { render, screen, waitFor } from "@testing-library/react";
 import PairsPage from "./page";
 
 describe("PairsPage", () => {
-  let originalFetch: typeof globalThis.fetch;
+  let originalFetch: typeof global.fetch;
 
   beforeEach(() => {
-    originalFetch = globalThis.fetch;
+    originalFetch = global.fetch;
   });
 
   afterEach(() => {
-    globalThis.fetch = originalFetch;
+    global.fetch = originalFetch;
   });
 
   it("shows loading before data arrives", () => {
-    globalThis.fetch = jest.fn(() => new Promise(() => {})) as unknown as typeof globalThis.fetch;
+    global.fetch = jest.fn(() => new Promise(() => {})) as unknown as typeof global.fetch;
     render(<PairsPage />);
     expect(screen.getByText("Loading…")).toBeInTheDocument();
   });
 
   it("renders pairs in a single polite live region", async () => {
-    globalThis.fetch = jest.fn().mockResolvedValueOnce({
+    global.fetch = jest.fn().mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ pairs: [{ source: "USDC", destination: "EURC" }] }),
+      text: async () => JSON.stringify({ pairs: [{ source: "USDC", destination: "EURC" }] }),
     } as unknown as Response);
 
     render(<PairsPage />);
@@ -34,9 +34,9 @@ describe("PairsPage", () => {
   });
 
   it("announces empty state via live region", async () => {
-    globalThis.fetch = jest.fn().mockResolvedValueOnce({
+    global.fetch = jest.fn().mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ pairs: [] }),
+      text: async () => JSON.stringify({ pairs: [] }),
     } as unknown as Response);
 
     render(<PairsPage />);
@@ -46,7 +46,7 @@ describe("PairsPage", () => {
   });
 
   it("surfaces errors with role=alert", async () => {
-    globalThis.fetch = jest.fn().mockRejectedValueOnce(new Error("Network error"));
+    global.fetch = jest.fn().mockRejectedValueOnce(new Error("Network error"));
 
     render(<PairsPage />);
     await waitFor(() => {
@@ -55,9 +55,9 @@ describe("PairsPage", () => {
   });
 
   it("has exactly one aria-live=polite region", async () => {
-    globalThis.fetch = jest.fn().mockResolvedValueOnce({
+    global.fetch = jest.fn().mockResolvedValueOnce({
       ok: true,
-      json: async () => ({ pairs: [] }),
+      text: async () => JSON.stringify({ pairs: [] }),
     } as unknown as Response);
 
     render(<PairsPage />);
