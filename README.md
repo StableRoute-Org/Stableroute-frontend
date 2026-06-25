@@ -48,6 +48,12 @@ The frontend communicates with the StableRoute API backend.
 - **`/api/v1/events`**: Retrieves system event audit logs (`GET`).
 - **`/api/v1/webhooks`**: Creates (`POST`), lists (`GET`), and revokes (`DELETE` at `/api/v1/webhooks/:id`) webhook subscriptions.
 
+### Asset Codes
+
+Stellar asset codes entered through the new-pair form are trimmed, validated as
+1-12 ASCII letters or numbers, uppercased before submission, and compared after
+normalization so duplicate pairs such as `usdc` and `USDC` cannot be registered.
+
 ## Prerequisites
 
 - Node.js 18+
