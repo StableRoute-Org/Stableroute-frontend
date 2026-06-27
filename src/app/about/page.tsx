@@ -1,4 +1,4 @@
-export const metadata = { title: "About — StableRoute" };
+export const metadata = { title: "About — StableRoute", description: "About StableRoute: a liquidity router for stablecoin and fiat-backed token pairs on Stellar." };
 
 export default function AboutPage() {
   return (
