@@ -1,4 +1,7 @@
-export const metadata = { title: "Docs — StableRoute" };
+export const metadata = {
+  title: "Docs — StableRoute",
+  description: "Short reference for the StableRoute HTTP API common endpoints.",
+};
 
 const sections = [
   {
