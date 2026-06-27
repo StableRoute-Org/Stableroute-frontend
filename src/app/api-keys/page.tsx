@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { apiGet, apiPost, apiDelete } from "@/lib/apiClient";
+import { Button } from "@/components/Button";
+import { TextField } from "@/components/TextField";
 
 type Item = { prefix: string; label: string; createdAt: number };
 
@@ -39,22 +41,25 @@ export default function ApiKeysPage() {
       className="mx-auto flex min-h-[60vh] max-w-3xl flex-col gap-6 p-8 focus:outline-none"
     >
       <h1 className="text-3xl font-semibold tracking-tight">API keys</h1>
-      <form onSubmit={onCreate} className="flex gap-2">
-        <input
-          required
-          maxLength={64}
-          aria-label="Label"
-          value={label}
-          onChange={(e) => setLabel(e.target.value)}
-          placeholder="Label"
-          className="flex-1 rounded-md border border-neutral-300 px-3 py-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 dark:border-neutral-700 dark:bg-neutral-900"
-        />
-        <button
-          type="submit"
-          className="rounded-full bg-black px-4 py-2 text-sm font-medium text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
-        >
-          Create
-        </button>
+      <form onSubmit={onCreate}>
+        <fieldset className="rounded-xl border border-neutral-200 p-4 dark:border-neutral-800">
+          <legend className="px-1 text-sm font-medium">Create API key</legend>
+          <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end">
+            <TextField
+              required
+              maxLength={64}
+              label="API key label"
+              description="Use a short name that identifies where this key is used."
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+              placeholder="Production"
+              className="flex-1"
+            />
+            <Button type="submit" className="sm:mb-5">
+              Create
+            </Button>
+          </div>
+        </fieldset>
       </form>
       {created && (
         <div role="status" className="rounded border border-emerald-300 bg-emerald-50 p-3 text-sm dark:border-emerald-900 dark:bg-emerald-950">

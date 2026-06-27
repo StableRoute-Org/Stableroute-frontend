@@ -18,6 +18,16 @@ describe("ApiKeysPage", () => {
     expect(screen.getByText("Loading…")).toBeInTheDocument();
   });
 
+  it("labels and groups the create form controls", () => {
+    global.fetch = jest.fn(() => new Promise(() => {})) as unknown as typeof global.fetch;
+
+    render(<ApiKeysPage />);
+
+    expect(screen.getByRole("group", { name: /create api key/i })).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: /api key label/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /create/i })).toBeInTheDocument();
+  });
+
   it("renders api keys in a single polite live region", async () => {
     global.fetch = jest.fn().mockResolvedValueOnce({
       ok: true,
