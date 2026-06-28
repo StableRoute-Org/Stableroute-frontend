@@ -2,15 +2,30 @@
 
 import { useEffect } from "react";
 
+type BoundaryError = Error & { digest?: string };
+
+function getErrorSummary(error: BoundaryError) {
+  return {
+    message: error.message || "Unexpected error.",
+    digest: error.digest,
+  };
+}
+
 export default function ErrorBoundary({
   error,
   reset,
 }: {
-  error: Error & { digest?: string };
+  error: BoundaryError;
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error("App error boundary caught:", error);
+    /**
+     * Keep detailed diagnostics out of production logs because API errors can
+     * carry assigned backend fields such as requestId or route-specific data.
+     */
+    if (process.env.NODE_ENV !== "production") {
+      console.error("App error boundary caught:", getErrorSummary(error));
+    }
   }, [error]);
 
   return (
@@ -21,7 +36,7 @@ export default function ErrorBoundary({
     >
       <h1 className="text-2xl font-semibold">Something went wrong.</h1>
       <p className="text-sm text-neutral-600 dark:text-neutral-400">
-        {error.message || "Unexpected error."}
+        We could not complete that action. Please try again.
       </p>
       <button
         type="button"
