@@ -1,3 +1,5 @@
+"use client";
+
 import { Card } from "@/components/Card";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { readTheme, effectiveTheme, type Theme } from "@/lib/theme";
