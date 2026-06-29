@@ -223,4 +223,59 @@ describe("QuotePage", () => {
       expect(screen.getByRole("alert")).toHaveTextContent(/must differ/i);
     });
   });
+
+  it("shows the requestId when the backend includes one", async () => {
+    globalThis.fetch = jest.fn().mockResolvedValueOnce({
+      ok: false,
+      json: async () => ({
+        error: "invalid_request",
+        message: "source_asset and dest_asset must differ",
+        requestId: "req-abc-123",
+      }),
+    } as unknown as Response);
+
+    render(<QuotePage />);
+    fireEvent.change(screen.getByLabelText(/Source asset/i), {
+      target: { value: "USDC" },
+    });
+    fireEvent.change(screen.getByLabelText(/Destination asset/i), {
+      target: { value: "EURC" },
+    });
+    fireEvent.change(screen.getByLabelText(/Amount/i), {
+      target: { value: "100" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Get quote/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toHaveTextContent(/must differ/i);
+    });
+    expect(screen.getByRole("alert")).toHaveTextContent(/Request ID: req-abc-123/);
+  });
+
+  it("omits the requestId line when the backend does not include one", async () => {
+    globalThis.fetch = jest.fn().mockResolvedValueOnce({
+      ok: false,
+      json: async () => ({
+        error: "invalid_request",
+        message: "source_asset and dest_asset must differ",
+      }),
+    } as unknown as Response);
+
+    render(<QuotePage />);
+    fireEvent.change(screen.getByLabelText(/Source asset/i), {
+      target: { value: "USDC" },
+    });
+    fireEvent.change(screen.getByLabelText(/Destination asset/i), {
+      target: { value: "EURC" },
+    });
+    fireEvent.change(screen.getByLabelText(/Amount/i), {
+      target: { value: "100" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Get quote/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toHaveTextContent(/must differ/i);
+    });
+    expect(screen.getByRole("alert")).not.toHaveTextContent(/Request ID/);
+  });
 });
