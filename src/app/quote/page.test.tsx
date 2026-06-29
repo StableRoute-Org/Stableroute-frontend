@@ -21,7 +21,7 @@ describe("QuotePage", () => {
   });
 
   it("calls the backend and renders the route on success", async () => {
-    globalThis.fetch = jest.fn().mockResolvedValueOnce({
+    const mockFetch = jest.fn().mockResolvedValueOnce({
       ok: true,
       json: async () => ({
         source_asset: "USDC",
@@ -31,6 +31,7 @@ describe("QuotePage", () => {
         route: ["USDC", "EURC"],
       }),
     } as unknown as Response);
+    globalThis.fetch = mockFetch as unknown as typeof globalThis.fetch;
 
     render(<QuotePage />);
     fireEvent.change(screen.getByLabelText(/Source asset/i), {
@@ -47,6 +48,9 @@ describe("QuotePage", () => {
     await waitFor(() => {
       expect(screen.getByRole("status")).toHaveTextContent(/USDC → EURC/);
     });
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining("source_asset=USDC&dest_asset=EURC&amount=1000000"),
+    );
   });
 
   it("blocks submission when source == destination", async () => {
@@ -93,6 +97,105 @@ describe("QuotePage", () => {
       expect(screen.getByRole("alert")).toHaveTextContent(/positive integer/i);
     });
     expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it("blocks submission when an asset code contains unsafe characters", async () => {
+    const mockFetch = jest.fn();
+    globalThis.fetch = mockFetch as unknown as typeof globalThis.fetch;
+    render(<QuotePage />);
+
+    fireEvent.change(screen.getByLabelText(/Source asset/i), {
+      target: { value: "US$C" },
+    });
+    fireEvent.change(screen.getByLabelText(/Destination asset/i), {
+      target: { value: "EURC" },
+    });
+    fireEvent.change(screen.getByLabelText(/Amount/i), {
+      target: { value: "100" },
+    });
+    fireEvent.submit(screen.getByLabelText(/Amount/i).closest("form")!);
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toHaveTextContent(/1-12 letters or numbers/i);
+    });
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it("blocks submission when an asset code is over length", async () => {
+    const mockFetch = jest.fn();
+    globalThis.fetch = mockFetch as unknown as typeof globalThis.fetch;
+    render(<QuotePage />);
+
+    fireEvent.change(screen.getByLabelText(/Source asset/i), {
+      target: { value: "TOO-LONG-ASSET" },
+    });
+    fireEvent.change(screen.getByLabelText(/Destination asset/i), {
+      target: { value: "EURC" },
+    });
+    fireEvent.change(screen.getByLabelText(/Amount/i), {
+      target: { value: "100" },
+    });
+    fireEvent.submit(screen.getByLabelText(/Amount/i).closest("form")!);
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toHaveTextContent(/1-12 letters or numbers/i);
+    });
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it("blocks submission when asset codes are whitespace-only", async () => {
+    const mockFetch = jest.fn();
+    globalThis.fetch = mockFetch as unknown as typeof globalThis.fetch;
+    render(<QuotePage />);
+
+    fireEvent.change(screen.getByLabelText(/Source asset/i), {
+      target: { value: "   " },
+    });
+    fireEvent.change(screen.getByLabelText(/Destination asset/i), {
+      target: { value: "EURC" },
+    });
+    fireEvent.change(screen.getByLabelText(/Amount/i), {
+      target: { value: "100" },
+    });
+    fireEvent.submit(screen.getByLabelText(/Amount/i).closest("form")!);
+
+    await waitFor(() => {
+      expect(screen.getByRole("alert")).toHaveTextContent(/1-12 letters or numbers/i);
+    });
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  it("trims valid asset codes and amount before issuing the request", async () => {
+    const mockFetch = jest.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        source_asset: "USDC",
+        dest_asset: "EURC",
+        amount: "100",
+        estimated_rate: "1.0",
+        route: ["USDC", "EURC"],
+      }),
+    } as unknown as Response);
+    globalThis.fetch = mockFetch as unknown as typeof globalThis.fetch;
+    render(<QuotePage />);
+
+    fireEvent.change(screen.getByLabelText(/Source asset/i), {
+      target: { value: " USDC " },
+    });
+    fireEvent.change(screen.getByLabelText(/Destination asset/i), {
+      target: { value: " EURC " },
+    });
+    fireEvent.change(screen.getByLabelText(/Amount/i), {
+      target: { value: " 100 " },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Get quote/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("status")).toHaveTextContent(/USDC → EURC/);
+    });
+    expect(mockFetch).toHaveBeenCalledWith(
+      expect.stringContaining("source_asset=USDC&dest_asset=EURC&amount=100"),
+    );
   });
 
   it("surfaces a backend invalid_request as a role=alert", async () => {
