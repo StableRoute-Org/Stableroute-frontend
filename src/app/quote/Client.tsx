@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import type { ApiError } from "@/lib/apiClient";
 
 type Quote = {
   source_asset: string;
@@ -19,11 +20,13 @@ export default function QuoteClient() {
   const [amount, setAmount] = useState("");
   const [quote, setQuote] = useState<Quote | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [requestId, setRequestId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
+    setRequestId(null);
     setQuote(null);
 
     if (sourceAsset === destAsset) {
@@ -41,7 +44,9 @@ export default function QuoteClient() {
       const res = await fetch(url);
       const body = await res.json();
       if (!res.ok) {
-        setError(body?.message ?? "quote request failed");
+        const apiError = body as ApiError | undefined;
+        setError(apiError?.message ?? "quote request failed");
+        setRequestId(apiError?.requestId ?? null);
         return;
       }
       setQuote(body as Quote);
@@ -124,9 +129,14 @@ export default function QuoteClient() {
         </section>
       )}
       {error && (
-        <p role="alert" className="text-sm text-rose-700 dark:text-rose-400">
-          {error}
-        </p>
+        <div role="alert" className="text-sm text-rose-700 dark:text-rose-400">
+          <p>{error}</p>
+          {requestId && (
+            <p className="mt-1 text-xs">
+              Request ID: <code>{requestId}</code>
+            </p>
+          )}
+        </div>
       )}
     </main>
   );

@@ -6,7 +6,7 @@ export default function ErrorBoundary({
   error,
   reset,
 }: {
-  error: Error & { digest?: string };
+  error: Error & { digest?: string; requestId?: string };
   reset: () => void;
 }) {
   useEffect(() => {
@@ -20,9 +20,14 @@ export default function ErrorBoundary({
       className="mx-auto flex min-h-[60vh] max-w-xl flex-col items-center justify-center gap-4 p-8 text-center focus:outline-none"
     >
       <h1 className="text-2xl font-semibold">Something went wrong.</h1>
-      <p className="text-sm text-neutral-600 dark:text-neutral-400">
-        {error.message || "Unexpected error."}
-      </p>
+      <div role="alert" className="text-sm text-neutral-600 dark:text-neutral-400">
+        <p>{error.message || "Unexpected error."}</p>
+        {error.requestId && (
+          <p className="mt-1 text-xs">
+            Request ID: <code>{error.requestId}</code>
+          </p>
+        )}
+      </div>
       <button
         type="button"
         onClick={reset}
