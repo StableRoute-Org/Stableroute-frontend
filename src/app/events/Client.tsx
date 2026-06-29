@@ -2,21 +2,22 @@
 
 import { useEffect, useState } from "react";
 import { apiGet } from "@/lib/apiClient";
-
-type AppEvent = {
-  id: string;
-  ts: number;
-  type: string;
-  payload: Record<string, unknown>;
-};
+import { parseEventsResponse, type DisplayEvent } from "@/lib/events";
 
 export default function EventsClient() {
-  const [items, setItems] = useState<AppEvent[] | null>(null);
+  const [items, setItems] = useState<DisplayEvent[] | null>(null);
+  const [totalValid, setTotalValid] = useState(0);
+  const [capped, setCapped] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    apiGet<{ items: AppEvent[] }>("/api/v1/events?limit=100")
-      .then((b) => setItems(b.items))
+    apiGet<unknown>("/api/v1/events?limit=100")
+      .then((b) => {
+        const parsed = parseEventsResponse(b);
+        setItems(parsed.events);
+        setTotalValid(parsed.totalValid);
+        setCapped(parsed.capped);
+      })
       .catch((e) => setError(e.message));
   }, []);
 
@@ -34,22 +35,29 @@ export default function EventsClient() {
           <p className="text-sm text-neutral-600 dark:text-neutral-400">No events.</p>
         )}
         {items && items.length > 0 && (
-          <ol className="flex flex-col gap-2">
-            {items.map((e) => (
-              <li
-                key={e.id}
-                className="rounded border border-neutral-200 p-3 font-mono text-xs dark:border-neutral-800"
-              >
-                <div className="flex justify-between text-neutral-500">
-                  <span>{e.type}</span>
-                  <span>{new Date(e.ts).toISOString()}</span>
-                </div>
-                <pre className="mt-2 whitespace-pre-wrap break-words">
-                  {JSON.stringify(e.payload, null, 2)}
-                </pre>
-              </li>
-            ))}
-          </ol>
+          <>
+            {capped && (
+              <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                Showing {items.length} of {totalValid} events (capped).
+              </p>
+            )}
+            <ol className="flex flex-col gap-2">
+              {items.map((e) => (
+                <li
+                  key={e.id}
+                  className="rounded border border-neutral-200 p-3 font-mono text-xs dark:border-neutral-800"
+                >
+                  <div className="flex justify-between text-neutral-500">
+                    <span>{e.type}</span>
+                    <span>{new Date(e.ts).toISOString()}</span>
+                  </div>
+                  <pre className="mt-2 whitespace-pre-wrap break-words">
+                    {e.payloadPreview}
+                  </pre>
+                </li>
+              ))}
+            </ol>
+          </>
         )}
       </section>
     </main>
