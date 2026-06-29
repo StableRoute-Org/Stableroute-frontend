@@ -12,6 +12,15 @@ type Quote = {
 
 const API_BASE =
   process.env.NEXT_PUBLIC_STABLEROUTE_API_BASE ?? "http://localhost:3001";
+const ASSET_CODE_PATTERN = /^[A-Za-z0-9]{1,12}$/;
+
+/**
+ * Returns a trimmed Stellar asset code when it is safe to send to the quote API.
+ */
+function normalizeAssetCode(value: string): string | null {
+  const trimmed = value.trim();
+  return ASSET_CODE_PATTERN.test(trimmed) ? trimmed : null;
+}
 
 export default function QuoteClient() {
   const [sourceAsset, setSourceAsset] = useState("");
@@ -26,18 +35,26 @@ export default function QuoteClient() {
     setError(null);
     setQuote(null);
 
-    if (sourceAsset === destAsset) {
+    const normalizedSourceAsset = normalizeAssetCode(sourceAsset);
+    const normalizedDestAsset = normalizeAssetCode(destAsset);
+    const normalizedAmount = amount.trim();
+
+    if (!normalizedSourceAsset || !normalizedDestAsset) {
+      setError("Asset codes must be 1-12 letters or numbers.");
+      return;
+    }
+    if (normalizedSourceAsset === normalizedDestAsset) {
       setError("Source and destination assets must differ.");
       return;
     }
-    if (!/^[1-9][0-9]{0,38}$/.test(amount)) {
+    if (!/^[1-9][0-9]{0,38}$/.test(normalizedAmount)) {
       setError("Amount must be a positive integer (base units).");
       return;
     }
 
     setLoading(true);
     try {
-      const url = `${API_BASE}/api/v1/quote?source_asset=${encodeURIComponent(sourceAsset)}&dest_asset=${encodeURIComponent(destAsset)}&amount=${encodeURIComponent(amount)}`;
+      const url = `${API_BASE}/api/v1/quote?source_asset=${encodeURIComponent(normalizedSourceAsset)}&dest_asset=${encodeURIComponent(normalizedDestAsset)}&amount=${encodeURIComponent(normalizedAmount)}`;
       const res = await fetch(url);
       const body = await res.json();
       if (!res.ok) {
