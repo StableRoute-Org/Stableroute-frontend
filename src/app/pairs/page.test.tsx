@@ -16,6 +16,10 @@ describe("PairsPage", () => {
     global.fetch = jest.fn(() => new Promise(() => {})) as unknown as typeof global.fetch;
     render(<PairsPage />);
     expect(screen.getByText("Loading…")).toBeInTheDocument();
+    expect(document.querySelector("[aria-live=polite]")).toHaveAttribute(
+      "aria-busy",
+      "true",
+    );
   });
 
   it("renders pairs in a single polite live region", async () => {
@@ -31,6 +35,7 @@ describe("PairsPage", () => {
     const live = document.querySelector("[aria-live=polite]");
     expect(live).toBeInTheDocument();
     expect(live).toHaveAttribute("aria-atomic", "true");
+    expect(live).toHaveAttribute("aria-busy", "false");
   });
 
   it("announces empty state via live region", async () => {
@@ -43,6 +48,10 @@ describe("PairsPage", () => {
     await waitFor(() => {
       expect(screen.getByText(/No pairs registered yet/i)).toBeInTheDocument();
     });
+    expect(document.querySelector("[aria-live=polite]")).toHaveAttribute(
+      "aria-busy",
+      "false",
+    );
   });
 
   it("surfaces errors with role=alert", async () => {
@@ -52,6 +61,10 @@ describe("PairsPage", () => {
     await waitFor(() => {
       expect(screen.getByRole("alert")).toHaveTextContent(/Network error/i);
     });
+    expect(document.querySelector("[aria-live=polite]")).toHaveAttribute(
+      "aria-busy",
+      "false",
+    );
   });
 
   it("has exactly one aria-live=polite region", async () => {
