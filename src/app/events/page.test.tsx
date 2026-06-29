@@ -22,9 +22,10 @@ describe("EventsPage", () => {
   it("renders events in a single polite live region", async () => {
     global.fetch = jest.fn().mockResolvedValueOnce({
       ok: true,
-      text: async () => JSON.stringify({
-        items: [{ id: "evt1", ts: Date.now(), type: "pair.registered", payload: {} }],
-      }),
+      text: async () =>
+        JSON.stringify({
+          items: [{ id: "evt1", ts: Date.now(), type: "pair.registered", payload: {} }],
+        }),
     } as unknown as Response);
 
     render(<EventsPage />);

@@ -21,9 +21,17 @@ describe("WebhooksPage", () => {
   it("renders webhooks in a single polite live region", async () => {
     global.fetch = jest.fn().mockResolvedValueOnce({
       ok: true,
-      text: async () => JSON.stringify({
-        items: [{ id: "wh1", url: "https://example.com/hook", events: ["pair.registered"], createdAt: Date.now() }],
-      }),
+      text: async () =>
+        JSON.stringify({
+          items: [
+            {
+              id: "wh1",
+              url: "https://example.com/hook",
+              events: ["pair.registered"],
+              createdAt: Date.now(),
+            },
+          ],
+        }),
     } as unknown as Response);
 
     render(<WebhooksPage />);

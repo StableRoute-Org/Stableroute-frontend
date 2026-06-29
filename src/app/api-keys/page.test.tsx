@@ -21,9 +21,10 @@ describe("ApiKeysPage", () => {
   it("renders api keys in a single polite live region", async () => {
     global.fetch = jest.fn().mockResolvedValueOnce({
       ok: true,
-      text: async () => JSON.stringify({
-        items: [{ prefix: "sk_abc", label: "Production", createdAt: Date.now() }],
-      }),
+      text: async () =>
+        JSON.stringify({
+          items: [{ prefix: "sk_abc", label: "Production", createdAt: Date.now() }],
+        }),
     } as unknown as Response);
 
     render(<ApiKeysPage />);
