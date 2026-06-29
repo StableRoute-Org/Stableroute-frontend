@@ -9,6 +9,7 @@ type Pair = { source: string; destination: string };
 export default function PairsClient() {
   const [pairs, setPairs] = useState<Pair[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const isLoading = pairs === null && error === null;
 
   useEffect(() => {
     apiGet<{ pairs: Pair[] }>("/api/v1/pairs")
@@ -36,8 +37,13 @@ export default function PairsClient() {
           {error}
         </p>
       )}
-      <section aria-live="polite" aria-atomic="true" className="contents">
-        {!pairs && !error && <p>Loading…</p>}
+      <section
+        aria-live="polite"
+        aria-atomic="true"
+        aria-busy={isLoading}
+        className="contents"
+      >
+        {isLoading && <p>Loading…</p>}
         {pairs && pairs.length === 0 && (
           <p className="text-sm text-neutral-600 dark:text-neutral-400">
             No pairs registered yet.
