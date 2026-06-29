@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import StatsPage from "./page";
 
 const mockFetch = (data: unknown) => {
@@ -9,14 +9,25 @@ const mockFetch = (data: unknown) => {
 };
 
 afterEach(() => {
+  jest.useRealTimers();
   jest.restoreAllMocks();
 });
 
 describe("StatsPage", () => {
-  it("renders the heading", () => {
+  it("renders the heading", async () => {
     mockFetch({ totalPairs: 0, paused: false });
     render(<StatsPage />);
     expect(screen.getByRole("heading", { name: /stats/i })).toBeInTheDocument();
+    await screen.findByText("Live");
+  });
+
+  it("renders one canonical stats page region and heading", async () => {
+    mockFetch({ totalPairs: 0, paused: false });
+    render(<StatsPage />);
+
+    expect(screen.getAllByRole("heading", { name: /stats/i })).toHaveLength(1);
+    expect(document.querySelectorAll("#main-content")).toHaveLength(1);
+    await screen.findByText("Live");
   });
 
   it("formats totalPairs with thousands separators via formatNumber", async () => {
@@ -47,5 +58,32 @@ describe("StatsPage", () => {
       const alert = screen.getByRole("alert");
       expect(alert).toHaveTextContent(/network error/i);
     });
+  });
+
+  it("keeps the existing 5 second polling update behavior", async () => {
+    jest.useFakeTimers();
+    global.fetch = jest
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        text: () => Promise.resolve(JSON.stringify({ totalPairs: 1, paused: false })),
+      } as unknown as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        text: () => Promise.resolve(JSON.stringify({ totalPairs: 2000, paused: true })),
+      } as unknown as Response);
+
+    render(<StatsPage />);
+
+    expect(await screen.findByText("1")).toBeInTheDocument();
+    expect(await screen.findByText("Live")).toBeInTheDocument();
+
+    await act(async () => {
+      jest.advanceTimersByTime(5000);
+    });
+
+    expect(await screen.findByText("2,000")).toBeInTheDocument();
+    expect(await screen.findByText("Paused")).toBeInTheDocument();
+    expect(global.fetch).toHaveBeenCalledTimes(2);
   });
 });
