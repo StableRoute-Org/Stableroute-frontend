@@ -1,14 +1,7 @@
 "use client";
 
 import { useState } from "react";
-
-type Quote = {
-  source_asset: string;
-  dest_asset: string;
-  amount: string;
-  estimated_rate: string;
-  route: string[];
-};
+import { assetsDiffer, isValidAmount, type Quote } from "@/lib/quote";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_STABLEROUTE_API_BASE ?? "http://localhost:3001";
@@ -35,19 +28,11 @@ export default function QuoteClient() {
     setError(null);
     setQuote(null);
 
-    const normalizedSourceAsset = normalizeAssetCode(sourceAsset);
-    const normalizedDestAsset = normalizeAssetCode(destAsset);
-    const normalizedAmount = amount.trim();
-
-    if (!normalizedSourceAsset || !normalizedDestAsset) {
-      setError("Asset codes must be 1-12 letters or numbers.");
-      return;
-    }
-    if (normalizedSourceAsset === normalizedDestAsset) {
+    if (!assetsDiffer(sourceAsset, destAsset)) {
       setError("Source and destination assets must differ.");
       return;
     }
-    if (!/^[1-9][0-9]{0,38}$/.test(normalizedAmount)) {
+    if (!isValidAmount(amount)) {
       setError("Amount must be a positive integer (base units).");
       return;
     }

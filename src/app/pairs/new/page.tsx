@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiPost } from "@/lib/apiClient";
+import { assetsDiffer } from "@/lib/quote";
 
 export default function NewPairPage() {
   const router = useRouter();
@@ -14,7 +15,7 @@ export default function NewPairPage() {
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    if (source === destination) {
+    if (!assetsDiffer(source, destination)) {
       setError("Source and destination must differ.");
       return;
     }
