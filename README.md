@@ -37,6 +37,13 @@ The frontend communicates with the StableRoute API backend.
 
 - **`NEXT_PUBLIC_STABLEROUTE_API_BASE`**: Specifies the base URL of the StableRoute API backend (defaults to `http://localhost:3001` if unset).
 
+`src/lib/apiClient.ts` reads this value once at module load and appends each
+`/api/v1/...` path to it. The pairs, stats, admin, API keys, events, webhooks,
+and new-pair pages use that shared client; the quote page also targets the same
+base URL directly for `/api/v1/quote`. Run the backend at
+`http://localhost:3001` for the default local setup, or set the environment
+variable before starting Next.js.
+
 ### API Endpoints Consumed
 
 - **`/api/v1/pairs`**: Lists registered pairs (`GET`) and registers new pairs (`POST`).
@@ -54,12 +61,14 @@ Stellar asset codes entered through the new-pair form are trimmed, validated as
 1-12 ASCII letters or numbers, uppercased before submission, and compared after
 normalization so duplicate pairs such as `usdc` and `USDC` cannot be registered.
 
-## Prerequisites
+## Getting started
 
-- Node.js 18+
-- npm
+### Prerequisites
 
-## Setup (contributors)
+- Node.js 18.18.0 or newer.
+- npm, which is bundled with supported Node.js releases.
+- A StableRoute backend reachable at `NEXT_PUBLIC_STABLEROUTE_API_BASE`; when
+  the variable is unset, the frontend uses `http://localhost:3001`.
 
 1. Clone the repo and enter the directory:
    ```bash
@@ -69,26 +78,40 @@ normalization so duplicate pairs such as `usdc` and `USDC` cannot be registered.
    ```bash
    npm install
    ```
-3. Build and test:
+3. Create `.env.local` with the backend URL you want Next.js to use. For the
+   default local backend:
    ```bash
-   npm run build
-   npm test
+   echo "NEXT_PUBLIC_STABLEROUTE_API_BASE=http://localhost:3001" > .env.local
    ```
-4. Run locally:
+4. Run the development server:
    ```bash
    npm run dev
    ```
    App: `http://localhost:3000`.
+5. Verify the app before opening a PR:
+   ```bash
+   npm run lint
+   npm run build
+   npm test
+   ```
 
 ## Scripts
 
 | Script | Description |
 |--------|-------------|
-| `npm run dev` | Start dev server (Next.js) |
-| `npm run build` | Production build |
-| `npm run start` | Run production server |
-| `npm test` | Run Jest tests |
-| `npm run lint` | Next.js ESLint |
+| `npm run dev` | Start the Next.js development server on `http://localhost:3000`. |
+| `npm run build` | Create a production Next.js build. |
+| `npm run start` | Serve the production build locally; run `npm run build` first. |
+| `npm run lint` | Run the Next.js ESLint checks. |
+| `npm test` | Run the Jest test suite once. |
+| `npm run test:watch` | Run Jest in watch mode while developing tests. |
+
+## Testing
+
+- Use `npm test` for the full Jest suite.
+- Use `npm run test:watch` while editing tests or UI behavior.
+- Use `npm test -- --coverage` to run the same Jest suite with coverage
+  reporting. The repository does not define a separate coverage script.
 
 ## Accessibility
 
