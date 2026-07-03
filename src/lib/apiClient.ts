@@ -1,6 +1,12 @@
 const API_BASE =
   process.env.NEXT_PUBLIC_STABLEROUTE_API_BASE ?? "http://localhost:3001";
 
+/**
+ * Canonical JSON error envelope returned by the StableRoute backend.
+ *
+ * `requestId` is optional because network failures and some legacy responses
+ * may not include the backend correlation id.
+ */
 export type ApiError = {
   error: string;
   message: string;
@@ -10,7 +16,17 @@ export type ApiError = {
 type AuthErrorHandler = (status: 401 | 403) => void;
 let _authErrorHandler: AuthErrorHandler | null = null;
 
-/** Called once by <ApiAuthGuard> when it mounts inside <ToastProvider>. */
+/**
+ * Register the single global auth-error handler.
+ *
+ * The latest registration replaces any previous handler. `ApiAuthGuard` calls
+ * this while mounted inside `ToastProvider`, then calls the returned unregister
+ * function on unmount. The guard is notified for backend `401` and `403`
+ * responses, but the original request still rejects normally.
+ *
+ * @param handler - Callback invoked with the auth failure status.
+ * @returns A cleanup function that unregisters `handler` if it is still active.
+ */
 export function registerAuthErrorHandler(handler: AuthErrorHandler): () => void {
   _authErrorHandler = handler;
   return () => {
@@ -18,6 +34,20 @@ export function registerAuthErrorHandler(handler: AuthErrorHandler): () => void 
   };
 }
 
+/**
+ * Fetch JSON from the StableRoute API.
+ *
+ * Requests are made relative to `NEXT_PUBLIC_STABLEROUTE_API_BASE` and include
+ * `Content-Type: application/json` by default. `204 No Content` resolves to
+ * `undefined`. Non-empty successful responses must be valid JSON. Failed
+ * responses reject with an `Error` whose message comes from the backend
+ * `ApiError.message` when present, with `status` and any parsed error fields
+ * attached to the thrown object.
+ *
+ * @param path - Backend path beginning with `/`.
+ * @param init - Optional fetch init merged with the default JSON header.
+ * @returns The parsed response body typed as `T`.
+ */
 export async function apiFetch<T>(
   path: string,
   init: RequestInit = {}
@@ -48,10 +78,14 @@ export async function apiFetch<T>(
   return body as T;
 }
 
+/** GET a JSON resource from the StableRoute API. */
 export const apiGet = <T>(path: string) => apiFetch<T>(path);
+/** POST a JSON body and parse the JSON response. */
 export const apiPost = <T>(path: string, body: unknown) =>
   apiFetch<T>(path, { method: "POST", body: JSON.stringify(body) });
+/** PATCH a JSON body and parse the JSON response. */
 export const apiPatch = <T>(path: string, body: unknown) =>
   apiFetch<T>(path, { method: "PATCH", body: JSON.stringify(body) });
+/** DELETE a resource, resolving to `undefined` for a 204 response. */
 export const apiDelete = (path: string) =>
   apiFetch<void>(path, { method: "DELETE" });
