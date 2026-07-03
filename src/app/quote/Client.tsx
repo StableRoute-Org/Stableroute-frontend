@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import type { ApiError } from "@/lib/apiClient";
+import { formatNumber, formatStroops } from "@/lib/format";
+import { assetsDiffer, isValidAmount } from "@/lib/quote";
 
 type Quote = {
   source_asset: string;
@@ -23,6 +25,24 @@ function normalizeAssetCode(value: string): string | null {
   return ASSET_CODE_PATTERN.test(trimmed) ? trimmed : null;
 }
 
+function parseSafeInteger(value: string): number | null {
+  if (!/^[0-9]+$/.test(value)) {
+    return null;
+  }
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) ? parsed : null;
+}
+
+function formatQuoteAmount(amount: string): string {
+  const parsed = parseSafeInteger(amount);
+  return parsed === null ? amount : formatStroops(parsed);
+}
+
+function formatQuoteRate(rate: string): string {
+  const parsed = Number(rate);
+  return Number.isFinite(parsed) ? formatNumber(parsed) : rate;
+}
+
 export default function QuoteClient() {
   const [sourceAsset, setSourceAsset] = useState("");
   const [destAsset, setDestAsset] = useState("");
@@ -38,11 +58,19 @@ export default function QuoteClient() {
     setRequestId(null);
     setQuote(null);
 
-    if (!assetsDiffer(sourceAsset, destAsset)) {
+    const normalizedSourceAsset = normalizeAssetCode(sourceAsset);
+    const normalizedDestAsset = normalizeAssetCode(destAsset);
+    const normalizedAmount = amount.trim();
+
+    if (!normalizedSourceAsset || !normalizedDestAsset) {
+      setError("Asset codes must be 1-12 letters or numbers.");
+      return;
+    }
+    if (!assetsDiffer(normalizedSourceAsset, normalizedDestAsset)) {
       setError("Source and destination assets must differ.");
       return;
     }
-    if (!isValidAmount(amount)) {
+    if (!isValidAmount(normalizedAmount)) {
       setError("Amount must be a positive integer (base units).");
       return;
     }
@@ -133,8 +161,16 @@ export default function QuoteClient() {
           className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm dark:border-emerald-900 dark:bg-emerald-950"
         >
           <p className="font-medium">Route: {quote.route.join(" → ")}</p>
-          <p>Amount: {quote.amount}</p>
-          <p>Estimated rate: {quote.estimated_rate}</p>
+          <p>
+            Amount:{" "}
+            <span title={quote.amount}>{formatQuoteAmount(quote.amount)}</span>
+          </p>
+          <p>
+            Estimated rate:{" "}
+            <span title={quote.estimated_rate}>
+              {formatQuoteRate(quote.estimated_rate)}
+            </span>
+          </p>
         </section>
       )}
       {error && (

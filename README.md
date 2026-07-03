@@ -48,6 +48,14 @@ The frontend communicates with the StableRoute API backend.
 - **`/api/v1/events`**: Retrieves system event audit logs (`GET`).
 - **`/api/v1/webhooks`**: Creates (`POST`), lists (`GET`), and revokes (`DELETE` at `/api/v1/webhooks/:id`) webhook subscriptions.
 
+### Quote Amount Display
+
+The quote API accepts and returns amounts in base units. The `/quote` page keeps
+the raw API values intact for requests and operator inspection, while rendering
+safe integer quote amounts through the shared `formatStroops` helper and numeric
+rates through `formatNumber`. If a backend value cannot be parsed safely, the UI
+falls back to the raw string instead of rounding or coercing it.
+
 ### Asset Codes
 
 Stellar asset codes entered through the new-pair form are trimmed, validated as
