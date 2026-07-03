@@ -92,6 +92,15 @@ normalization so duplicate pairs such as `usdc` and `USDC` cannot be registered.
 
 ## Accessibility
 
+### StatTile Trend Indicators
+
+`StatTile` accepts optional `delta?: number` and `trend?: "up" | "down" | "flat"`
+props for dashboards that need to show movement between polling intervals. A
+numeric `delta` automatically selects the trend direction; an explicit `trend`
+can be used when the caller already has direction metadata. The rendered badge
+uses direction text such as `Up +4`, `Down -2`, or `Flat 0` plus screen-reader
+copy, so color is never the only signal.
+
 ### ARIA Live Regions
 
 Dynamic list updates (loading → loaded / loading → empty) on the pairs, events, api-keys, and webhooks pages are wrapped in `aria-live="polite"` regions so screen-reader users are notified when content arrives. Error messages continue to use `role="alert"` for assertive announcements. A single polite region per page prevents double announcements.
