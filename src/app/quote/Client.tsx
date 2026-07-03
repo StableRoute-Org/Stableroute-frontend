@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { ApiError } from "@/lib/apiClient";
+import { assetsDiffer, isValidAmount } from "@/lib/quote";
 
 type Quote = {
   source_asset: string;
@@ -38,11 +39,19 @@ export default function QuoteClient() {
     setRequestId(null);
     setQuote(null);
 
-    if (!assetsDiffer(sourceAsset, destAsset)) {
+    const normalizedSourceAsset = normalizeAssetCode(sourceAsset);
+    const normalizedDestAsset = normalizeAssetCode(destAsset);
+    const normalizedAmount = amount.trim();
+
+    if (!normalizedSourceAsset || !normalizedDestAsset) {
+      setError("Asset codes must be 1-12 letters or numbers.");
+      return;
+    }
+    if (!assetsDiffer(normalizedSourceAsset, normalizedDestAsset)) {
       setError("Source and destination assets must differ.");
       return;
     }
-    if (!isValidAmount(amount)) {
+    if (!isValidAmount(normalizedAmount)) {
       setError("Amount must be a positive integer (base units).");
       return;
     }

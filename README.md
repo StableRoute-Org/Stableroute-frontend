@@ -33,6 +33,13 @@ The shared footer keeps the StableRoute tagline visible on every page, renders t
 
 The frontend communicates with the StableRoute API backend.
 
+### Data-fetching convention
+
+Data-backed pages should use the shared `useApi` hook from `src/lib/useApi.ts`
+for `loading` / `ok` / `error` state handling and unmount cancellation instead
+of hand-rolled `useEffect` fetch logic. This keeps live regions, error states,
+and cleanup behavior consistent across pages.
+
 ### Environment Variables
 
 - **`NEXT_PUBLIC_STABLEROUTE_API_BASE`**: Specifies the base URL of the StableRoute API backend (defaults to `http://localhost:3001` if unset).
