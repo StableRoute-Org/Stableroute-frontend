@@ -92,6 +92,14 @@ normalization so duplicate pairs such as `usdc` and `USDC` cannot be registered.
 
 ## Accessibility
 
+### Toast queue behavior
+
+The shared `ToastProvider` caps visible notifications at three toasts. Repeated
+messages with the same severity collapse into one toast with a count badge and
+refresh the auto-dismiss timer, while timers for dropped toasts are cleared.
+Info toasts keep `role="status"`, error toasts keep `role="alert"`, and the
+stack remains inside a polite live region.
+
 ### ARIA Live Regions
 
 Dynamic list updates (loading → loaded / loading → empty) on the pairs, events, api-keys, and webhooks pages are wrapped in `aria-live="polite"` regions so screen-reader users are notified when content arrives. Error messages continue to use `role="alert"` for assertive announcements. A single polite region per page prevents double announcements.
