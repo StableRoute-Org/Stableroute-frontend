@@ -29,6 +29,10 @@ Each route is defined under `src/app` and connects to its respective UI page:
 
 The shared footer keeps the StableRoute tagline visible on every page, renders the current copyright year dynamically, and links to `/docs`, `/about`, and the StableRoute Discord community.
 
+## Keyboard Shortcuts
+
+Press `?` from any route to open the keyboard-shortcuts help overlay. The overlay is mounted from the shared layout, ignores shortcut activation while focus is in editable fields, and closes with Escape, the close button, or a backdrop click.
+
 ## Configuration & API Integration
 
 The frontend communicates with the StableRoute API backend.
