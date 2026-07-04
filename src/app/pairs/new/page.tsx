@@ -8,6 +8,7 @@ import { assetsDiffer } from "@/lib/quote";
 
 const ASSET_CODE_RE = /^[A-Za-z0-9]{1,12}$/;
 const ASSET_CODE_ERROR = "Use 1-12 ASCII letters or numbers.";
+const SUCCESS_REDIRECT_DELAY_MS = 300;
 
 type FormErrors = {
   source?: string;
@@ -30,6 +31,7 @@ export default function NewPairPage() {
   const [destination, setDestination] = useState("");
   const [errors, setErrors] = useState<FormErrors>({});
   const [loading, setLoading] = useState(false);
+  const [statusMessage, setStatusMessage] = useState("");
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -53,10 +55,12 @@ export default function NewPairPage() {
 
     if (Object.keys(nextErrors).length > 0 || !normalizedSource || !normalizedDestination) {
       setErrors(nextErrors);
+      setStatusMessage("");
       return;
     }
 
     setErrors({});
+    setStatusMessage("Registering pair...");
     setSource(normalizedSource);
     setDestination(normalizedDestination);
     setLoading(true);
@@ -65,8 +69,11 @@ export default function NewPairPage() {
         source: normalizedSource,
         destination: normalizedDestination,
       });
+      setStatusMessage("Pair registered. Redirecting to pairs.");
+      await new Promise((resolve) => setTimeout(resolve, SUCCESS_REDIRECT_DELAY_MS));
       router.push("/pairs");
     } catch (err) {
+      setStatusMessage("");
       setErrors({ form: (err as Error).message });
     } finally {
       setLoading(false);
@@ -97,6 +104,7 @@ export default function NewPairPage() {
                   : current.destination,
               form: undefined,
             }));
+            setStatusMessage("");
           }}
           error={errors.source}
         />
@@ -112,6 +120,7 @@ export default function NewPairPage() {
               destination: undefined,
               form: undefined,
             }));
+            setStatusMessage("");
           }}
           error={errors.destination}
         />
@@ -122,6 +131,14 @@ export default function NewPairPage() {
         >
           {loading ? "Saving…" : "Register pair"}
         </button>
+        <p
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+          className="min-h-5 text-sm text-neutral-600 dark:text-neutral-400"
+        >
+          {statusMessage}
+        </p>
         {errors.form && (
           <p role="alert" className="text-sm text-rose-600">
             {errors.form}

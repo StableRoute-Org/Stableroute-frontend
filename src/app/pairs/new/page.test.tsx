@@ -50,6 +50,36 @@ describe("NewPairPage", () => {
     });
   });
 
+  it("keeps a polite status region mounted before submission", () => {
+    render(<NewPairPage />);
+
+    const status = screen.getByRole("status");
+    expect(status).toHaveAttribute("aria-live", "polite");
+    expect(status).toHaveAttribute("aria-atomic", "true");
+    expect(status).toBeEmptyDOMElement();
+  });
+
+  it("announces pending and success states before redirecting", async () => {
+    const mockFetch = jest.fn().mockResolvedValueOnce({
+      ok: true,
+      text: async () => "{}",
+    } as unknown as Response);
+    globalThis.fetch = mockFetch as unknown as typeof globalThis.fetch;
+
+    render(<NewPairPage />);
+    submitPair("xlm", "usdc");
+
+    expect(screen.getByRole("status")).toHaveTextContent("Registering pair...");
+    await waitFor(() => {
+      expect(screen.getByRole("status")).toHaveTextContent(
+        "Pair registered. Redirecting to pairs."
+      );
+    });
+    await waitFor(() => {
+      expect(mockPush).toHaveBeenCalledWith("/pairs");
+    });
+  });
+
   it.each(["USD-C", "USD C", "ABCDEFGHIJKLM"])(
     "rejects invalid source asset code %s with accessible field errors",
     async (code) => {
@@ -63,6 +93,7 @@ describe("NewPairPage", () => {
       await waitFor(() => {
         expect(screen.getByRole("alert")).toHaveTextContent(/ASCII letters or numbers/i);
       });
+      expect(screen.getByRole("status")).toBeEmptyDOMElement();
       expect(sourceInput).toHaveAttribute("aria-invalid", "true");
       expect(sourceInput).toHaveAttribute("aria-describedby", "source-err");
       expect(mockFetch).not.toHaveBeenCalled();
@@ -134,6 +165,7 @@ describe("NewPairPage", () => {
     await waitFor(() => {
       expect(screen.getByRole("alert")).toHaveTextContent(/Pair already exists/i);
     });
+    expect(screen.getByRole("status")).toBeEmptyDOMElement();
     const requestInit = mockFetch.mock.calls[0][1] as RequestInit;
     expect(JSON.parse(requestInit.body as string)).toEqual({
       source: "XLM",
