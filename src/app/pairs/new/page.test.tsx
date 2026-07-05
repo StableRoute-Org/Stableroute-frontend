@@ -1,22 +1,25 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import NewPairPage from "./page";
 
 const mockPush = jest.fn();
+const mockApiPost = jest.fn();
 
 jest.mock("next/navigation", () => ({
   useRouter: () => ({ push: mockPush }),
 }));
 
+jest.mock(
+  "@/lib/apiClient",
+  () => ({
+    apiPost: mockApiPost,
+  })
+);
+
+const NewPairPage = require("./page").default;
+
 describe("NewPairPage", () => {
-  let originalFetch: typeof globalThis.fetch;
-
   beforeEach(() => {
-    originalFetch = globalThis.fetch;
     mockPush.mockReset();
-  });
-
-  afterEach(() => {
-    globalThis.fetch = originalFetch;
+    mockApiPost.mockReset();
   });
 
   function submitPair(source: string, destination: string) {
@@ -30,11 +33,7 @@ describe("NewPairPage", () => {
   }
 
   it("normalizes lowercase and surrounding whitespace before submit", async () => {
-    const mockFetch = jest.fn().mockResolvedValueOnce({
-      ok: true,
-      text: async () => "{}",
-    } as unknown as Response);
-    globalThis.fetch = mockFetch as unknown as typeof globalThis.fetch;
+    mockApiPost.mockResolvedValueOnce({});
 
     render(<NewPairPage />);
     submitPair(" usdc ", " eurc ");
@@ -42,9 +41,7 @@ describe("NewPairPage", () => {
     await waitFor(() => {
       expect(mockPush).toHaveBeenCalledWith("/pairs");
     });
-    const requestInit = mockFetch.mock.calls[0][1] as RequestInit;
-    expect(requestInit.method).toBe("POST");
-    expect(JSON.parse(requestInit.body as string)).toEqual({
+    expect(mockApiPost).toHaveBeenCalledWith("/api/v1/pairs", {
       source: "USDC",
       destination: "EURC",
     });
@@ -53,9 +50,6 @@ describe("NewPairPage", () => {
   it.each(["USD-C", "USD C", "ABCDEFGHIJKLM"])(
     "rejects invalid source asset code %s with accessible field errors",
     async (code) => {
-      const mockFetch = jest.fn();
-      globalThis.fetch = mockFetch as unknown as typeof globalThis.fetch;
-
       render(<NewPairPage />);
       submitPair(code, "EURC");
 
@@ -65,14 +59,11 @@ describe("NewPairPage", () => {
       });
       expect(sourceInput).toHaveAttribute("aria-invalid", "true");
       expect(sourceInput).toHaveAttribute("aria-describedby", "source-err");
-      expect(mockFetch).not.toHaveBeenCalled();
+      expect(mockApiPost).not.toHaveBeenCalled();
     }
   );
 
   it("rejects pairs that are identical after trimming and uppercasing", async () => {
-    const mockFetch = jest.fn();
-    globalThis.fetch = mockFetch as unknown as typeof globalThis.fetch;
-
     render(<NewPairPage />);
     submitPair(" usdc ", "USDC");
 
@@ -82,13 +73,10 @@ describe("NewPairPage", () => {
     });
     expect(destinationInput).toHaveAttribute("aria-invalid", "true");
     expect(destinationInput).toHaveAttribute("aria-describedby", "destination-err");
-    expect(mockFetch).not.toHaveBeenCalled();
+    expect(mockApiPost).not.toHaveBeenCalled();
   });
 
   it("validates empty fields with inline errors instead of native browser validation", async () => {
-    const mockFetch = jest.fn();
-    globalThis.fetch = mockFetch as unknown as typeof globalThis.fetch;
-
     render(<NewPairPage />);
     fireEvent.submit(screen.getByRole("button", { name: /Register pair/i }).closest("form")!);
 
@@ -97,13 +85,10 @@ describe("NewPairPage", () => {
     });
     expect(document.getElementById("source")).toHaveAttribute("aria-invalid", "true");
     expect(document.getElementById("destination")).toHaveAttribute("aria-invalid", "true");
-    expect(mockFetch).not.toHaveBeenCalled();
+    expect(mockApiPost).not.toHaveBeenCalled();
   });
 
   it("clears an identical-pair error when source changes", async () => {
-    const mockFetch = jest.fn();
-    globalThis.fetch = mockFetch as unknown as typeof globalThis.fetch;
-
     render(<NewPairPage />);
     submitPair("USDC", "USDC");
 
@@ -118,15 +103,7 @@ describe("NewPairPage", () => {
   });
 
   it("surfaces backend errors without losing the normalized request body", async () => {
-    const mockFetch = jest.fn().mockResolvedValueOnce({
-      ok: false,
-      text: async () =>
-        JSON.stringify({
-          error: "invalid_request",
-          message: "Pair already exists",
-        }),
-    } as unknown as Response);
-    globalThis.fetch = mockFetch as unknown as typeof globalThis.fetch;
+    mockApiPost.mockRejectedValueOnce(new Error("Pair already exists"));
 
     render(<NewPairPage />);
     submitPair("xlm", "usdc");
@@ -134,10 +111,30 @@ describe("NewPairPage", () => {
     await waitFor(() => {
       expect(screen.getByRole("alert")).toHaveTextContent(/Pair already exists/i);
     });
-    const requestInit = mockFetch.mock.calls[0][1] as RequestInit;
-    expect(JSON.parse(requestInit.body as string)).toEqual({
+    expect(mockApiPost).toHaveBeenCalledWith("/api/v1/pairs", {
       source: "XLM",
       destination: "USDC",
+    });
+  });
+
+  it("shows an in-flight saving label while the pair request is pending", async () => {
+    let resolvePost!: () => void;
+    const pendingPost = new Promise<void>((resolve) => {
+      resolvePost = resolve;
+    });
+    mockApiPost.mockReturnValueOnce(pendingPost);
+
+    render(<NewPairPage />);
+    submitPair("xlm", "usdc");
+
+    const savingButton = await screen.findByRole("button", { name: /Saving/i });
+    expect(savingButton).toBeDisabled();
+    expect(mockPush).not.toHaveBeenCalled();
+
+    resolvePost();
+
+    await waitFor(() => {
+      expect(mockPush).toHaveBeenCalledWith("/pairs");
     });
   });
 });

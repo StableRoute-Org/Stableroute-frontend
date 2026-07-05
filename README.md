@@ -90,6 +90,10 @@ normalization so duplicate pairs such as `usdc` and `USDC` cannot be registered.
 | `npm test` | Run Jest tests |
 | `npm run lint` | Next.js ESLint |
 
+The new-pair form has focused Jest coverage for asset normalization, same-asset
+rejection, backend error alerts, redirect-on-success, and the in-flight saving
+state.
+
 ## Accessibility
 
 ### ARIA Live Regions
