@@ -48,6 +48,18 @@ The frontend communicates with the StableRoute API backend.
 - **`/api/v1/events`**: Retrieves system event audit logs (`GET`).
 - **`/api/v1/webhooks`**: Creates (`POST`), lists (`GET`), and revokes (`DELETE` at `/api/v1/webhooks/:id`) webhook subscriptions.
 
+### Security Headers
+
+`next.config.ts` applies baseline hardening headers to every route:
+
+- `X-Content-Type-Options: nosniff` prevents MIME sniffing from treating a
+  response as executable content.
+- `Referrer-Policy: strict-origin-when-cross-origin` limits cross-origin
+  referrers to the origin instead of full dashboard URLs.
+- `X-Frame-Options: DENY` prevents the operator console from being framed.
+- `Permissions-Policy: camera=(), microphone=(), geolocation=()` disables
+  browser capabilities that this dashboard does not use.
+
 ### Asset Codes
 
 Stellar asset codes entered through the new-pair form are trimmed, validated as
