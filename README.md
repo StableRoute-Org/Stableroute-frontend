@@ -37,6 +37,11 @@ The frontend communicates with the StableRoute API backend.
 
 - **`NEXT_PUBLIC_STABLEROUTE_API_BASE`**: Specifies the base URL of the StableRoute API backend (defaults to `http://localhost:3001` if unset).
 
+The API base must be an absolute `http` or `https` URL. Shared API helpers also
+require request paths to start with `/`, which keeps frontend requests on the
+configured StableRoute API origin and avoids leaking requests to arbitrary
+hosts through misconfiguration or absolute-path call sites.
+
 ### API Endpoints Consumed
 
 - **`/api/v1/pairs`**: Lists registered pairs (`GET`) and registers new pairs (`POST`).
