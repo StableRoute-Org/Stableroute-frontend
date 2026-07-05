@@ -96,6 +96,9 @@ normalization so duplicate pairs such as `usdc` and `USDC` cannot be registered.
 
 Dynamic list updates (loading → loaded / loading → empty) on the pairs, events, api-keys, and webhooks pages are wrapped in `aria-live="polite"` regions so screen-reader users are notified when content arrives. Error messages continue to use `role="alert"` for assertive announcements. A single polite region per page prevents double announcements.
 
+The API keys create form uses a labelled group and a persistent associated field
+label so the purpose of the create controls remains available after focus.
+
 ## CI/CD
 
 On every push/PR to `main`, GitHub Actions runs:
