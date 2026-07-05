@@ -8,6 +8,12 @@ Next.js frontend application for [StableRoute](https://github.com/StableRoute-Or
 - **TailwindCSS** for styling
 - A comprehensive set of routing, management, and audit log pages integrated with the StableRoute backend.
 
+## UI Styleguide
+
+Contributor-facing Badge variants, Button variants, focus-ring conventions, and
+light/dark color pairs are documented in
+[`docs/STYLEGUIDE.md`](docs/STYLEGUIDE.md).
+
 ## Routes
 
 Each route is defined under `src/app` and connects to its respective UI page:
