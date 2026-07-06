@@ -1,6 +1,6 @@
 # stableroute-frontend
 
-Next.js frontend application for [StableRoute](https://github.com/StableRoute-Org/Stableroute) — the Stellar liquidity routing protocol. It provides user interfaces for obtaining path routing quotes, managing liquidity pairs, viewing stats, configuring API keys and webhooks, browsing audit logs, adjusting developer settings, and reading endpoint documentation.
+Next.js frontend application for [StableRoute](https://github.com/StableRoute-Org/Stableroute) - the Stellar liquidity routing protocol. It provides user interfaces for obtaining path routing quotes, managing liquidity pairs, viewing stats, configuring API keys and webhooks, browsing audit logs, adjusting developer settings, and reading endpoint documentation.
 
 ## What this repo contains
 
@@ -48,6 +48,18 @@ The frontend communicates with the StableRoute API backend.
 - **`/api/v1/events`**: Retrieves system event audit logs (`GET`).
 - **`/api/v1/webhooks`**: Creates (`POST`), lists (`GET`), and revokes (`DELETE` at `/api/v1/webhooks/:id`) webhook subscriptions.
 
+### API Client Contract
+
+`src/lib/apiClient.ts` centralizes frontend calls to the StableRoute API. Each helper resolves relative paths against `NEXT_PUBLIC_STABLEROUTE_API_BASE`, which defaults to `http://localhost:3001`.
+
+- `apiFetch<T>(path, init)` sends the request, applies `Content-Type: application/json` by default, parses JSON responses, and returns the parsed body as `T`.
+- `apiGet<T>(path)`, `apiPost<T>(path, body)`, `apiPatch<T>(path, body)`, and `apiDelete(path)` are convenience wrappers around `apiFetch`.
+- `204 No Content` responses resolve to `undefined`. Successful responses with an empty body also resolve without parsed data.
+- Failed responses throw an `Error` with a `status` property. When the API returns a JSON error envelope, the thrown error also carries `error`, `message`, and optional `requestId` fields from the response.
+- The expected API error envelope is `{ error: string, message: string, requestId?: string }`.
+
+`registerAuthErrorHandler(handler)` stores one global auth-error handler for `401` and `403` responses. Registering a new handler replaces the previous one, and the returned unregister function clears the handler only if it still owns the slot. `<ApiAuthGuard>` registers this handler inside the toast provider so authentication and permission errors surface as user-facing toasts.
+
 ### Asset Codes
 
 Stellar asset codes entered through the new-pair form are trimmed, validated as
@@ -94,7 +106,7 @@ normalization so duplicate pairs such as `usdc` and `USDC` cannot be registered.
 
 ### ARIA Live Regions
 
-Dynamic list updates (loading → loaded / loading → empty) on the pairs, events, api-keys, and webhooks pages are wrapped in `aria-live="polite"` regions so screen-reader users are notified when content arrives. Error messages continue to use `role="alert"` for assertive announcements. A single polite region per page prevents double announcements.
+Dynamic list updates (loading -> loaded / loading -> empty) on the pairs, events, api-keys, and webhooks pages are wrapped in `aria-live="polite"` regions so screen-reader users are notified when content arrives. Error messages continue to use `role="alert"` for assertive announcements. A single polite region per page prevents double announcements.
 
 ## CI/CD
 
