@@ -1,6 +1,6 @@
 # stableroute-frontend
 
-Next.js frontend application for [StableRoute](https://github.com/StableRoute-Org/Stableroute) — the Stellar liquidity routing protocol. It provides user interfaces for obtaining path routing quotes, managing liquidity pairs, viewing stats, configuring API keys and webhooks, browsing audit logs, adjusting developer settings, and reading endpoint documentation.
+Next.js frontend application for [StableRoute](https://github.com/StableRoute-Org/Stableroute) - the Stellar liquidity routing protocol. It provides user interfaces for obtaining path routing quotes, managing liquidity pairs, viewing stats, configuring API keys and webhooks, browsing audit logs, adjusting developer settings, and reading endpoint documentation.
 
 ## What this repo contains
 
@@ -94,7 +94,7 @@ normalization so duplicate pairs such as `usdc` and `USDC` cannot be registered.
 
 ### ARIA Live Regions
 
-Dynamic list updates (loading → loaded / loading → empty) on the pairs, events, api-keys, and webhooks pages are wrapped in `aria-live="polite"` regions so screen-reader users are notified when content arrives. Error messages continue to use `role="alert"` for assertive announcements. A single polite region per page prevents double announcements.
+Dynamic list updates (loading -> loaded / loading -> empty) on the pairs, events, api-keys, and webhooks pages are wrapped in `aria-live="polite"` regions so screen-reader users are notified when content arrives. Error messages continue to use `role="alert"` for assertive announcements. A single polite region per page prevents double announcements.
 
 ## CI/CD
 
@@ -109,8 +109,11 @@ Ensure these pass locally before pushing.
 ## Contributing
 
 1. Fork the repo and create a branch from `main`.
-2. Add tests for new UI/behavior; keep `npm run build` and `npm test` passing.
-3. Open a PR; CI must be green.
+2. Use the `type/area-slug` branch naming convention when possible, such as `docs/github-templates` or `fix/quote-validation`.
+3. Use the issue templates in `.github/ISSUE_TEMPLATE/` for bug reports and feature requests so reproduction steps, affected routes/components, environment details, and accessibility notes are captured consistently.
+4. Add tests for new UI/behavior; keep `npm run build` and `npm test` passing.
+5. Before opening a PR, review `.github/PULL_REQUEST_TEMPLATE.md` and include the commands you ran, docs changes, and accessibility checks.
+6. Open a PR; CI must be green. For questions or review coordination, join the StableRoute Discord: https://discord.gg/37aCpusvx
 
 ## License
 
