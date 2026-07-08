@@ -1,6 +1,24 @@
 const API_BASE =
   process.env.NEXT_PUBLIC_STABLEROUTE_API_BASE ?? "http://localhost:3001";
 
+/** Validates that a URL uses http(s) and is an absolute URL. */
+export function validateApiBase(url: string): void {
+  if (!/^https?:\/\//i.test(url)) {
+    throw new Error(
+      `NEXT_PUBLIC_STABLEROUTE_API_BASE must use http or https; got "${url}"`,
+    );
+  }
+  try {
+    new URL(url);
+  } catch {
+    throw new Error(
+      `NEXT_PUBLIC_STABLEROUTE_API_BASE must be a valid absolute URL; got "${url}"`,
+    );
+  }
+}
+
+validateApiBase(API_BASE);
+
 export type ApiError = {
   error: string;
   message: string;
