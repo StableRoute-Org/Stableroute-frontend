@@ -1,21 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
-import { apiGet } from "@/lib/apiClient";
+import { useApi } from "@/lib/useApi";
 
 type Pair = { source: string; destination: string };
 
 export default function PairsClient() {
-  const [pairs, setPairs] = useState<Pair[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const isLoading = pairs === null && error === null;
+  const state = useApi<{ pairs: Pair[] }>("/api/v1/pairs");
 
-  useEffect(() => {
-    apiGet<{ pairs: Pair[] }>("/api/v1/pairs")
-      .then((b) => setPairs(b.pairs))
-      .catch((e) => setError(e.message));
-  }, []);
+  // Discriminated state — derives loading/empty/list/error UI without
+  // a separate isLoading flag. Cancellation on unmount is provided by
+  // useApi (the inline fetch effect did not have it).
+  const isLoading = state.status === "loading";
+  const pairs = state.status === "ok" ? state.data.pairs : null;
+  const error = state.status === "error" ? state.error : null;
 
   return (
     <main
@@ -52,7 +50,10 @@ export default function PairsClient() {
         {pairs && pairs.length > 0 && (
           <ul className="divide-y divide-neutral-200 dark:divide-neutral-800">
             {pairs.map((p) => (
-              <li key={`${p.source}::${p.destination}`} className="py-3 font-mono text-sm">
+              <li
+                key={`${p.source}::${p.destination}`}
+                className="py-3 font-mono text-sm"
+              >
                 {p.source} → {p.destination}
               </li>
             ))}
