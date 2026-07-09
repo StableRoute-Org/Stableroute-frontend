@@ -140,4 +140,80 @@ describe("NewPairPage", () => {
       destination: "USDC",
     });
   });
+
+  it("renders a polite live-region status node in the DOM on first paint", () => {
+    render(<NewPairPage />);
+    const status = screen.getByRole("status");
+    expect(status).toHaveAttribute("aria-live", "polite");
+    // Empty on first paint so screen readers do not announce anything
+    // until the user submits.
+    expect(status).toHaveTextContent("");
+  });
+
+  it("announces the pending state via the polite live region while submitting", async () => {
+    let resolveFetch: ((value: Response) => void) | null = null;
+    const mockFetch = jest.fn().mockImplementation(
+      () =>
+        new Promise<Response>((resolve) => {
+          resolveFetch = resolve;
+        }),
+    );
+    globalThis.fetch = mockFetch as unknown as typeof globalThis.fetch;
+
+    render(<NewPairPage />);
+    submitPair("USDC", "EURC");
+
+    await waitFor(() => {
+      expect(screen.getByRole("status")).toHaveTextContent(/Registering pair/i);
+    });
+
+    // Cleanly resolve the in-flight request so the test does not hang.
+    resolveFetch!({
+      ok: true,
+      text: async () => "{}",
+    } as unknown as Response);
+    await waitFor(() => {
+      expect(mockPush).toHaveBeenCalledWith("/pairs");
+    });
+  });
+
+  it("announces success via the polite live region and clears it on error", async () => {
+    // First submit: success path — assert the success message appears.
+    const successFetch = jest.fn().mockResolvedValueOnce({
+      ok: true,
+      text: async () => "{}",
+    } as unknown as Response);
+    globalThis.fetch = successFetch as unknown as typeof globalThis.fetch;
+
+    const { unmount } = render(<NewPairPage />);
+    submitPair("USDC", "EURC");
+
+    await waitFor(() => {
+      expect(screen.getByRole("status")).toHaveTextContent(
+        /Pair registered\. Redirecting/i,
+      );
+    });
+    unmount();
+
+    // Second submit: error path — assert the polite status is cleared
+    // (so it does not announce alongside the error) and the error alert
+    // still fires.
+    const errorFetch = jest.fn().mockResolvedValueOnce({
+      ok: false,
+      text: async () =>
+        JSON.stringify({
+          error: "invalid_request",
+          message: "Pair already exists",
+        }),
+    } as unknown as Response);
+    globalThis.fetch = errorFetch as unknown as typeof globalThis.fetch;
+
+    render(<NewPairPage />);
+    submitPair("xlm", "usdc");
+
+    await waitFor(() => {
+      expect(screen.getByRole("status")).toHaveTextContent("");
+    });
+    expect(screen.getByRole("alert")).toHaveTextContent(/Pair already exists/i);
+  });
 });

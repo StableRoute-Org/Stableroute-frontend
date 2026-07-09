@@ -30,6 +30,11 @@ export default function NewPairPage() {
   const [destination, setDestination] = useState("");
   const [errors, setErrors] = useState<FormErrors>({});
   const [loading, setLoading] = useState(false);
+  // Polite live-region status. Kept in the DOM (not conditionally rendered)
+  // so screen readers reliably pick up updates as soon as the text changes.
+  // The error path uses `role="alert"` (assertive) and is rendered separately
+  // to avoid announcing success and error simultaneously.
+  const [status, setStatus] = useState("");
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -60,13 +65,19 @@ export default function NewPairPage() {
     setSource(normalizedSource);
     setDestination(normalizedDestination);
     setLoading(true);
+    setStatus("Registering pair…");
     try {
       await apiPost("/api/v1/pairs", {
         source: normalizedSource,
         destination: normalizedDestination,
       });
+      setStatus("Pair registered. Redirecting…");
       router.push("/pairs");
     } catch (err) {
+      // Clear the polite status so the success path does not announce
+      // alongside the error; the alert below handles the assertive
+      // announcement.
+      setStatus("");
       setErrors({ form: (err as Error).message });
     } finally {
       setLoading(false);
@@ -127,6 +138,9 @@ export default function NewPairPage() {
             {errors.form}
           </p>
         )}
+        <p role="status" aria-live="polite" className="sr-only">
+          {status}
+        </p>
       </form>
     </main>
   );

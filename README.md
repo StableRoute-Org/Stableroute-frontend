@@ -96,6 +96,14 @@ normalization so duplicate pairs such as `usdc` and `USDC` cannot be registered.
 
 Dynamic list updates (loading → loaded / loading → empty) on the pairs, events, api-keys, and webhooks pages are wrapped in `aria-live="polite"` regions so screen-reader users are notified when content arrives. Error messages continue to use `role="alert"` for assertive announcements. A single polite region per page prevents double announcements.
 
+For pending/success form submissions, follow the same pattern: a
+`<p role="status" aria-live="polite" className="sr-only">` node that is
+always rendered in the DOM and updated via component state. The error
+path stays on `role="alert"` (assertive); the polite status is cleared
+on error so the two announcements do not collide. See
+[`src/app/pairs/new/page.tsx`](src/app/pairs/new/page.tsx) for the
+reference implementation.
+
 ## CI/CD
 
 On every push/PR to `main`, GitHub Actions runs:
