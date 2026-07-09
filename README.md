@@ -92,6 +92,15 @@ normalization so duplicate pairs such as `usdc` and `USDC` cannot be registered.
 
 ## Accessibility
 
+### UI styleguide
+
+The shared visual language (Badge variants, Button variants, focus-ring
+convention, light/dark palette pairing) is documented in
+[`docs/STYLEGUIDE.md`](docs/STYLEGUIDE.md). New components should copy
+patterns from there rather than introducing ad-hoc Tailwind class strings.
+A sync test in `src/components/__tests__/Styleguide.test.tsx` fails the
+build if the guide falls out of sync with `Badge.tsx` or `Button.tsx`.
+
 ### ARIA Live Regions
 
 Dynamic list updates (loading → loaded / loading → empty) on the pairs, events, api-keys, and webhooks pages are wrapped in `aria-live="polite"` regions so screen-reader users are notified when content arrives. Error messages continue to use `role="alert"` for assertive announcements. A single polite region per page prevents double announcements.
