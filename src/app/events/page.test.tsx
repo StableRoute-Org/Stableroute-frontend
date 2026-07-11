@@ -142,4 +142,76 @@ describe("EventsPage", () => {
     expect(screen.getByText(/truncated/)).toBeInTheDocument();
   });
 
+  it("renders one list item per event keyed by id with type and payload preview", async () => {
+    global.fetch = jest.fn().mockResolvedValueOnce({
+      ok: true,
+      text: async () =>
+        JSON.stringify({
+          items: [
+            {
+              id: "evt-alpha",
+              ts: 1_782_460_000_000,
+              type: "pair.registered",
+              payload: { pairId: "USDC/EURC" },
+            },
+            {
+              id: "evt-beta",
+              ts: 1_782_460_000_001,
+              type: "pair.updated",
+              payload: { feeBps: 25 },
+            },
+          ],
+        }),
+    } as unknown as Response);
+
+    render(<EventsPage />);
+
+    expect(await screen.findByText("pair.registered")).toBeInTheDocument();
+    expect(screen.getByText("pair.updated")).toBeInTheDocument();
+    expect(screen.getByText(/USDC\/EURC/)).toBeInTheDocument();
+    expect(screen.getByText(/"feeBps": 25/)).toBeInTheDocument();
+
+    const items = screen.getAllByRole("listitem");
+    expect(items).toHaveLength(2);
+    expect(items[0]).toHaveTextContent("pair.registered");
+    expect(items[1]).toHaveTextContent("pair.updated");
+  });
+
+  it("preserves chronological order returned by the API", async () => {
+    global.fetch = jest.fn().mockResolvedValueOnce({
+      ok: true,
+      text: async () =>
+        JSON.stringify({
+          items: [
+            {
+              id: "evt-first",
+              ts: 1_782_460_000_000,
+              type: "event.first",
+              payload: { order: 1 },
+            },
+            {
+              id: "evt-second",
+              ts: 1_782_460_000_001,
+              type: "event.second",
+              payload: { order: 2 },
+            },
+            {
+              id: "evt-third",
+              ts: 1_782_460_000_002,
+              type: "event.third",
+              payload: { order: 3 },
+            },
+          ],
+        }),
+    } as unknown as Response);
+
+    render(<EventsPage />);
+
+    expect(await screen.findByText("event.first")).toBeInTheDocument();
+    const types = screen.getAllByRole("listitem").map((item) => item.textContent ?? "");
+    expect(types[0]).toContain("event.first");
+    expect(types[1]).toContain("event.second");
+    expect(types[2]).toContain("event.third");
+  });
+
 });
