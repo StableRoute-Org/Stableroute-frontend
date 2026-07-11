@@ -86,4 +86,24 @@ describe("StatsPage", () => {
     expect(await screen.findByText("Paused")).toBeInTheDocument();
     expect(global.fetch).toHaveBeenCalledTimes(2);
   });
+
+  it("clears the polling interval on unmount", async () => {
+    jest.useFakeTimers();
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      text: () => Promise.resolve(JSON.stringify({ totalPairs: 42, paused: false })),
+    } as unknown as Response);
+
+    const { unmount } = render(<StatsPage />);
+    expect(await screen.findByText("42")).toBeInTheDocument();
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+
+    unmount();
+
+    await act(async () => {
+      jest.advanceTimersByTime(15000);
+    });
+
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+  });
 });
