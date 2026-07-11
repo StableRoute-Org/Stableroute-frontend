@@ -15,7 +15,7 @@ Each route is defined under `src/app` and connects to its respective UI page:
 - **`/`** ([page.tsx](src/app/page.tsx)): Home landing page with navigation links and quick CTAs.
 - **`/pairs`** ([pairs/page.tsx](src/app/pairs/page.tsx)): Lists registered currency pairs on the router.
 - **`/pairs/new`** ([pairs/new/page.tsx](src/app/pairs/new/page.tsx)): Form interface to register a new currency pair.
-- **`/quote`** ([quote/page.tsx](src/app/quote/page.tsx)): Form interface to request currency routing path quotes.
+- **`/quote`** ([quote/page.tsx](src/app/quote/page.tsx)): Form interface to request currency routing path quotes. Inputs use the shared [`TextField`](src/components/TextField.tsx) component for accessible labels, `aria-describedby`, and per-field validation errors.
 - **`/stats`** ([stats/page.tsx](src/app/stats/page.tsx)): Status dashboard showing system metrics and polling the backend.
 - **`/admin`** ([admin/page.tsx](src/app/admin/page.tsx)): Control center to pause or unpause router activity.
 - **`/api-keys`** ([api-keys/page.tsx](src/app/api-keys/page.tsx)): Dashboard to create, list, and revoke API keys.

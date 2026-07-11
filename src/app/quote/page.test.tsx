@@ -71,7 +71,7 @@ describe("QuotePage", () => {
     fireEvent.submit(form);
 
     await waitFor(() => {
-      expect(screen.getByRole("alert")).toHaveTextContent(/must differ/i);
+      expect(screen.getByText(/must differ/i)).toBeInTheDocument();
     });
     expect(mockFetch).not.toHaveBeenCalled();
   });
@@ -94,7 +94,7 @@ describe("QuotePage", () => {
     fireEvent.submit(form);
 
     await waitFor(() => {
-      expect(screen.getByRole("alert")).toHaveTextContent(/positive integer/i);
+      expect(screen.getByText(/positive integer/i)).toBeInTheDocument();
     });
     expect(mockFetch).not.toHaveBeenCalled();
   });
@@ -116,7 +116,7 @@ describe("QuotePage", () => {
     fireEvent.submit(screen.getByLabelText(/Amount/i).closest("form")!);
 
     await waitFor(() => {
-      expect(screen.getByRole("alert")).toHaveTextContent(/1-12 letters or numbers/i);
+      expect(screen.getByText(/1-12 letters or numbers/i)).toBeInTheDocument();
     });
     expect(mockFetch).not.toHaveBeenCalled();
   });
@@ -138,7 +138,7 @@ describe("QuotePage", () => {
     fireEvent.submit(screen.getByLabelText(/Amount/i).closest("form")!);
 
     await waitFor(() => {
-      expect(screen.getByRole("alert")).toHaveTextContent(/1-12 letters or numbers/i);
+      expect(screen.getByText(/1-12 letters or numbers/i)).toBeInTheDocument();
     });
     expect(mockFetch).not.toHaveBeenCalled();
   });
@@ -160,7 +160,7 @@ describe("QuotePage", () => {
     fireEvent.submit(screen.getByLabelText(/Amount/i).closest("form")!);
 
     await waitFor(() => {
-      expect(screen.getByRole("alert")).toHaveTextContent(/1-12 letters or numbers/i);
+      expect(screen.getByText(/1-12 letters or numbers/i)).toBeInTheDocument();
     });
     expect(mockFetch).not.toHaveBeenCalled();
   });
@@ -198,6 +198,28 @@ describe("QuotePage", () => {
     );
   });
 
+  it("associates validation errors with the relevant TextField inputs", async () => {
+    const mockFetch = jest.fn();
+    globalThis.fetch = mockFetch as unknown as typeof globalThis.fetch;
+    render(<QuotePage />);
+
+    fireEvent.change(screen.getByLabelText(/Source asset/i), {
+      target: { value: "USDC" },
+    });
+    fireEvent.change(screen.getByLabelText(/Destination asset/i), {
+      target: { value: "USDC" },
+    });
+    fireEvent.change(screen.getByLabelText(/Amount/i), {
+      target: { value: "100" },
+    });
+    fireEvent.submit(screen.getByLabelText(/Amount/i).closest("form")!);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(/Destination asset/i)).toHaveAttribute("aria-invalid", "true");
+    });
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
   it("surfaces a backend invalid_request as a role=alert", async () => {
     globalThis.fetch = jest.fn().mockResolvedValueOnce({
       ok: false,
@@ -220,7 +242,7 @@ describe("QuotePage", () => {
     fireEvent.click(screen.getByRole("button", { name: /Get quote/i }));
 
     await waitFor(() => {
-      expect(screen.getByRole("alert")).toHaveTextContent(/must differ/i);
+      expect(screen.getByText(/must differ/i)).toBeInTheDocument();
     });
   });
 
@@ -247,7 +269,7 @@ describe("QuotePage", () => {
     fireEvent.click(screen.getByRole("button", { name: /Get quote/i }));
 
     await waitFor(() => {
-      expect(screen.getByRole("alert")).toHaveTextContent(/must differ/i);
+      expect(screen.getByText(/must differ/i)).toBeInTheDocument();
     });
     expect(screen.getByRole("alert")).toHaveTextContent(/Request ID: req-abc-123/);
   });
@@ -274,7 +296,7 @@ describe("QuotePage", () => {
     fireEvent.click(screen.getByRole("button", { name: /Get quote/i }));
 
     await waitFor(() => {
-      expect(screen.getByRole("alert")).toHaveTextContent(/must differ/i);
+      expect(screen.getByText(/must differ/i)).toBeInTheDocument();
     });
     expect(screen.getByRole("alert")).not.toHaveTextContent(/Request ID/);
   });
