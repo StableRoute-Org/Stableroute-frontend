@@ -15,7 +15,7 @@ Each route is defined under `src/app` and connects to its respective UI page:
 - **`/`** ([page.tsx](src/app/page.tsx)): Home landing page with navigation links and quick CTAs.
 - **`/pairs`** ([pairs/page.tsx](src/app/pairs/page.tsx)): Lists registered currency pairs on the router.
 - **`/pairs/new`** ([pairs/new/page.tsx](src/app/pairs/new/page.tsx)): Form interface to register a new currency pair.
-- **`/quote`** ([quote/page.tsx](src/app/quote/page.tsx)): Form interface to request currency routing path quotes.
+- **`/quote`** ([quote/page.tsx](src/app/quote/page.tsx)): Form interface to request currency routing path quotes. Inputs use the shared [`TextField`](src/components/TextField.tsx) component for accessible labels, `aria-describedby`, and per-field validation errors.
 - **`/stats`** ([stats/page.tsx](src/app/stats/page.tsx)): Status dashboard showing system metrics and polling the backend.
 - **`/admin`** ([admin/page.tsx](src/app/admin/page.tsx)): Control center to pause or unpause router activity.
 - **`/api-keys`** ([api-keys/page.tsx](src/app/api-keys/page.tsx)): Dashboard to create, list, and revoke API keys.
@@ -80,6 +80,54 @@ normalization so duplicate pairs such as `usdc` and `USDC` cannot be registered.
    ```
    App: `http://localhost:3000`.
 
+### Pointing at a backend
+
+By default the dashboard calls `http://localhost:3001`. To target another StableRoute API instance:
+
+```bash
+# Unix/macOS
+export NEXT_PUBLIC_STABLEROUTE_API_BASE=https://staging-api.example.com
+
+# Windows PowerShell
+$env:NEXT_PUBLIC_STABLEROUTE_API_BASE="https://staging-api.example.com"
+
+npm run dev
+```
+
+The client reads this value in [`src/lib/apiClient.ts`](src/lib/apiClient.ts). Restart the dev server after changing env vars.
+
+## Local development & testing workflow
+
+1. **Install & typecheck**
+   ```bash
+   npm install
+   npm run build
+   ```
+2. **Run the full Jest suite**
+   ```bash
+   npm test
+   ```
+3. **Watch mode while editing tests**
+   ```bash
+   npm run test:watch
+   ```
+4. **Run a single test file**
+   ```bash
+   npx jest src/app/quote/page.test.tsx --runInBand
+   ```
+5. **Lint**
+   ```bash
+   npm run lint
+   ```
+
+### Troubleshooting
+
+| Symptom | Fix |
+|---------|-----|
+| API calls fail with `ECONNREFUSED` | Start the StableRoute backend or set `NEXT_PUBLIC_STABLEROUTE_API_BASE` |
+| Jest OOM on Windows | Run with `NODE_OPTIONS=--max-old-space-size=4096 npx jest …` |
+| Fork PR CI shows **action required** | A maintainer must approve GitHub Actions for fork PRs |
+
 ## Scripts
 
 | Script | Description |
@@ -88,6 +136,7 @@ normalization so duplicate pairs such as `usdc` and `USDC` cannot be registered.
 | `npm run build` | Production build |
 | `npm run start` | Run production server |
 | `npm test` | Run Jest tests |
+| `npm run test:watch` | Run Jest in watch mode |
 | `npm run lint` | Next.js ESLint |
 
 ## Accessibility
