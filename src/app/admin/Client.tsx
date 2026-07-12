@@ -1,27 +1,35 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Button } from "@/components/Button";
 import { apiGet, apiPost } from "@/lib/apiClient";
 
 export default function AdminClient() {
   const [paused, setPaused] = useState<boolean | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   const load = () =>
     apiGet<{ paused: boolean }>("/api/v1/admin/status")
-      .then((b) => setPaused(b.paused))
-      .catch((e) => setError(e.message));
+      .then((body) => setPaused(body.paused))
+      .catch((err) => setError((err as Error).message));
+
   useEffect(() => {
     load();
   }, []);
 
+  /** Toggle router pause state; guards double-submit while the request is in flight. */
   const toggle = async () => {
+    if (busy || paused === null) return;
     setError(null);
+    setBusy(true);
     try {
       await apiPost(paused ? "/api/v1/admin/unpause" : "/api/v1/admin/pause", {});
       await load();
     } catch (err) {
       setError((err as Error).message);
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -34,20 +42,32 @@ export default function AdminClient() {
       <h1 className="text-3xl font-semibold tracking-tight">Admin</h1>
       {paused === null && !error && <p>Loading status…</p>}
       {paused !== null && (
-        <section className="flex items-center justify-between rounded-lg border border-neutral-200 p-4 dark:border-neutral-800">
+        <section
+          aria-labelledby="admin-status-heading"
+          className="flex items-center justify-between rounded-lg border border-neutral-200 p-4 dark:border-neutral-800"
+        >
+          <h2 id="admin-status-heading" className="sr-only">
+            Router pause status
+          </h2>
           <p>
             Status: <strong>{paused ? "Paused" : "Live"}</strong>
           </p>
-          <button
+          <Button
             type="button"
             onClick={toggle}
-            className="rounded-full bg-black px-5 py-2 text-sm font-medium text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+            disabled={busy}
+            aria-pressed={paused}
+            aria-busy={busy}
           >
-            {paused ? "Unpause" : "Pause"}
-          </button>
+            {busy ? "Updating…" : paused ? "Unpause" : "Pause"}
+          </Button>
         </section>
       )}
-      {error && <p role="alert" className="text-sm text-rose-600">{error}</p>}
+      {error && (
+        <p role="alert" className="text-sm text-rose-600">
+          {error}
+        </p>
+      )}
     </main>
   );
 }
