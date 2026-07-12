@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { TextField } from "@/components/TextField";
 import type { ApiError } from "@/lib/apiClient";
+import { formatQuoteAmountDisplay, formatQuoteRateDisplay } from "@/lib/format";
 
 type Quote = {
   source_asset: string;
@@ -11,16 +13,25 @@ type Quote = {
   route: string[];
 };
 
+type FieldErrors = {
+  source?: string;
+  dest?: string;
+  amount?: string;
+};
+
 const API_BASE =
   process.env.NEXT_PUBLIC_STABLEROUTE_API_BASE ?? "http://localhost:3001";
 const ASSET_CODE_PATTERN = /^[A-Za-z0-9]{1,12}$/;
 
-/**
- * Returns a trimmed Stellar asset code when it is safe to send to the quote API.
- */
+/** Returns a trimmed Stellar asset code when it is safe to send to the quote API. */
 function normalizeAssetCode(value: string): string | null {
   const trimmed = value.trim();
   return ASSET_CODE_PATTERN.test(trimmed) ? trimmed : null;
+}
+
+function isValidAmount(value: string): boolean {
+  const trimmed = value.trim();
+  return /^[1-9]\d*$/.test(trimmed);
 }
 
 export default function QuoteClient() {
@@ -28,39 +39,59 @@ export default function QuoteClient() {
   const [destAsset, setDestAsset] = useState("");
   const [amount, setAmount] = useState("");
   const [quote, setQuote] = useState<Quote | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const [formError, setFormError] = useState<string | null>(null);
   const [requestId, setRequestId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setError(null);
+    setFieldErrors({});
+    setFormError(null);
     setRequestId(null);
     setQuote(null);
 
-    if (!assetsDiffer(sourceAsset, destAsset)) {
-      setError("Source and destination assets must differ.");
-      return;
+    const nextErrors: FieldErrors = {};
+    const normalizedSource = normalizeAssetCode(sourceAsset);
+    const normalizedDest = normalizeAssetCode(destAsset);
+    const normalizedAmount = amount.trim();
+
+    if (!normalizedSource) {
+      nextErrors.source = "Use 1-12 letters or numbers.";
+    }
+    if (!normalizedDest) {
+      nextErrors.dest = "Use 1-12 letters or numbers.";
     }
     if (!isValidAmount(amount)) {
-      setError("Amount must be a positive integer (base units).");
+      nextErrors.amount = "Amount must be a positive integer (base units).";
+    }
+    if (normalizedSource && normalizedDest && normalizedSource === normalizedDest) {
+      nextErrors.dest = "Source and destination assets must differ.";
+    }
+
+    if (Object.keys(nextErrors).length > 0) {
+      setFieldErrors(nextErrors);
+      return;
+    }
+
+    if (!normalizedSource || !normalizedDest || !isValidAmount(amount)) {
       return;
     }
 
     setLoading(true);
     try {
-      const url = `${API_BASE}/api/v1/quote?source_asset=${encodeURIComponent(normalizedSourceAsset)}&dest_asset=${encodeURIComponent(normalizedDestAsset)}&amount=${encodeURIComponent(normalizedAmount)}`;
+      const url = `${API_BASE}/api/v1/quote?source_asset=${encodeURIComponent(normalizedSource)}&dest_asset=${encodeURIComponent(normalizedDest)}&amount=${encodeURIComponent(normalizedAmount)}`;
       const res = await fetch(url);
       const body = await res.json();
       if (!res.ok) {
         const apiError = body as ApiError | undefined;
-        setError(apiError?.message ?? "quote request failed");
+        setFormError(apiError?.message ?? "quote request failed");
         setRequestId(apiError?.requestId ?? null);
         return;
       }
       setQuote(body as Quote);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "network error");
+      setFormError(err instanceof Error ? err.message : "network error");
     } finally {
       setLoading(false);
     }
@@ -81,42 +112,36 @@ export default function QuoteClient() {
       </header>
 
       <form onSubmit={onSubmit} className="flex flex-col gap-3">
-        <label className="flex flex-col gap-1 text-sm">
-          <span>Source asset</span>
-          <input
-            required
-            name="source_asset"
-            value={sourceAsset}
-            onChange={(e) => setSourceAsset(e.target.value)}
-            maxLength={12}
-            placeholder="USDC"
-            className="rounded-md border border-neutral-300 px-3 py-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 dark:border-neutral-700 dark:bg-neutral-900"
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-sm">
-          <span>Destination asset</span>
-          <input
-            required
-            name="dest_asset"
-            value={destAsset}
-            onChange={(e) => setDestAsset(e.target.value)}
-            maxLength={12}
-            placeholder="EURC"
-            className="rounded-md border border-neutral-300 px-3 py-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 dark:border-neutral-700 dark:bg-neutral-900"
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-sm">
-          <span>Amount (base units)</span>
-          <input
-            required
-            name="amount"
-            inputMode="numeric"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            placeholder="1000000"
-            className="rounded-md border border-neutral-300 px-3 py-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 dark:border-neutral-700 dark:bg-neutral-900"
-          />
-        </label>
+        <TextField
+          label="Source asset"
+          name="source_asset"
+          value={sourceAsset}
+          onChange={(e) => setSourceAsset(e.target.value)}
+          maxLength={12}
+          placeholder="USDC"
+          error={fieldErrors.source}
+          aria-invalid={fieldErrors.source ? true : undefined}
+        />
+        <TextField
+          label="Destination asset"
+          name="dest_asset"
+          value={destAsset}
+          onChange={(e) => setDestAsset(e.target.value)}
+          maxLength={12}
+          placeholder="EURC"
+          error={fieldErrors.dest}
+          aria-invalid={fieldErrors.dest ? true : undefined}
+        />
+        <TextField
+          label="Amount (base units)"
+          name="amount"
+          inputMode="numeric"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+          placeholder="1000000"
+          error={fieldErrors.amount}
+          aria-invalid={fieldErrors.amount ? true : undefined}
+        />
         <button
           type="submit"
           disabled={loading}
@@ -126,20 +151,24 @@ export default function QuoteClient() {
         </button>
       </form>
 
-      {quote && (
-        <section
-          role="status"
-          aria-live="polite"
-          className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm dark:border-emerald-900 dark:bg-emerald-950"
-        >
-          <p className="font-medium">Route: {quote.route.join(" → ")}</p>
-          <p>Amount: {quote.amount}</p>
-          <p>Estimated rate: {quote.estimated_rate}</p>
-        </section>
-      )}
-      {error && (
+      {quote && (() => {
+        const amountFmt = formatQuoteAmountDisplay(quote.amount);
+        const rateFmt = formatQuoteRateDisplay(quote.estimated_rate);
+        return (
+          <section
+            role="status"
+            aria-live="polite"
+            className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm dark:border-emerald-900 dark:bg-emerald-950"
+          >
+            <p className="font-medium">Route: {quote.route.join(" → ")}</p>
+            <p title={amountFmt.title}>Amount: {amountFmt.display}</p>
+            <p title={rateFmt.title}>Estimated rate: {rateFmt.display}</p>
+          </section>
+        );
+      })()}
+      {formError && (
         <div role="alert" className="text-sm text-rose-700 dark:text-rose-400">
-          <p>{error}</p>
+          <p>{formError}</p>
           {requestId && (
             <p className="mt-1 text-xs">
               Request ID: <code>{requestId}</code>
