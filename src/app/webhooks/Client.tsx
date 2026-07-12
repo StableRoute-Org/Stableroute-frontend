@@ -1,97 +1,150 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { apiGet, apiPost, apiDelete } from "@/lib/apiClient";
+import { useCallback, useState } from "react";
+import { Badge } from "@/components/Badge";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { IconButton } from "@/components/IconButton";
+import { TextField } from "@/components/TextField";
+import { TimeAgo } from "@/components/TimeAgo";
+import { apiDelete, apiGet, apiPost } from "@/lib/apiClient";
+import { useList } from "@/lib/useList";
+import { WEBHOOK_EVENT_OPTIONS } from "@/lib/webhookEvents";
 
 type Hook = { id: string; url: string; events: string[]; createdAt: number };
 
+function isHttpsUrl(value: string): boolean {
+  try {
+    return new URL(value).protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 export default function WebhooksClient() {
-  const [items, setItems] = useState<Hook[] | null>(null);
+  const loadHooks = useCallback(
+    () => apiGet<{ items: Hook[] }>("/api/v1/webhooks").then((body) => body.items),
+    [],
+  );
+  const { items, error, loading, reload } = useList(loadHooks);
   const [url, setUrl] = useState("");
-  const [eventsCsv, setEventsCsv] = useState("pair.registered");
-  const [error, setError] = useState<string | null>(null);
+  const [selectedEvents, setSelectedEvents] = useState<string[]>(["pair.registered"]);
+  const [submitting, setSubmitting] = useState(false);
+  const [confirmRegister, setConfirmRegister] = useState(false);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [localError, setLocalError] = useState<string | null>(null);
 
-  const load = () =>
-    apiGet<{ items: Hook[] }>("/api/v1/webhooks")
-      .then((b) => setItems(b.items))
-      .catch((e) => setError(e.message));
-  useEffect(() => {
-    load();
-  }, []);
+  const displayError = localError ?? error;
 
-  const onCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    const events = eventsCsv.split(",").map((s) => s.trim()).filter(Boolean);
+  const toggleEvent = (event: string) => {
+    setSelectedEvents((current) =>
+      current.includes(event) ? current.filter((entry) => entry !== event) : [...current, event],
+    );
+  };
+
+  const registerWebhook = async () => {
+    if (!isHttpsUrl(url)) {
+      setLocalError("Webhook URL must use HTTPS.");
+      return;
+    }
+    if (selectedEvents.length === 0) {
+      setLocalError("Select at least one event.");
+      return;
+    }
+    setLocalError(null);
+    setSubmitting(true);
     try {
-      await apiPost("/api/v1/webhooks", { url, events });
+      await apiPost("/api/v1/webhooks", { url, events: selectedEvents });
       setUrl("");
-      await load();
+      await reload();
     } catch (err) {
-      setError((err as Error).message);
+      setLocalError((err as Error).message);
+    } finally {
+      setSubmitting(false);
     }
   };
 
   return (
-    <main
-      id="main-content"
-      tabIndex={-1}
-      className="mx-auto flex min-h-[60vh] max-w-3xl flex-col gap-6 p-8 focus:outline-none"
-    >
+    <main id="main-content" tabIndex={-1} className="mx-auto flex min-h-[60vh] max-w-3xl flex-col gap-6 p-8">
       <h1 className="text-3xl font-semibold tracking-tight">Webhooks</h1>
-      <form onSubmit={onCreate} className="flex flex-col gap-3">
-        <label className="flex flex-col gap-1 text-sm">
-          <span>URL</span>
-          <input
-            required
-            type="url"
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            className="rounded-md border border-neutral-300 px-3 py-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 dark:border-neutral-700 dark:bg-neutral-900"
-          />
-        </label>
-        <label className="flex flex-col gap-1 text-sm">
-          <span>Events (comma-separated)</span>
-          <input
-            required
-            value={eventsCsv}
-            onChange={(e) => setEventsCsv(e.target.value)}
-            className="rounded-md border border-neutral-300 px-3 py-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 dark:border-neutral-700 dark:bg-neutral-900"
-          />
-        </label>
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          setConfirmRegister(true);
+        }}
+        className="flex flex-col gap-3"
+      >
+        <TextField label="URL" type="url" required value={url} onChange={(e) => setUrl(e.target.value)} />
+        <fieldset>
+          <legend className="text-sm font-medium">Events</legend>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {WEBHOOK_EVENT_OPTIONS.map((event) => (
+              <label key={event} className="flex items-center gap-1 text-sm">
+                <input
+                  type="checkbox"
+                  checked={selectedEvents.includes(event)}
+                  onChange={() => toggleEvent(event)}
+                />
+                {event}
+              </label>
+            ))}
+          </div>
+        </fieldset>
         <button
           type="submit"
-          className="self-start rounded-full bg-black px-5 py-2 text-sm font-medium text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+          disabled={submitting}
+          aria-busy={submitting}
+          className="self-start rounded-full bg-black px-5 py-2 text-sm text-white disabled:opacity-50"
         >
-          Register
+          {submitting ? "Registering…" : "Register"}
         </button>
-        {error && <p role="alert" className="text-sm text-rose-600">{error}</p>}
+        {displayError && <p role="alert" className="text-sm text-rose-600">{displayError}</p>}
       </form>
-      {!items && !error && <p>Loading…</p>}
-      <section aria-live="polite" aria-atomic="true" className="contents">
-        {items && items.length === 0 && (
-          <p className="text-sm text-neutral-600 dark:text-neutral-400">No webhooks registered.</p>
-        )}
-        {items && items.length > 0 && (
-          <ul className="divide-y divide-neutral-200 dark:divide-neutral-800">
-            {items.map((w) => (
-              <li key={w.id} className="flex items-center justify-between py-3">
-                <div>
-                  <p className="text-sm font-medium break-all">{w.url}</p>
-                  <p className="text-xs text-neutral-500">{w.events.join(", ")}</p>
+      {loading && !items && <p>Loading…</p>}
+      {items && items.length === 0 && <p className="text-sm text-neutral-600">No webhooks registered.</p>}
+      {items && items.length > 0 && (
+        <ul className="divide-y divide-neutral-200 dark:divide-neutral-800">
+          {items.map((hook) => (
+            <li key={hook.id} className="flex items-center justify-between gap-3 py-3">
+              <div>
+                <p className="break-all text-sm font-medium">{hook.url}</p>
+                <p className="text-xs text-neutral-500">
+                  Registered <TimeAgo ts={hook.createdAt} />
+                </p>
+                <div className="mt-1 flex flex-wrap gap-1">
+                  {hook.events.map((event) => (
+                    <Badge key={event}>{event}</Badge>
+                  ))}
                 </div>
-                <button
-                  type="button"
-                  onClick={() => apiDelete(`/api/v1/webhooks/${w.id}`).then(() => load())}
-                  className="rounded border border-neutral-300 px-3 py-1 text-xs hover:border-rose-500 hover:text-rose-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 dark:border-neutral-700"
-                >
-                  Remove
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+              </div>
+              <IconButton label="Remove webhook" onClick={() => setPendingDeleteId(hook.id)}>
+                ×
+              </IconButton>
+            </li>
+          ))}
+        </ul>
+      )}
+      <ConfirmDialog
+        open={confirmRegister}
+        tone="default"
+        title="Register webhook?"
+        onConfirm={() => {
+          setConfirmRegister(false);
+          void registerWebhook();
+        }}
+        onCancel={() => setConfirmRegister(false)}
+      />
+      <ConfirmDialog
+        open={pendingDeleteId !== null}
+        tone="danger"
+        title="Remove webhook?"
+        confirmLabel="Remove"
+        onConfirm={() => {
+          const id = pendingDeleteId;
+          setPendingDeleteId(null);
+          if (id) void apiDelete(`/api/v1/webhooks/${id}`).then(() => reload());
+        }}
+        onCancel={() => setPendingDeleteId(null)}
+      />
     </main>
   );
 }
