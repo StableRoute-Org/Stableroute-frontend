@@ -1,5 +1,4 @@
-const API_BASE =
-  process.env.NEXT_PUBLIC_STABLEROUTE_API_BASE ?? "http://localhost:3001";
+import { getApiBase } from "./config";
 
 export type ApiError = {
   error: string;
@@ -7,8 +6,18 @@ export type ApiError = {
   requestId?: string;
 };
 
+export type ApiFetchOptions = {
+  /** Opt-in retry with exponential backoff for idempotent GET/HEAD requests. */
+  retry?: {
+    maxAttempts?: number;
+    baseDelayMs?: number;
+  };
+};
+
 type AuthErrorHandler = (status: 401 | 403) => void;
 let _authErrorHandler: AuthErrorHandler | null = null;
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /** Called once by <ApiAuthGuard> when it mounts inside <ToastProvider>. */
 export function registerAuthErrorHandler(handler: AuthErrorHandler): () => void {
@@ -18,14 +27,7 @@ export function registerAuthErrorHandler(handler: AuthErrorHandler): () => void 
   };
 }
 
-export async function apiFetch<T>(
-  path: string,
-  init: RequestInit = {}
-): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
-    headers: { "Content-Type": "application/json", ...(init.headers ?? {}) },
-    ...init,
-  });
+async function parseResponse<T>(res: Response): Promise<T> {
   if (res.status === 204) return undefined as T;
   const text = await res.text();
   let body: T | ApiError | undefined;
@@ -48,7 +50,43 @@ export async function apiFetch<T>(
   return body as T;
 }
 
-export const apiGet = <T>(path: string) => apiFetch<T>(path);
+export async function apiFetch<T>(
+  path: string,
+  init: RequestInit = {},
+  options?: ApiFetchOptions,
+): Promise<T> {
+  const method = (init.method ?? "GET").toUpperCase();
+  const canRetry = method === "GET" || method === "HEAD";
+  const maxAttempts =
+    canRetry && options?.retry ? Math.max(1, options.retry.maxAttempts ?? 3) : 1;
+  const baseDelayMs = options?.retry?.baseDelayMs ?? 100;
+
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      const res = await fetch(`${getApiBase()}${path}`, {
+        headers: { "Content-Type": "application/json", ...(init.headers ?? {}) },
+        ...init,
+      });
+      if (!res.ok && res.status >= 500 && attempt < maxAttempts) {
+        await sleep(baseDelayMs * 2 ** (attempt - 1));
+        continue;
+      }
+      return await parseResponse<T>(res);
+    } catch (err) {
+      lastError = err;
+      if (attempt < maxAttempts) {
+        await sleep(baseDelayMs * 2 ** (attempt - 1));
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw lastError ?? new Error("request failed");
+}
+
+export const apiGet = <T>(path: string, options?: ApiFetchOptions) =>
+  apiFetch<T>(path, {}, options);
 export const apiPost = <T>(path: string, body: unknown) =>
   apiFetch<T>(path, { method: "POST", body: JSON.stringify(body) });
 export const apiPatch = <T>(path: string, body: unknown) =>

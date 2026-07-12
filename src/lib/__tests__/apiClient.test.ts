@@ -117,4 +117,35 @@ describe("registerAuthErrorHandler", () => {
     expect(err.status).toBe(401);
     unregister();
   });
+
+  it("retries idempotent GET requests on 5xx with backoff", async () => {
+    jest.useFakeTimers();
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce({
+        status: 503,
+        ok: false,
+        text: () => Promise.resolve(""),
+      } as unknown as Response)
+      .mockResolvedValueOnce({
+        status: 200,
+        ok: true,
+        text: () => Promise.resolve(JSON.stringify({ ok: true })),
+      } as unknown as Response);
+    global.fetch = fetchMock as unknown as typeof global.fetch;
+
+    const promise = apiFetch("/retry-me", {}, { retry: { maxAttempts: 2, baseDelayMs: 50 } });
+    await jest.advanceTimersByTimeAsync(50);
+    await expect(promise).resolves.toEqual({ ok: true });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    jest.useRealTimers();
+  });
+
+  it("does not retry non-GET methods", async () => {
+    mockResponse(503, "");
+    await expect(
+      apiFetch("/retry-me", { method: "POST", body: "{}" }, { retry: { maxAttempts: 3 } }),
+    ).rejects.toThrow("HTTP 503");
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+  });
 });
