@@ -117,6 +117,29 @@ describe("NewPairPage", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
+  it("shows the in-flight submit label while the pair is saving", async () => {
+    let resolvePost: (() => void) | undefined;
+    global.fetch = jest.fn().mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolvePost = () =>
+            resolve({
+              ok: true,
+              text: async () => "{}",
+            } as unknown as Response);
+        }),
+    ) as unknown as typeof global.fetch;
+
+    render(<NewPairPage />);
+    submitPair("XLM", "USDC");
+
+    expect(screen.getByRole("button", { name: /Saving/i })).toBeDisabled();
+    resolvePost?.();
+    await waitFor(() => {
+      expect(mockPush).toHaveBeenCalledWith("/pairs");
+    });
+  });
+
   it("surfaces backend errors without losing the normalized request body", async () => {
     const mockFetch = jest.fn().mockResolvedValueOnce({
       ok: false,
