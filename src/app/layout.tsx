@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import "./globals.css";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { ToastProvider } from "@/components/ToastProvider";
 import { ApiAuthGuard } from "@/components/ApiAuthGuard";
+import { AppShellExtras } from "@/components/AppShellExtras";
 
 export const metadata: Metadata = {
   title: {
@@ -30,7 +32,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" dir="ltr">
+    <html lang="en" dir="ltr" suppressHydrationWarning>
+      <head>
+        <Script src="/theme-init.js" strategy="beforeInteractive" />
+      </head>
       <body>
         <a
           href="#main-content"
@@ -40,6 +45,7 @@ export default function RootLayout({
         </a>
         <ToastProvider>
           <ApiAuthGuard />
+          <AppShellExtras />
           <Header />
           {children}
           <Footer />
