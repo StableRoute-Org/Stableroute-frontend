@@ -30,6 +30,7 @@ export default function NewPairPage() {
   const [destination, setDestination] = useState("");
   const [errors, setErrors] = useState<FormErrors>({});
   const [loading, setLoading] = useState(false);
+  const [statusNote, setStatusNote] = useState<string | null>(null);
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -60,14 +61,17 @@ export default function NewPairPage() {
     setSource(normalizedSource);
     setDestination(normalizedDestination);
     setLoading(true);
+    setStatusNote("Registering pair…");
     try {
       await apiPost("/api/v1/pairs", {
         source: normalizedSource,
         destination: normalizedDestination,
       });
+      setStatusNote("Pair registered. Redirecting…");
       router.push("/pairs");
     } catch (err) {
       setErrors({ form: (err as Error).message });
+      setStatusNote(null);
     } finally {
       setLoading(false);
     }
@@ -99,6 +103,7 @@ export default function NewPairPage() {
             }));
           }}
           error={errors.source}
+          aria-invalid={errors.source ? true : undefined}
         />
         <TextField
           id="destination"
@@ -114,6 +119,7 @@ export default function NewPairPage() {
             }));
           }}
           error={errors.destination}
+          aria-invalid={errors.destination ? true : undefined}
         />
         <button
           type="submit"
@@ -122,6 +128,9 @@ export default function NewPairPage() {
         >
           {loading ? "Saving…" : "Register pair"}
         </button>
+        <p role="status" aria-live="polite" className="sr-only">
+          {statusNote ?? ""}
+        </p>
         {errors.form && (
           <p role="alert" className="text-sm text-rose-600">
             {errors.form}
