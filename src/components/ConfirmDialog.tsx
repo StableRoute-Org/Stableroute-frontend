@@ -1,6 +1,9 @@
 "use client";
 
 import { type ReactNode } from "react";
+import { Button } from "./Button";
+
+type Tone = "danger" | "default";
 
 type Props = {
   open: boolean;
@@ -8,6 +11,8 @@ type Props = {
   description?: ReactNode;
   confirmLabel?: string;
   cancelLabel?: string;
+  /** Controls confirm button styling; defaults to destructive red. */
+  tone?: Tone;
   onConfirm: () => void;
   onCancel: () => void;
 };
@@ -18,6 +23,7 @@ export function ConfirmDialog({
   description,
   confirmLabel = "Confirm",
   cancelLabel = "Cancel",
+  tone = "danger",
   onConfirm,
   onCancel,
 }: Props) {
@@ -39,20 +45,16 @@ export function ConfirmDialog({
           </p>
         )}
         <div className="mt-4 flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="rounded-full border border-neutral-300 px-4 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 dark:border-neutral-700"
-          >
+          <Button type="button" variant="secondary" onClick={onCancel}>
             {cancelLabel}
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
+            variant={tone === "danger" ? "danger" : "primary"}
             onClick={onConfirm}
-            className="rounded-full bg-rose-600 px-4 py-2 text-sm font-medium text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
           >
             {confirmLabel}
-          </button>
+          </Button>
         </div>
       </div>
     </div>
