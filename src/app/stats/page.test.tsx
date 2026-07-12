@@ -30,6 +30,17 @@ describe("StatsPage", () => {
     await screen.findByText("Live");
   });
 
+  it("names the metrics panel with an accessible region", async () => {
+    mockFetch({ totalPairs: 12, paused: false });
+    render(<StatsPage />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("region", { name: /router metrics/i }),
+      ).toBeInTheDocument();
+    });
+  });
+
   it("formats totalPairs with thousands separators via formatNumber", async () => {
     mockFetch({ totalPairs: 1234567, paused: false });
     render(<StatsPage />);
@@ -85,5 +96,25 @@ describe("StatsPage", () => {
     expect(await screen.findByText("2,000")).toBeInTheDocument();
     expect(await screen.findByText("Paused")).toBeInTheDocument();
     expect(global.fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("clears the polling interval on unmount", async () => {
+    jest.useFakeTimers();
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      text: () => Promise.resolve(JSON.stringify({ totalPairs: 42, paused: false })),
+    } as unknown as Response);
+
+    const { unmount } = render(<StatsPage />);
+    expect(await screen.findByText("42")).toBeInTheDocument();
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+
+    unmount();
+
+    await act(async () => {
+      jest.advanceTimersByTime(15000);
+    });
+
+    expect(global.fetch).toHaveBeenCalledTimes(1);
   });
 });

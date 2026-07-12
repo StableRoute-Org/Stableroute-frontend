@@ -29,7 +29,15 @@ export default function EventsClient() {
     >
       <h1 className="text-3xl font-semibold tracking-tight">Event log</h1>
       {error && <p role="alert" className="text-sm text-rose-600">{error}</p>}
-      <section aria-live="polite" aria-atomic="true" className="contents">
+      <section
+        aria-labelledby="events-log-heading"
+        aria-live="polite"
+        aria-atomic="true"
+        className="contents"
+      >
+        <h2 id="events-log-heading" className="sr-only">
+          Event log entries
+        </h2>
         {!items && !error && <p>Loading…</p>}
         {items && items.length === 0 && (
           <p className="text-sm text-neutral-600 dark:text-neutral-400">No events.</p>

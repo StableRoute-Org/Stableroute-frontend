@@ -34,13 +34,18 @@ export default function StatsClient() {
       <h1 className="text-3xl font-semibold tracking-tight">Stats</h1>
       {error && <p role="alert" className="text-sm text-rose-600">{error}</p>}
       {stats && (
-        <dl className="grid grid-cols-2 gap-4">
-          <StatTile label="Pairs" value={formatNumber(stats.totalPairs)} />
-          <StatTile
-            label="Status"
-            value={stats.paused ? "Paused" : "Live"}
-          />
-        </dl>
+        <section aria-labelledby="stats-metrics-heading">
+          <h2 id="stats-metrics-heading" className="sr-only">
+            Router metrics
+          </h2>
+          <dl className="grid grid-cols-2 gap-4">
+            <StatTile label="Pairs" value={formatNumber(stats.totalPairs)} />
+            <StatTile
+              label="Status"
+              value={stats.paused ? "Paused" : "Live"}
+            />
+          </dl>
+        </section>
       )}
     </main>
   );
