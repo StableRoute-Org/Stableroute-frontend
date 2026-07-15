@@ -8,7 +8,6 @@ import { assetsDiffer } from "@/lib/quote";
 
 const ASSET_CODE_RE = /^[A-Za-z0-9]{1,12}$/;
 const ASSET_CODE_ERROR = "Use 1-12 ASCII letters or numbers.";
-const SUCCESS_REDIRECT_DELAY_MS = 300;
 
 type FormErrors = {
   source?: string;
@@ -31,11 +30,7 @@ export default function NewPairPage() {
   const [destination, setDestination] = useState("");
   const [errors, setErrors] = useState<FormErrors>({});
   const [loading, setLoading] = useState(false);
-  // Polite live-region status. Kept in the DOM (not conditionally rendered)
-  // so screen readers reliably pick up updates as soon as the text changes.
-  // The error path uses `role="alert"` (assertive) and is rendered separately
-  // to avoid announcing success and error simultaneously.
-  const [status, setStatus] = useState("");
+  const [statusNote, setStatusNote] = useState<string | null>(null);
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -59,29 +54,24 @@ export default function NewPairPage() {
 
     if (Object.keys(nextErrors).length > 0 || !normalizedSource || !normalizedDestination) {
       setErrors(nextErrors);
-      setStatusMessage("");
       return;
     }
 
     setErrors({});
-    setStatusMessage("Registering pair...");
     setSource(normalizedSource);
     setDestination(normalizedDestination);
     setLoading(true);
-    setStatus("Registering pair…");
+    setStatusNote("Registering pair…");
     try {
       await apiPost("/api/v1/pairs", {
         source: normalizedSource,
         destination: normalizedDestination,
       });
-      setStatus("Pair registered. Redirecting…");
+      setStatusNote("Pair registered. Redirecting…");
       router.push("/pairs");
     } catch (err) {
-      // Clear the polite status so the success path does not announce
-      // alongside the error; the alert below handles the assertive
-      // announcement.
-      setStatus("");
       setErrors({ form: (err as Error).message });
+      setStatusNote(null);
     } finally {
       setLoading(false);
     }
@@ -111,9 +101,9 @@ export default function NewPairPage() {
                   : current.destination,
               form: undefined,
             }));
-            setStatusMessage("");
           }}
           error={errors.source}
+          aria-invalid={errors.source ? true : undefined}
         />
         <TextField
           id="destination"
@@ -127,9 +117,9 @@ export default function NewPairPage() {
               destination: undefined,
               form: undefined,
             }));
-            setStatusMessage("");
           }}
           error={errors.destination}
+          aria-invalid={errors.destination ? true : undefined}
         />
         <button
           type="submit"
@@ -138,22 +128,14 @@ export default function NewPairPage() {
         >
           {loading ? "Saving…" : "Register pair"}
         </button>
-        <p
-          role="status"
-          aria-live="polite"
-          aria-atomic="true"
-          className="min-h-5 text-sm text-neutral-600 dark:text-neutral-400"
-        >
-          {statusMessage}
+        <p role="status" aria-live="polite" className="sr-only">
+          {statusNote ?? ""}
         </p>
         {errors.form && (
           <p role="alert" className="text-sm text-rose-600">
             {errors.form}
           </p>
         )}
-        <p role="status" aria-live="polite" className="sr-only">
-          {status}
-        </p>
       </form>
     </main>
   );
