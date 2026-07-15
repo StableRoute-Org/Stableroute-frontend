@@ -104,7 +104,7 @@ describe("ToastProvider", () => {
     expect(screen.queryByText("hello")).not.toBeInTheDocument();
   });
 
-  it("renders multiple toasts independently", () => {
+  it("deduplicates identical messages", () => {
     render(
       <ToastProvider>
         <ToastHarness />
@@ -112,8 +112,29 @@ describe("ToastProvider", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: "push-default" }));
-    fireEvent.click(screen.getByRole("button", { name: "push-sticky" }));
-    expect(screen.getByText("hello")).toBeInTheDocument();
-    expect(screen.getByText("sticky error")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "push-default" }));
+    expect(screen.getAllByText("hello")).toHaveLength(1);
+  });
+
+  it("caps the visible queue at five toasts", () => {
+    function ManyHarness() {
+      const { push } = useToast();
+      return (
+        <button type="button" onClick={() => push(`toast-${Math.random()}`)}>
+          push-many
+        </button>
+      );
+    }
+
+    render(
+      <ToastProvider>
+        <ManyHarness />
+      </ToastProvider>,
+    );
+
+    for (let index = 0; index < 6; index += 1) {
+      fireEvent.click(screen.getByRole("button", { name: "push-many" }));
+    }
+    expect(screen.getAllByRole("status")).toHaveLength(5);
   });
 });

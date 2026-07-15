@@ -13,9 +13,7 @@ import {
 type ToastLevel = "info" | "error";
 
 export type ToastPushOptions = {
-  /** Auto-dismiss delay in ms. Ignored when `sticky` is true. Default 4000. */
   durationMs?: number;
-  /** When true, the toast stays until manually dismissed. */
   sticky?: boolean;
 };
 
@@ -26,11 +24,17 @@ type Ctx = {
 };
 
 const DEFAULT_DURATION_MS = 4000;
+const MAX_TOASTS = 5;
 const ToastCtx = createContext<Ctx | null>(null);
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<Toast[]>([]);
+  const itemsRef = useRef(items);
   const timersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+
+  useEffect(() => {
+    itemsRef.current = items;
+  }, [items]);
 
   const clearTimer = useCallback((id: string) => {
     const timer = timersRef.current.get(id);
@@ -48,21 +52,31 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     [clearTimer],
   );
 
-  /**
-   * Enqueue a toast. Pass `sticky: true` or `durationMs` to control auto-dismiss.
-   */
   const push = useCallback(
     (message: string, level: ToastLevel = "info", options?: ToastPushOptions) => {
+      if (itemsRef.current.some((toast) => toast.message === message)) {
+        return;
+      }
+
       const id = `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-      setItems((current) => [...current, { id, message, level }]);
+      setItems((current) => {
+        const next = [...current, { id, message, level }];
+        if (next.length <= MAX_TOASTS) {
+          return next;
+        }
+        const dropped = next.slice(0, next.length - MAX_TOASTS);
+        for (const toast of dropped) {
+          clearTimer(toast.id);
+        }
+        return next.slice(-MAX_TOASTS);
+      });
 
       if (!options?.sticky) {
         const durationMs = options?.durationMs ?? DEFAULT_DURATION_MS;
-        const timer = setTimeout(() => dismiss(id), durationMs);
-        timersRef.current.set(id, timer);
+        timersRef.current.set(id, setTimeout(() => dismiss(id), durationMs));
       }
     },
-    [dismiss],
+    [clearTimer, dismiss],
   );
 
   useEffect(() => {
