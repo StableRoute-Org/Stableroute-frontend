@@ -1,21 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import Link from "next/link";
-import { apiGet } from "@/lib/apiClient";
+import { useApi } from "@/lib/useApi";
 
 type Pair = { source: string; destination: string };
 
 export default function PairsClient() {
-  const [pairs, setPairs] = useState<Pair[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const isLoading = pairs === null && error === null;
-
-  useEffect(() => {
-    apiGet<{ pairs: Pair[] }>("/api/v1/pairs")
-      .then((b) => setPairs(b.pairs))
-      .catch((e) => setError(e.message));
-  }, []);
+  const pairsState = useApi<{ pairs: Pair[] }>("/api/v1/pairs");
+  const isLoading = pairsState.status === "loading";
+  const error = pairsState.status === "error" ? pairsState.error : null;
+  const pairs = pairsState.status === "ok" ? pairsState.data.pairs : null;
 
   return (
     <main
