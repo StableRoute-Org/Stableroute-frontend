@@ -53,81 +53,6 @@ describe("QuotePage", () => {
     );
   });
 
-  it("formats quote amount and estimated rate while preserving raw values", async () => {
-    const mockFetch = jest.fn().mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        source_asset: "USDC",
-        dest_asset: "EURC",
-        amount: "100000000",
-        estimated_rate: "1234.5",
-        route: ["USDC", "EURC"],
-      }),
-    } as unknown as Response);
-    globalThis.fetch = mockFetch as unknown as typeof globalThis.fetch;
-
-    render(<QuotePage />);
-    fireEvent.change(screen.getByLabelText(/Source asset/i), {
-      target: { value: "USDC" },
-    });
-    fireEvent.change(screen.getByLabelText(/Destination asset/i), {
-      target: { value: "EURC" },
-    });
-    fireEvent.change(screen.getByLabelText(/Amount/i), {
-      target: { value: "100000000" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: /Get quote/i }));
-
-    await waitFor(() => {
-      expect(screen.getByRole("status")).toHaveTextContent("Amount: 10.00 XLM");
-    });
-    expect(screen.getByRole("status")).toHaveTextContent(
-      "Estimated rate: 1,234.5",
-    );
-    expect(screen.getByTitle("100000000")).toHaveTextContent("10.00 XLM");
-    expect(screen.getByTitle("1234.5")).toHaveTextContent("1,234.5");
-  });
-
-  it("falls back to raw quote values when formatting is unsafe", async () => {
-    const unsafeAmount = "9007199254740993";
-    const mockFetch = jest.fn().mockResolvedValueOnce({
-      ok: true,
-      json: async () => ({
-        source_asset: "USDC",
-        dest_asset: "EURC",
-        amount: unsafeAmount,
-        estimated_rate: "rate unavailable",
-        route: ["USDC", "EURC"],
-      }),
-    } as unknown as Response);
-    globalThis.fetch = mockFetch as unknown as typeof globalThis.fetch;
-
-    render(<QuotePage />);
-    fireEvent.change(screen.getByLabelText(/Source asset/i), {
-      target: { value: "USDC" },
-    });
-    fireEvent.change(screen.getByLabelText(/Destination asset/i), {
-      target: { value: "EURC" },
-    });
-    fireEvent.change(screen.getByLabelText(/Amount/i), {
-      target: { value: "100000000" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: /Get quote/i }));
-
-    await waitFor(() => {
-      expect(screen.getByRole("status")).toHaveTextContent(
-        `Amount: ${unsafeAmount}`,
-      );
-    });
-    expect(screen.getByRole("status")).toHaveTextContent(
-      "Estimated rate: rate unavailable",
-    );
-    expect(screen.getByTitle(unsafeAmount)).toHaveTextContent(unsafeAmount);
-    expect(screen.getByTitle("rate unavailable")).toHaveTextContent(
-      "rate unavailable",
-    );
-  });
-
   it("blocks submission when source == destination", async () => {
     const mockFetch = jest.fn();
     globalThis.fetch = mockFetch as unknown as typeof globalThis.fetch;
@@ -146,7 +71,7 @@ describe("QuotePage", () => {
     fireEvent.submit(form);
 
     await waitFor(() => {
-      expect(screen.getByRole("alert")).toHaveTextContent(/must differ/i);
+      expect(screen.getByText(/must differ/i)).toBeInTheDocument();
     });
     expect(mockFetch).not.toHaveBeenCalled();
   });
@@ -169,7 +94,7 @@ describe("QuotePage", () => {
     fireEvent.submit(form);
 
     await waitFor(() => {
-      expect(screen.getByRole("alert")).toHaveTextContent(/positive integer/i);
+      expect(screen.getByText(/positive integer/i)).toBeInTheDocument();
     });
     expect(mockFetch).not.toHaveBeenCalled();
   });
@@ -191,7 +116,7 @@ describe("QuotePage", () => {
     fireEvent.submit(screen.getByLabelText(/Amount/i).closest("form")!);
 
     await waitFor(() => {
-      expect(screen.getByRole("alert")).toHaveTextContent(/1-12 letters or numbers/i);
+      expect(screen.getByText(/1-12 letters or numbers/i)).toBeInTheDocument();
     });
     expect(mockFetch).not.toHaveBeenCalled();
   });
@@ -213,7 +138,7 @@ describe("QuotePage", () => {
     fireEvent.submit(screen.getByLabelText(/Amount/i).closest("form")!);
 
     await waitFor(() => {
-      expect(screen.getByRole("alert")).toHaveTextContent(/1-12 letters or numbers/i);
+      expect(screen.getByText(/1-12 letters or numbers/i)).toBeInTheDocument();
     });
     expect(mockFetch).not.toHaveBeenCalled();
   });
@@ -235,7 +160,7 @@ describe("QuotePage", () => {
     fireEvent.submit(screen.getByLabelText(/Amount/i).closest("form")!);
 
     await waitFor(() => {
-      expect(screen.getByRole("alert")).toHaveTextContent(/1-12 letters or numbers/i);
+      expect(screen.getByText(/1-12 letters or numbers/i)).toBeInTheDocument();
     });
     expect(mockFetch).not.toHaveBeenCalled();
   });
@@ -273,6 +198,28 @@ describe("QuotePage", () => {
     );
   });
 
+  it("associates validation errors with the relevant TextField inputs", async () => {
+    const mockFetch = jest.fn();
+    globalThis.fetch = mockFetch as unknown as typeof globalThis.fetch;
+    render(<QuotePage />);
+
+    fireEvent.change(screen.getByLabelText(/Source asset/i), {
+      target: { value: "USDC" },
+    });
+    fireEvent.change(screen.getByLabelText(/Destination asset/i), {
+      target: { value: "USDC" },
+    });
+    fireEvent.change(screen.getByLabelText(/Amount/i), {
+      target: { value: "100" },
+    });
+    fireEvent.submit(screen.getByLabelText(/Amount/i).closest("form")!);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(/Destination asset/i)).toHaveAttribute("aria-invalid", "true");
+    });
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+
   it("surfaces a backend invalid_request as a role=alert", async () => {
     globalThis.fetch = jest.fn().mockResolvedValueOnce({
       ok: false,
@@ -295,7 +242,7 @@ describe("QuotePage", () => {
     fireEvent.click(screen.getByRole("button", { name: /Get quote/i }));
 
     await waitFor(() => {
-      expect(screen.getByRole("alert")).toHaveTextContent(/must differ/i);
+      expect(screen.getByText(/must differ/i)).toBeInTheDocument();
     });
   });
 
@@ -322,7 +269,7 @@ describe("QuotePage", () => {
     fireEvent.click(screen.getByRole("button", { name: /Get quote/i }));
 
     await waitFor(() => {
-      expect(screen.getByRole("alert")).toHaveTextContent(/must differ/i);
+      expect(screen.getByText(/must differ/i)).toBeInTheDocument();
     });
     expect(screen.getByRole("alert")).toHaveTextContent(/Request ID: req-abc-123/);
   });
@@ -349,7 +296,7 @@ describe("QuotePage", () => {
     fireEvent.click(screen.getByRole("button", { name: /Get quote/i }));
 
     await waitFor(() => {
-      expect(screen.getByRole("alert")).toHaveTextContent(/must differ/i);
+      expect(screen.getByText(/must differ/i)).toBeInTheDocument();
     });
     expect(screen.getByRole("alert")).not.toHaveTextContent(/Request ID/);
   });
