@@ -1,24 +1,12 @@
 const API_BASE =
   process.env.NEXT_PUBLIC_STABLEROUTE_API_BASE ?? "http://localhost:3001";
 
-/** Validates that a URL uses http(s) and is an absolute URL. */
-export function validateApiBase(url: string): void {
-  if (!/^https?:\/\//i.test(url)) {
-    throw new Error(
-      `NEXT_PUBLIC_STABLEROUTE_API_BASE must use http or https; got "${url}"`,
-    );
-  }
-  try {
-    new URL(url);
-  } catch {
-    throw new Error(
-      `NEXT_PUBLIC_STABLEROUTE_API_BASE must be a valid absolute URL; got "${url}"`,
-    );
-  }
-}
-
-validateApiBase(API_BASE);
-
+/**
+ * Shape of the JSON error envelope returned by the StableRoute backend for
+ * non-2xx responses. Any field may be missing if the backend did not
+ * produce a structured body; the helper functions below synthesise a
+ * sensible `Error` from whatever is available.
+ */
 export type ApiError = {
   error: string;
   message: string;
@@ -29,15 +17,17 @@ type AuthErrorHandler = (status: 401 | 403) => void;
 let _authErrorHandler: AuthErrorHandler | null = null;
 
 /**
- * Register the single global auth-error handler.
+ * Register a single auth-error handler that is invoked whenever a request
+ * returns 401 (unauthenticated) or 403 (forbidden). The function returns
+ * an unregister callback that should be called on unmount to release the
+ * slot — `<ApiAuthGuard>` wires this to the toast provider.
  *
- * The latest registration replaces any previous handler. `ApiAuthGuard` calls
- * this while mounted inside `ToastProvider`, then calls the returned unregister
- * function on unmount. The guard is notified for backend `401` and `403`
- * responses, but the original request still rejects normally.
+ * Only one handler can be active at a time. If a second handler is
+ * registered, the first one is replaced; the returned unregister callback
+ * from the first registration will not re-clear the new handler. Always
+ * store and call the unregister function from the most recent call.
  *
- * @param handler - Callback invoked with the auth failure status.
- * @returns A cleanup function that unregisters `handler` if it is still active.
+ * Called once by `<ApiAuthGuard>` when it mounts inside `<ToastProvider>`.
  */
 export function registerAuthErrorHandler(handler: AuthErrorHandler): () => void {
   _authErrorHandler = handler;
@@ -47,18 +37,21 @@ export function registerAuthErrorHandler(handler: AuthErrorHandler): () => void 
 }
 
 /**
- * Fetch JSON from the StableRoute API.
+ * Low-level fetch helper used by `apiGet`, `apiPost`, `apiPatch`, and
+ * `apiDelete`. Most callers should use one of those wrappers rather than
+ * `apiFetch` directly.
  *
- * Requests are made relative to `NEXT_PUBLIC_STABLEROUTE_API_BASE` and include
- * `Content-Type: application/json` by default. `204 No Content` resolves to
- * `undefined`. Non-empty successful responses must be valid JSON. Failed
- * responses reject with an `Error` whose message comes from the backend
- * `ApiError.message` when present, with `status` and any parsed error fields
- * attached to the thrown object.
- *
- * @param path - Backend path beginning with `/`.
- * @param init - Optional fetch init merged with the default JSON header.
- * @returns The parsed response body typed as `T`.
+ * Behaviour:
+ * - Sends `Content-Type: application/json` by default; callers can
+ *   override or extend the headers via `init.headers`.
+ * - Returns `undefined` for `204 No Content` responses (so callers can
+ *   use the result type without an extra null check).
+ * - For empty-bodied success responses, also returns `undefined`.
+ * - Throws an `Error` with a `.status` property (and any fields from the
+ *   `ApiError` envelope) on any non-2xx response. The auth-error handler
+ *   is invoked automatically on 401/403 before the throw.
+ * - Throws a plain `Error("Invalid JSON response")` if the server
+ *   returned 2xx with a non-JSON body.
  */
 export async function apiFetch<T>(
   path: string,
@@ -90,14 +83,29 @@ export async function apiFetch<T>(
   return body as T;
 }
 
-/** GET a JSON resource from the StableRoute API. */
+/**
+ * `GET ${API_BASE}${path}` — returns the parsed JSON body. The 204
+ * contract from `apiFetch` applies (returns `undefined`).
+ */
 export const apiGet = <T>(path: string) => apiFetch<T>(path);
-/** POST a JSON body and parse the JSON response. */
+
+/**
+ * `POST ${API_BASE}${path}` with the body JSON-encoded. Use for create
+ * and any non-idempotent action.
+ */
 export const apiPost = <T>(path: string, body: unknown) =>
   apiFetch<T>(path, { method: "POST", body: JSON.stringify(body) });
-/** PATCH a JSON body and parse the JSON response. */
+
+/**
+ * `PATCH ${API_BASE}${path}` with the body JSON-encoded. Use for partial
+ * updates.
+ */
 export const apiPatch = <T>(path: string, body: unknown) =>
   apiFetch<T>(path, { method: "PATCH", body: JSON.stringify(body) });
-/** DELETE a resource, resolving to `undefined` for a 204 response. */
+
+/**
+ * `DELETE ${API_BASE}${path}`. Returns `void`; if the backend returns
+ * 204, the call resolves to `undefined`.
+ */
 export const apiDelete = (path: string) =>
   apiFetch<void>(path, { method: "DELETE" });

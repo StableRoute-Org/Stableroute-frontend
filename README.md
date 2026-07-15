@@ -144,6 +144,58 @@ The new-pair form has focused Jest coverage for asset normalization, same-asset
 rejection, backend error alerts, redirect-on-success, and the in-flight saving
 state.
 
+## API client
+
+The app talks to the StableRoute backend through a thin wrapper in
+[`src/lib/apiClient.ts`](src/lib/apiClient.ts). The wrapper:
+
+- Exposes four typed helpers — `apiGet`, `apiPost`, `apiPatch`, `apiDelete`
+  — built on top of a shared `apiFetch` that always sends
+  `Content-Type: application/json`.
+- Returns `undefined` for `204 No Content` and empty-bodied 2xx responses
+  so callers do not need a null check.
+- Throws a normal `Error` on any non-2xx response. The thrown error
+  carries a `.status` property and any fields from the backend's
+  `ApiError` envelope (`error`, `message`, optional `requestId`).
+- Invokes the registered auth-error handler on 401/403 before throwing
+  (see below), so unauthenticated responses can surface a toast without
+  each call site re-implementing the check.
+
+### Error envelope
+
+```ts
+type ApiError = {
+  error: string;       // short machine-readable code
+  message: string;     // human-readable message
+  requestId?: string;  // backend correlation id, if available
+};
+```
+
+Any of these fields may be missing if the backend did not return a
+structured body; the wrapper synthesises a sensible `Error` from whatever
+is available (e.g. `new Error("HTTP 500")` when the body is empty).
+
+### Auth-error handler
+
+The module owns a **single-slot** auth-error handler. Register one with
+`registerAuthErrorHandler` and call the returned function to unregister:
+
+```ts
+const unregister = registerAuthErrorHandler((status) => {
+  // 401 → "Your session has expired."
+  // 403 → "You don't have permission to perform that action."
+});
+// later, on unmount:
+unregister();
+```
+
+`<ApiAuthGuard>` ([`src/components/ApiAuthGuard.tsx`](src/components/ApiAuthGuard.tsx))
+is the only place in the app that registers a handler — it wires the
+callback to the toast provider, so 401/403 responses surface a toast
+without each call site re-implementing the check. Because the slot is
+single, only the most recent registration is active; always store and
+call the unregister function from the most recent call.
+
 ## Accessibility
 
 ### UI styleguide
