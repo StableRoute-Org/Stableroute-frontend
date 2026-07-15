@@ -55,34 +55,13 @@ and cleanup behavior consistent across pages.
 - **`/api/v1/events`**: Retrieves system event audit logs (`GET`).
 - **`/api/v1/webhooks`**: Creates (`POST`), lists (`GET`), and revokes (`DELETE` at `/api/v1/webhooks/:id`) webhook subscriptions.
 
-### API Client Contract
+### Quote Amount Display
 
-`src/lib/apiClient.ts` centralizes frontend calls to the backend through
-`apiGet`, `apiPost`, `apiPatch`, and `apiDelete`, all layered on `apiFetch`.
-Paths are resolved relative to `NEXT_PUBLIC_STABLEROUTE_API_BASE`; requests send
-`Content-Type: application/json` by default, and JSON request bodies are
-serialized by the method helpers.
-
-The backend error envelope is represented by `ApiError`:
-
-```ts
-type ApiError = {
-  error: string;
-  message: string;
-  requestId?: string;
-};
-```
-
-Failed responses reject with an `Error` whose message prefers
-`ApiError.message`, whose `status` property carries the HTTP status, and whose
-parsed error fields are copied onto the thrown object. `204 No Content`
-resolves to `undefined`; non-empty successful responses must parse as JSON.
-
-`registerAuthErrorHandler` stores one global auth callback for `401` and `403`
-responses. Registering a new callback replaces the previous one, and the
-returned unregister function removes it only if it is still active.
-`ApiAuthGuard` mounts this handler inside `ToastProvider` so auth failures show
-toasts while the original API call still rejects normally.
+The quote API accepts and returns amounts in base units. The `/quote` page keeps
+the raw API values intact for requests and operator inspection, while rendering
+safe integer quote amounts through the shared `formatStroops` helper and numeric
+rates through `formatNumber`. If a backend value cannot be parsed safely, the UI
+falls back to the raw string instead of rounding or coercing it.
 
 ### Asset Codes
 

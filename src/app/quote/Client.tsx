@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { ApiError } from "@/lib/apiClient";
+import { formatNumber, formatStroops } from "@/lib/format";
 import { assetsDiffer, isValidAmount } from "@/lib/quote";
 
 type Quote = {
@@ -22,6 +23,24 @@ const ASSET_CODE_PATTERN = /^[A-Za-z0-9]{1,12}$/;
 function normalizeAssetCode(value: string): string | null {
   const trimmed = value.trim();
   return ASSET_CODE_PATTERN.test(trimmed) ? trimmed : null;
+}
+
+function parseSafeInteger(value: string): number | null {
+  if (!/^[0-9]+$/.test(value)) {
+    return null;
+  }
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) ? parsed : null;
+}
+
+function formatQuoteAmount(amount: string): string {
+  const parsed = parseSafeInteger(amount);
+  return parsed === null ? amount : formatStroops(parsed);
+}
+
+function formatQuoteRate(rate: string): string {
+  const parsed = Number(rate);
+  return Number.isFinite(parsed) ? formatNumber(parsed) : rate;
 }
 
 export default function QuoteClient() {
@@ -142,8 +161,16 @@ export default function QuoteClient() {
           className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm dark:border-emerald-900 dark:bg-emerald-950"
         >
           <p className="font-medium">Route: {quote.route.join(" → ")}</p>
-          <p>Amount: {quote.amount}</p>
-          <p>Estimated rate: {quote.estimated_rate}</p>
+          <p>
+            Amount:{" "}
+            <span title={quote.amount}>{formatQuoteAmount(quote.amount)}</span>
+          </p>
+          <p>
+            Estimated rate:{" "}
+            <span title={quote.estimated_rate}>
+              {formatQuoteRate(quote.estimated_rate)}
+            </span>
+          </p>
         </section>
       )}
       {error && (
