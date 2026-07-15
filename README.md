@@ -149,6 +149,8 @@ stack remains inside a polite live region.
 
 Dynamic list updates (loading → loaded / loading → empty) on the pairs, events, api-keys, and webhooks pages are wrapped in `aria-live="polite"` regions so screen-reader users are notified when content arrives. Error messages continue to use `role="alert"` for assertive announcements. A single polite region per page prevents double announcements.
 
+The new-pair form keeps a polite `role="status"` node mounted before submission, announces the pending registration state, and briefly announces successful registration before redirecting to the pairs list. Validation and backend errors remain on the existing `role="alert"` path and clear the polite status.
+
 ## CI/CD
 
 On every push/PR to `main`, GitHub Actions runs:
