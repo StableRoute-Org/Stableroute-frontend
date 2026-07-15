@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { TextField } from "@/components/TextField";
 import type { ApiError } from "@/lib/apiClient";
-import { formatQuoteAmountDisplay, formatQuoteRateDisplay } from "@/lib/format";
 import { getApiBase } from "@/lib/config";
+import { formatQuoteAmountDisplay, formatQuoteRateDisplay } from "@/lib/format";
 
 type Quote = {
   source_asset: string;
@@ -20,28 +20,110 @@ type FieldErrors = {
   amount?: string;
 };
 
+type QuoteInputs = {
+  source: string;
+  dest: string;
+  amount: string;
+};
+
+type HistoryEntry = QuoteInputs & { savedAt: number };
+
+const INPUTS_KEY = "stableroute.quote.inputs";
+const HISTORY_KEY = "stableroute.quote.history";
+const MAX_HISTORY = 5;
 const ASSET_CODE_PATTERN = /^[A-Za-z0-9]{1,12}$/;
 
-/** Returns a trimmed Stellar asset code when it is safe to send to the quote API. */
 function normalizeAssetCode(value: string): string | null {
   const trimmed = value.trim();
   return ASSET_CODE_PATTERN.test(trimmed) ? trimmed : null;
 }
 
 function isValidAmount(value: string): boolean {
-  const trimmed = value.trim();
-  return /^[1-9]\d*$/.test(trimmed);
+  return /^[1-9]\d*$/.test(value.trim());
+}
+
+function readInputs(): QuoteInputs | null {
+  try {
+    const raw = localStorage.getItem(INPUTS_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as QuoteInputs;
+    if (
+      typeof parsed.source === "string" &&
+      typeof parsed.dest === "string" &&
+      typeof parsed.amount === "string"
+    ) {
+      return parsed;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+function readHistory(): HistoryEntry[] {
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw) as HistoryEntry[];
+    return Array.isArray(parsed) ? parsed.slice(0, MAX_HISTORY) : [];
+  } catch {
+    return [];
+  }
+}
+
+function pushHistory(entry: QuoteInputs) {
+  const next: HistoryEntry[] = [
+    { ...entry, savedAt: Date.now() },
+    ...readHistory().filter(
+      (item) =>
+        item.source !== entry.source ||
+        item.dest !== entry.dest ||
+        item.amount !== entry.amount,
+    ),
+  ].slice(0, MAX_HISTORY);
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
+  return next;
 }
 
 export default function QuoteClient() {
   const [sourceAsset, setSourceAsset] = useState("");
   const [destAsset, setDestAsset] = useState("");
   const [amount, setAmount] = useState("");
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [quote, setQuote] = useState<Quote | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [requestId, setRequestId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const saved = readInputs();
+    if (saved) {
+      setSourceAsset(saved.source);
+      setDestAsset(saved.dest);
+      setAmount(saved.amount);
+    }
+    setHistory(readHistory());
+  }, []);
+
+  const applyInputs = (inputs: QuoteInputs) => {
+    setSourceAsset(inputs.source);
+    setDestAsset(inputs.dest);
+    setAmount(inputs.amount);
+    setFieldErrors({});
+    setFormError(null);
+    setQuote(null);
+  };
+
+  const swapAssets = () => {
+    setSourceAsset(destAsset);
+    setDestAsset(sourceAsset);
+    setFieldErrors((current) => ({
+      ...current,
+      source: undefined,
+      dest: undefined,
+    }));
+  };
 
   const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -53,14 +135,9 @@ export default function QuoteClient() {
     const nextErrors: FieldErrors = {};
     const normalizedSource = normalizeAssetCode(sourceAsset);
     const normalizedDest = normalizeAssetCode(destAsset);
-    const normalizedAmount = amount.trim();
 
-    if (!normalizedSource) {
-      nextErrors.source = "Use 1-12 letters or numbers.";
-    }
-    if (!normalizedDest) {
-      nextErrors.dest = "Use 1-12 letters or numbers.";
-    }
+    if (!normalizedSource) nextErrors.source = "Use 1-12 letters or numbers.";
+    if (!normalizedDest) nextErrors.dest = "Use 1-12 letters or numbers.";
     if (!isValidAmount(amount)) {
       nextErrors.amount = "Amount must be a positive integer (base units).";
     }
@@ -72,14 +149,18 @@ export default function QuoteClient() {
       setFieldErrors(nextErrors);
       return;
     }
+    if (!normalizedSource || !normalizedDest || !isValidAmount(amount)) return;
 
-    if (!normalizedSource || !normalizedDest || !isValidAmount(amount)) {
-      return;
-    }
+    const inputs = {
+      source: sourceAsset,
+      dest: destAsset,
+      amount: amount.trim(),
+    };
+    localStorage.setItem(INPUTS_KEY, JSON.stringify(inputs));
 
     setLoading(true);
     try {
-      const url = `${getApiBase()}/api/v1/quote?source_asset=${encodeURIComponent(normalizedSource)}&dest_asset=${encodeURIComponent(normalizedDest)}&amount=${encodeURIComponent(normalizedAmount)}`;
+      const url = `${getApiBase()}/api/v1/quote?source_asset=${encodeURIComponent(normalizedSource)}&dest_asset=${encodeURIComponent(normalizedDest)}&amount=${encodeURIComponent(inputs.amount)}`;
       const res = await fetch(url);
       const body = await res.json();
       if (!res.ok) {
@@ -89,6 +170,7 @@ export default function QuoteClient() {
         return;
       }
       setQuote(body as Quote);
+      setHistory(pushHistory(inputs));
     } catch (err) {
       setFormError(err instanceof Error ? err.message : "network error");
     } finally {
@@ -106,9 +188,29 @@ export default function QuoteClient() {
         <h1 className="text-3xl font-semibold tracking-tight">Get a quote</h1>
         <p className="text-neutral-600 dark:text-neutral-400">
           Request a routing quote for a (source, destination, amount) triple.
-          Amount is expressed in base units (1 USDC = 10⁷ stroops).
         </p>
       </header>
+
+      {history.length > 0 && (
+        <section aria-labelledby="recent-quotes-heading" className="flex flex-col gap-2">
+          <h2 id="recent-quotes-heading" className="text-sm font-medium">
+            Recent quotes
+          </h2>
+          <ul className="flex flex-col gap-1">
+            {history.map((entry) => (
+              <li key={`${entry.source}-${entry.dest}-${entry.amount}-${entry.savedAt}`}>
+                <button
+                  type="button"
+                  onClick={() => applyInputs(entry)}
+                  className="w-full rounded border border-neutral-200 px-3 py-2 text-left text-sm hover:border-neutral-400 dark:border-neutral-800"
+                >
+                  {entry.source} → {entry.dest} · {entry.amount}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <form onSubmit={onSubmit} className="flex flex-col gap-3">
         <TextField
@@ -121,6 +223,14 @@ export default function QuoteClient() {
           error={fieldErrors.source}
           aria-invalid={fieldErrors.source ? true : undefined}
         />
+        <button
+          type="button"
+          onClick={swapAssets}
+          aria-label="Swap source and destination assets"
+          className="self-center rounded-full border border-neutral-300 px-3 py-1 text-xs dark:border-neutral-700"
+        >
+          Swap ⇄
+        </button>
         <TextField
           label="Destination asset"
           name="dest_asset"
@@ -144,7 +254,7 @@ export default function QuoteClient() {
         <button
           type="submit"
           disabled={loading}
-          className="self-start rounded-full bg-black px-5 py-2 text-sm font-medium text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="self-start rounded-full bg-black px-5 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
         >
           {loading ? "Quoting…" : "Get quote"}
         </button>
