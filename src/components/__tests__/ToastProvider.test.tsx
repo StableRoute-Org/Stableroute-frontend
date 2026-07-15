@@ -1,34 +1,23 @@
-import { act, fireEvent, render, screen } from "@testing-library/react";
+import { render, screen, act, fireEvent } from "@testing-library/react";
 import { ToastProvider, useToast } from "../ToastProvider";
 
 function ToastHarness() {
   const { push } = useToast();
   return (
     <div>
-      <button type="button" onClick={() => push("Alpha")}>
-        Alpha
+      <button type="button" onClick={() => push("hello")}>
+        push-default
       </button>
-      <button type="button" onClick={() => push("Beta")}>
-        Beta
+      <button
+        type="button"
+        onClick={() => push("slow", "info", { durationMs: 8000 })}
+      >
+        push-slow
       </button>
-      <button type="button" onClick={() => push("Gamma")}>
-        Gamma
-      </button>
-      <button type="button" onClick={() => push("Delta")}>
-        Delta
-      </button>
-      <button type="button" onClick={() => push("Alpha", "error")}>
-        Alpha error
+      <button type="button" onClick={() => push("sticky error", "error", { sticky: true })}>
+        push-sticky
       </button>
     </div>
-  );
-}
-
-function renderHarness() {
-  return render(
-    <ToastProvider>
-      <ToastHarness />
-    </ToastProvider>
   );
 }
 
@@ -38,80 +27,93 @@ describe("ToastProvider", () => {
   });
 
   afterEach(() => {
-    jest.clearAllTimers();
     jest.useRealTimers();
-    jest.restoreAllMocks();
   });
 
-  it("renders status and alert roles for info and error toasts", () => {
-    renderHarness();
+  it("auto-dismisses toasts after the default duration", () => {
+    render(
+      <ToastProvider>
+        <ToastHarness />
+      </ToastProvider>,
+    );
 
-    fireEvent.click(screen.getByRole("button", { name: "Alpha" }));
-    fireEvent.click(screen.getByRole("button", { name: "Alpha error" }));
-
-    expect(screen.getByRole("status")).toHaveTextContent("Alpha");
-    expect(screen.getByRole("alert")).toHaveTextContent("Alpha");
-  });
-
-  it("caps visible toasts and drops the oldest item", () => {
-    const clearTimeoutSpy = jest.spyOn(global, "clearTimeout");
-    renderHarness();
-
-    fireEvent.click(screen.getByRole("button", { name: "Alpha" }));
-    fireEvent.click(screen.getByRole("button", { name: "Beta" }));
-    fireEvent.click(screen.getByRole("button", { name: "Gamma" }));
-    fireEvent.click(screen.getByRole("button", { name: "Delta" }));
-
-    const toasts = screen.getAllByRole("status");
-    expect(toasts).toHaveLength(3);
-    expect(toasts[0]).toHaveTextContent("Beta");
-    expect(toasts[1]).toHaveTextContent("Gamma");
-    expect(toasts[2]).toHaveTextContent("Delta");
-    expect(toasts.some((toast) => toast.textContent?.includes("Alpha"))).toBe(false);
-    expect(clearTimeoutSpy).toHaveBeenCalled();
-  });
-
-  it("collapses duplicate messages with the same level into one toast", () => {
-    renderHarness();
-
-    fireEvent.click(screen.getByRole("button", { name: "Alpha" }));
-    fireEvent.click(screen.getByRole("button", { name: "Alpha" }));
-
-    expect(screen.getAllByRole("status")).toHaveLength(1);
-    expect(screen.getByRole("status")).toHaveTextContent("Alpha");
-    expect(screen.getByText("x2")).toBeInTheDocument();
-    expect(screen.getByLabelText("2 duplicate notifications")).toBeInTheDocument();
-  });
-
-  it("keeps matching messages with different levels separate", () => {
-    renderHarness();
-
-    fireEvent.click(screen.getByRole("button", { name: "Alpha" }));
-    fireEvent.click(screen.getByRole("button", { name: "Alpha error" }));
-
-    expect(screen.getByRole("status")).toHaveTextContent("Alpha");
-    expect(screen.getByRole("alert")).toHaveTextContent("Alpha");
-    expect(screen.queryByText("x2")).not.toBeInTheDocument();
-  });
-
-  it("refreshes the auto-dismiss timer when a duplicate is collapsed", () => {
-    renderHarness();
-
-    fireEvent.click(screen.getByRole("button", { name: "Alpha" }));
-    act(() => {
-      jest.advanceTimersByTime(3000);
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Alpha" }));
-    act(() => {
-      jest.advanceTimersByTime(1000);
-    });
-
-    expect(screen.getByRole("status")).toHaveTextContent("Alpha");
+    fireEvent.click(screen.getByRole("button", { name: "push-default" }));
+    expect(screen.getByText("hello")).toBeInTheDocument();
 
     act(() => {
-      jest.advanceTimersByTime(3000);
+      jest.advanceTimersByTime(3999);
     });
+    expect(screen.getByText("hello")).toBeInTheDocument();
 
-    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    act(() => {
+      jest.advanceTimersByTime(1);
+    });
+    expect(screen.queryByText("hello")).not.toBeInTheDocument();
+  });
+
+  it("honours a custom durationMs", () => {
+    render(
+      <ToastProvider>
+        <ToastHarness />
+      </ToastProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "push-slow" }));
+    act(() => {
+      jest.advanceTimersByTime(7999);
+    });
+    expect(screen.getByText("slow")).toBeInTheDocument();
+
+    act(() => {
+      jest.advanceTimersByTime(1);
+    });
+    expect(screen.queryByText("slow")).not.toBeInTheDocument();
+  });
+
+  it("keeps sticky toasts until manually dismissed", () => {
+    render(
+      <ToastProvider>
+        <ToastHarness />
+      </ToastProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "push-sticky" }));
+    act(() => {
+      jest.advanceTimersByTime(60_000);
+    });
+    expect(screen.getByRole("alert")).toHaveTextContent("sticky error");
+
+    fireEvent.click(screen.getByRole("button", { name: "Dismiss" }));
+    expect(screen.queryByText("sticky error")).not.toBeInTheDocument();
+  });
+
+  it("clears pending timers when a toast is dismissed early", () => {
+    render(
+      <ToastProvider>
+        <ToastHarness />
+      </ToastProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "push-default" }));
+    fireEvent.click(screen.getByRole("button", { name: "Dismiss" }));
+    expect(screen.queryByText("hello")).not.toBeInTheDocument();
+
+    act(() => {
+      jest.advanceTimersByTime(10_000);
+    });
+    expect(screen.queryByText("hello")).not.toBeInTheDocument();
+  });
+
+  it("renders multiple toasts independently", () => {
+    render(
+      <ToastProvider>
+        <ToastHarness />
+      </ToastProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "push-default" }));
+    fireEvent.click(screen.getByRole("button", { name: "push-sticky" }));
+    expect(screen.getByText("hello")).toBeInTheDocument();
+    expect(screen.getByText("sticky error")).toBeInTheDocument();
   });
 });

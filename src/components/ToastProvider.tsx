@@ -10,73 +10,70 @@ import {
   type ReactNode,
 } from "react";
 
-type Toast = {
-  id: string;
-  message: string;
-  level: "info" | "error";
-  count: number;
-};
-type Ctx = { push: (m: string, level?: Toast["level"]) => void };
+type ToastLevel = "info" | "error";
 
+export type ToastPushOptions = {
+  /** Auto-dismiss delay in ms. Ignored when `sticky` is true. Default 4000. */
+  durationMs?: number;
+  /** When true, the toast stays until manually dismissed. */
+  sticky?: boolean;
+};
+
+type Toast = { id: string; message: string; level: ToastLevel };
+
+type Ctx = {
+  push: (message: string, level?: ToastLevel, options?: ToastPushOptions) => void;
+};
+
+const DEFAULT_DURATION_MS = 4000;
 const ToastCtx = createContext<Ctx | null>(null);
-const AUTO_DISMISS_MS = 4000;
-const MAX_VISIBLE_TOASTS = 3;
 
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<Toast[]>([]);
-  const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+  const timersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   const clearTimer = useCallback((id: string) => {
-    const timer = timers.current.get(id);
-    if (timer) clearTimeout(timer);
-    timers.current.delete(id);
+    const timer = timersRef.current.get(id);
+    if (timer !== undefined) {
+      clearTimeout(timer);
+      timersRef.current.delete(id);
+    }
   }, []);
 
-  const scheduleDismiss = useCallback(
+  const dismiss = useCallback(
     (id: string) => {
       clearTimer(id);
-      const timer = setTimeout(() => {
-        timers.current.delete(id);
-        setItems((s) => s.filter((t) => t.id !== id));
-      }, AUTO_DISMISS_MS);
-      timers.current.set(id, timer);
+      setItems((current) => current.filter((toast) => toast.id !== id));
     },
-    [clearTimer]
+    [clearTimer],
+  );
+
+  /**
+   * Enqueue a toast. Pass `sticky: true` or `durationMs` to control auto-dismiss.
+   */
+  const push = useCallback(
+    (message: string, level: ToastLevel = "info", options?: ToastPushOptions) => {
+      const id = `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+      setItems((current) => [...current, { id, message, level }]);
+
+      if (!options?.sticky) {
+        const durationMs = options?.durationMs ?? DEFAULT_DURATION_MS;
+        const timer = setTimeout(() => dismiss(id), durationMs);
+        timersRef.current.set(id, timer);
+      }
+    },
+    [dismiss],
   );
 
   useEffect(() => {
-    const activeTimers = timers.current;
+    const timers = timersRef.current;
     return () => {
-      activeTimers.forEach((timer) => clearTimeout(timer));
-      activeTimers.clear();
+      for (const timer of timers.values()) {
+        clearTimeout(timer);
+      }
+      timers.clear();
     };
   }, []);
-
-  const push = useCallback(
-    (message: string, level: Toast["level"] = "info") => {
-      setItems((current) => {
-        const duplicate = current.find(
-          (toast) => toast.message === message && toast.level === level
-        );
-        if (duplicate) {
-          scheduleDismiss(duplicate.id);
-          return current.map((toast) =>
-            toast.id === duplicate.id
-              ? { ...toast, count: toast.count + 1 }
-              : toast
-          );
-        }
-
-        const id = `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-        scheduleDismiss(id);
-        const next = [...current, { id, message, level, count: 1 }];
-        const dropped = next.splice(0, Math.max(0, next.length - MAX_VISIBLE_TOASTS));
-        dropped.forEach((toast) => clearTimer(toast.id));
-        return next;
-      });
-    },
-    [clearTimer, scheduleDismiss]
-  );
 
   return (
     <ToastCtx.Provider value={{ push }}>
@@ -86,25 +83,25 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         aria-atomic="true"
         className="pointer-events-none fixed bottom-4 right-4 flex flex-col gap-2"
       >
-        {items.map((t) => (
+        {items.map((toast) => (
           <div
-            key={t.id}
-            role={t.level === "error" ? "alert" : "status"}
-            className={`pointer-events-auto rounded-md px-4 py-2 text-sm shadow-lg ${
-              t.level === "error"
+            key={toast.id}
+            role={toast.level === "error" ? "alert" : "status"}
+            className={`pointer-events-auto flex items-start gap-2 rounded-md px-4 py-2 text-sm shadow-lg ${
+              toast.level === "error"
                 ? "bg-rose-600 text-white"
                 : "bg-black text-white dark:bg-white dark:text-black"
             }`}
           >
-            <span>{t.message}</span>
-            {t.count > 1 && (
-              <span
-                aria-label={`${t.count} duplicate notifications`}
-                className="ml-2 rounded bg-white/20 px-1.5 py-0.5 text-xs font-semibold"
-              >
-                x{t.count}
-              </span>
-            )}
+            <span className="flex-1">{toast.message}</span>
+            <button
+              type="button"
+              aria-label="Dismiss"
+              onClick={() => dismiss(toast.id)}
+              className="shrink-0 rounded px-1 text-xs opacity-80 hover:opacity-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+            >
+              ×
+            </button>
           </div>
         ))}
       </div>
