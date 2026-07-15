@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { EmptyState } from "@/components/EmptyState";
+import { TimeAgo } from "@/components/TimeAgo";
 import { apiGet } from "@/lib/apiClient";
 import { parseEventsResponse, type DisplayEvent } from "@/lib/events";
 
@@ -126,7 +127,7 @@ export default function EventsClient() {
                   >
                     <div className="flex flex-wrap items-center justify-between gap-2 text-neutral-500">
                       <span>{event.type}</span>
-                      <span>{new Date(event.ts).toISOString()}</span>
+                      <TimeAgo ts={event.ts} />
                     </div>
                     <div className="mt-2 flex gap-2">
                       <button
