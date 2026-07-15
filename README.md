@@ -146,13 +146,14 @@ state.
 
 ## Accessibility
 
-### Toast queue behavior
+### UI styleguide
 
-The shared `ToastProvider` caps visible notifications at three toasts. Repeated
-messages with the same severity collapse into one toast with a count badge and
-refresh the auto-dismiss timer, while timers for dropped toasts are cleared.
-Info toasts keep `role="status"`, error toasts keep `role="alert"`, and the
-stack remains inside a polite live region.
+The shared visual language (Badge variants, Button variants, focus-ring
+convention, light/dark palette pairing) is documented in
+[`docs/STYLEGUIDE.md`](docs/STYLEGUIDE.md). New components should copy
+patterns from there rather than introducing ad-hoc Tailwind class strings.
+A sync test in `src/components/__tests__/Styleguide.test.tsx` fails the
+build if the guide falls out of sync with `Badge.tsx` or `Button.tsx`.
 
 ### ARIA Live Regions
 
