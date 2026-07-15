@@ -102,4 +102,31 @@ describe("ConfirmDialog", () => {
       screen.queryByText(/cannot be undone/i)
     ).not.toBeInTheDocument();
   });
+
+  it("uses destructive styling for the danger tone by default", () => {
+    render(
+      <ConfirmDialog
+        open
+        title="Delete item"
+        onConfirm={jest.fn()}
+        onCancel={jest.fn()}
+      />
+    );
+    expect(screen.getByRole("button", { name: "Confirm" }).className).toMatch(/rose/);
+  });
+
+  it("uses primary styling for the default tone", () => {
+    render(
+      <ConfirmDialog
+        open
+        title="Register webhook?"
+        tone="default"
+        onConfirm={jest.fn()}
+        onCancel={jest.fn()}
+      />
+    );
+    const confirm = screen.getByRole("button", { name: "Confirm" });
+    expect(confirm.className).toMatch(/bg-black/);
+    expect(confirm.className).not.toMatch(/rose/);
+  });
 });

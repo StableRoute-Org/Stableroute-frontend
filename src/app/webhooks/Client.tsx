@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Badge } from "@/components/Badge";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { TimeAgo } from "@/components/TimeAgo";
 import { apiGet, apiPost, apiDelete } from "@/lib/apiClient";
 
 type Hook = { id: string; url: string; events: string[]; createdAt: number };
@@ -10,19 +13,21 @@ export default function WebhooksClient() {
   const [url, setUrl] = useState("");
   const [eventsCsv, setEventsCsv] = useState("pair.registered");
   const [error, setError] = useState<string | null>(null);
+  const [confirmRegister, setConfirmRegister] = useState(false);
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
   const load = () =>
     apiGet<{ items: Hook[] }>("/api/v1/webhooks")
-      .then((b) => setItems(b.items))
-      .catch((e) => setError(e.message));
+      .then((body) => setItems(body.items))
+      .catch((err) => setError(err.message));
+
   useEffect(() => {
     load();
   }, []);
 
-  const onCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const registerWebhook = async () => {
     setError(null);
-    const events = eventsCsv.split(",").map((s) => s.trim()).filter(Boolean);
+    const events = eventsCsv.split(",").map((entry) => entry.trim()).filter(Boolean);
     try {
       await apiPost("/api/v1/webhooks", { url, events });
       setUrl("");
@@ -30,6 +35,11 @@ export default function WebhooksClient() {
     } catch (err) {
       setError((err as Error).message);
     }
+  };
+
+  const onCreate = (event: React.FormEvent) => {
+    event.preventDefault();
+    setConfirmRegister(true);
   };
 
   return (
@@ -65,24 +75,37 @@ export default function WebhooksClient() {
         >
           Register
         </button>
-        {error && <p role="alert" className="text-sm text-rose-600">{error}</p>}
+        {error && (
+          <p role="alert" className="text-sm text-rose-600">
+            {error}
+          </p>
+        )}
       </form>
       {!items && !error && <p>Loading…</p>}
       <section aria-live="polite" aria-atomic="true" className="contents">
         {items && items.length === 0 && (
-          <p className="text-sm text-neutral-600 dark:text-neutral-400">No webhooks registered.</p>
+          <p className="text-sm text-neutral-600 dark:text-neutral-400">
+            No webhooks registered.
+          </p>
         )}
         {items && items.length > 0 && (
           <ul className="divide-y divide-neutral-200 dark:divide-neutral-800">
-            {items.map((w) => (
-              <li key={w.id} className="flex items-center justify-between py-3">
-                <div>
-                  <p className="text-sm font-medium break-all">{w.url}</p>
-                  <p className="text-xs text-neutral-500">{w.events.join(", ")}</p>
+            {items.map((hook) => (
+              <li key={hook.id} className="flex items-center justify-between gap-4 py-3">
+                <div className="min-w-0 flex-1">
+                  <p className="break-all text-sm font-medium">{hook.url}</p>
+                  <p className="mt-1 text-xs text-neutral-500">
+                    Registered <TimeAgo ts={hook.createdAt} />
+                  </p>
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {hook.events.map((event) => (
+                      <Badge key={event}>{event}</Badge>
+                    ))}
+                  </div>
                 </div>
                 <button
                   type="button"
-                  onClick={() => apiDelete(`/api/v1/webhooks/${w.id}`).then(() => load())}
+                  onClick={() => setPendingDeleteId(hook.id)}
                   className="rounded border border-neutral-300 px-3 py-1 text-xs hover:border-rose-500 hover:text-rose-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 dark:border-neutral-700"
                 >
                   Remove
@@ -92,6 +115,33 @@ export default function WebhooksClient() {
           </ul>
         )}
       </section>
+      <ConfirmDialog
+        open={confirmRegister}
+        tone="default"
+        title="Register webhook?"
+        description="This endpoint will receive router events for the selected subscriptions."
+        confirmLabel="Register"
+        onConfirm={() => {
+          setConfirmRegister(false);
+          void registerWebhook();
+        }}
+        onCancel={() => setConfirmRegister(false)}
+      />
+      <ConfirmDialog
+        open={pendingDeleteId !== null}
+        tone="danger"
+        title="Remove webhook?"
+        description="This endpoint will stop receiving events immediately."
+        confirmLabel="Remove"
+        onConfirm={() => {
+          const id = pendingDeleteId;
+          setPendingDeleteId(null);
+          if (id) {
+            void apiDelete(`/api/v1/webhooks/${id}`).then(() => load());
+          }
+        }}
+        onCancel={() => setPendingDeleteId(null)}
+      />
     </main>
   );
 }
