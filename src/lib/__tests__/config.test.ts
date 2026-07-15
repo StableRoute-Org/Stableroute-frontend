@@ -1,14 +1,11 @@
-import { getApiBase } from "../config";
+import { DEFAULT_API_BASE, getApiBase, validateApiBase } from "../config";
 
-describe("getApiBase", () => {
+describe("config", () => {
   const original = process.env.NEXT_PUBLIC_STABLEROUTE_API_BASE;
 
   afterEach(() => {
-    if (original === undefined) {
-      delete process.env.NEXT_PUBLIC_STABLEROUTE_API_BASE;
-    } else {
-      process.env.NEXT_PUBLIC_STABLEROUTE_API_BASE = original;
-    }
+    if (original === undefined) delete process.env.NEXT_PUBLIC_STABLEROUTE_API_BASE;
+    else process.env.NEXT_PUBLIC_STABLEROUTE_API_BASE = original;
   });
 
   it("returns the env override when set", () => {
@@ -18,6 +15,10 @@ describe("getApiBase", () => {
 
   it("falls back to localhost when unset", () => {
     delete process.env.NEXT_PUBLIC_STABLEROUTE_API_BASE;
-    expect(getApiBase()).toBe("http://localhost:3001");
+    expect(getApiBase()).toBe(DEFAULT_API_BASE);
+  });
+
+  it("rejects non-http(s) API base values", () => {
+    expect(() => validateApiBase("ftp://bad.example")).toThrow(/http/);
   });
 });
