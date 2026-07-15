@@ -12,10 +12,14 @@ export type ApiFetchOptions = {
     maxAttempts?: number;
     baseDelayMs?: number;
   };
+  /** Request timeout in milliseconds. Default 15000. */
+  timeoutMs?: number;
 };
 
 type AuthErrorHandler = (status: 401 | 403) => void;
 let _authErrorHandler: AuthErrorHandler | null = null;
+
+const DEFAULT_TIMEOUT_MS = 15_000;
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -62,10 +66,14 @@ export async function apiFetch<T>(
   const baseDelayMs = options?.retry?.baseDelayMs ?? 100;
 
   let lastError: unknown;
+  const timeoutMs = options?.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
       const res = await fetch(`${getApiBase()}${path}`, {
         headers: { "Content-Type": "application/json", ...(init.headers ?? {}) },
+        signal: controller.signal,
         ...init,
       });
       if (!res.ok && res.status >= 500 && attempt < maxAttempts) {
@@ -74,12 +82,26 @@ export async function apiFetch<T>(
       }
       return await parseResponse<T>(res);
     } catch (err) {
+      if (
+        err instanceof Error &&
+        ("status" in err ||
+          err.message === "Invalid JSON response" ||
+          err.message.startsWith("HTTP "))
+      ) {
+        throw err;
+      }
       lastError = err;
+      const message =
+        err instanceof DOMException && err.name === "AbortError"
+          ? "Request timed out"
+          : "Network request failed";
       if (attempt < maxAttempts) {
         await sleep(baseDelayMs * 2 ** (attempt - 1));
         continue;
       }
-      throw err;
+      throw new Error(message);
+    } finally {
+      clearTimeout(timer);
     }
   }
   throw lastError ?? new Error("request failed");
