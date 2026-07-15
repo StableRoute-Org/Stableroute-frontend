@@ -25,6 +25,27 @@ Each route is defined under `src/app` and connects to its respective UI page:
 - **`/docs`** ([docs/page.tsx](src/app/docs/page.tsx)): Documentation page describing the API endpoints and usage.
 - **`/about`** ([about/page.tsx](src/app/about/page.tsx)): Static about page describing the protocol.
 
+## Shared UI components
+
+Reusable building blocks live under `src/components` and are imported by route pages:
+
+| Component | Purpose |
+|-----------|---------|
+| [`TextField`](src/components/TextField.tsx) | Accessible labeled inputs with `aria-describedby` error wiring |
+| [`Button`](src/components/Button.tsx) | Primary actions; supports `asChild` for link-style buttons |
+| [`IconButton`](src/components/IconButton.tsx) | Icon-only controls with required `aria-label` |
+| [`PageHeading`](src/components/PageHeading.tsx) | Consistent page title + optional description |
+| [`ConfirmDialog`](src/components/ConfirmDialog.tsx) | Modal confirmation with focus trap and Escape to dismiss |
+| [`EmptyState`](src/components/EmptyState.tsx) | Placeholder when a list has no rows |
+| [`StatTile`](src/components/StatTile.tsx) | Metric card used on `/stats` |
+| [`TimeAgo`](src/components/TimeAgo.tsx) | Relative timestamps with `aria-label` |
+| [`ThemeToggle`](src/components/ThemeToggle.tsx) | Light/dark appearance switch persisted in `localStorage` |
+| [`ToastProvider`](src/components/ToastProvider.tsx) | App-wide toast notifications |
+| [`KeyboardShortcutsHelp`](src/components/KeyboardShortcutsHelp.tsx) | `?` overlay listing keyboard shortcuts |
+| [`CommandPalette`](src/components/CommandPalette.tsx) | `Cmd/Ctrl+K` route jump palette |
+
+Data fetching helpers (`apiClient`, `useApi`, `useList`) live in `src/lib`.
+
 ## Footer Navigation
 
 The shared footer keeps the StableRoute tagline visible on every page, renders the current copyright year dynamically, and links to `/docs`, `/about`, and the StableRoute Discord community.
