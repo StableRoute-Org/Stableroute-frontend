@@ -28,6 +28,23 @@ export default function PairsClient() {
     );
   }, [pairs, query]);
 
+  // Group destinations by source asset so operators can see structure
+  // at a glance when many destinations share a source. Sources are sorted
+  // alphabetically; destinations within a group preserve their original
+  // order from the API.
+  const grouped = useMemo(() => {
+    if (!filtered) return null;
+    const map = new Map<string, Pair[]>();
+    for (const pair of filtered) {
+      const bucket = map.get(pair.source) ?? [];
+      bucket.push(pair);
+      map.set(pair.source, bucket);
+    }
+    return Array.from(map.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([source, destinations]) => ({ source, destinations }));
+  }, [filtered]);
+
   return (
     <main id="main-content" tabIndex={-1} className="mx-auto flex min-h-[60vh] max-w-3xl flex-col gap-6 p-8">
       <PageHeading
@@ -63,27 +80,57 @@ export default function PairsClient() {
         {filtered && filtered.length === 0 && (
           <EmptyState title="No pairs found" description="Try a different filter or register a new pair." />
         )}
-        {filtered && filtered.length > 0 && (
-          <ul className="divide-y divide-neutral-200 dark:divide-neutral-800">
-            {filtered.map((pair) => (
-              <li key={`${pair.source}::${pair.destination}`} className="flex items-center justify-between gap-3 py-3">
-                <span className="font-mono text-sm">
-                  {pair.source} → {pair.destination}
-                </span>
-                <div className="flex gap-2">
-                  <Link
-                    href={`/quote?source=${encodeURIComponent(pair.source)}&dest=${encodeURIComponent(pair.destination)}`}
-                    className="rounded border px-3 py-1 text-xs dark:border-neutral-700"
-                  >
-                    Quote
-                  </Link>
-                  <button type="button" onClick={() => setPendingDelete(pair)} className="rounded border px-3 py-1 text-xs">
-                    Delete
-                  </button>
-                </div>
-              </li>
+        {grouped && grouped.length > 0 && (
+          <div className="flex flex-col gap-6">
+            <p className="text-sm text-neutral-600 dark:text-neutral-400">
+              {grouped.length} source{grouped.length === 1 ? "" : "s"} · {filtered.length} pair
+              {filtered.length === 1 ? "" : "s"} total
+            </p>
+            {grouped.map(({ source, destinations }) => (
+              <section
+                key={source}
+                aria-labelledby={`group-${source}`}
+                className="flex flex-col gap-2"
+              >
+                <h3
+                  id={`group-${source}`}
+                  className="flex items-baseline gap-2 text-sm font-semibold text-neutral-700 dark:text-neutral-300"
+                >
+                  <span className="font-mono">{source}</span>
+                  <span className="text-xs font-normal text-neutral-500">
+                    {destinations.length} destination{destinations.length === 1 ? "" : "s"}
+                  </span>
+                </h3>
+                <ul className="divide-y divide-neutral-200 dark:divide-neutral-800">
+                  {destinations.map((pair) => (
+                    <li
+                      key={`${pair.source}::${pair.destination}`}
+                      className="flex items-center justify-between gap-3 py-3"
+                    >
+                      <span className="font-mono text-sm">
+                        {pair.source} → {pair.destination}
+                      </span>
+                      <div className="flex gap-2">
+                        <Link
+                          href={`/quote?source=${encodeURIComponent(pair.source)}&dest=${encodeURIComponent(pair.destination)}`}
+                          className="rounded border px-3 py-1 text-xs dark:border-neutral-700"
+                        >
+                          Quote
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() => setPendingDelete(pair)}
+                          className="rounded border px-3 py-1 text-xs"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </section>
             ))}
-          </ul>
+          </div>
         )}
       </section>
       <ConfirmDialog
