@@ -1,30 +1,4 @@
-import {
-  apiDelete,
-  apiFetch,
-  apiPatch,
-  apiPost,
-  registerAuthErrorHandler,
-} from "../apiClient";
-
-function loadApiClientWithBase(base: string) {
-  const previousBase = process.env.NEXT_PUBLIC_STABLEROUTE_API_BASE;
-  try {
-    jest.resetModules();
-    process.env.NEXT_PUBLIC_STABLEROUTE_API_BASE = base;
-    let loadedApiClient: typeof import("../apiClient") | undefined;
-    jest.isolateModules(() => {
-      loadedApiClient = require("../apiClient") as typeof import("../apiClient");
-    });
-    return loadedApiClient!;
-  } finally {
-    if (previousBase === undefined) {
-      delete process.env.NEXT_PUBLIC_STABLEROUTE_API_BASE;
-    } else {
-      process.env.NEXT_PUBLIC_STABLEROUTE_API_BASE = previousBase;
-    }
-    jest.resetModules();
-  }
-}
+import { apiFetch, registerAuthErrorHandler, validateApiBase } from "../apiClient";
 
 function mockResponse(status: number, body: string, contentType = "application/json") {
   global.fetch = jest.fn().mockResolvedValue({
@@ -259,5 +233,46 @@ describe("registerAuthErrorHandler", () => {
     const err = await apiFetch("/secure").catch((e: unknown) => e) as Error & { status: number };
     expect(err.status).toBe(401);
     unregister();
+  });
+});
+
+describe("validateApiBase", () => {
+  it("passes for http URL", () => {
+    expect(() => validateApiBase("http://localhost:3001")).not.toThrow();
+  });
+
+  it("passes for https URL", () => {
+    expect(() => validateApiBase("https://api.stableroute.com")).not.toThrow();
+  });
+
+  it("passes for http URL with port", () => {
+    expect(() => validateApiBase("http://api.example.com:8080")).not.toThrow();
+  });
+
+  it("rejects ftp protocol", () => {
+    expect(() => validateApiBase("ftp://localhost:3001")).toThrow(
+      /must use http or https/i,
+    );
+  });
+
+  it("rejects javascript protocol", () => {
+    expect(() => validateApiBase("javascript:alert(1)")).toThrow(
+      /must use http or https/i,
+    );
+  });
+
+  it("rejects file protocol", () => {
+    expect(() => validateApiBase("file:///etc/passwd")).toThrow(
+      /must use http or https/i,
+    );
+  });
+
+  it("rejects empty string", () => {
+    expect(() => validateApiBase("")).toThrow();
+  });
+
+  it("rejects relative paths", () => {
+    expect(() => validateApiBase("/api")).toThrow();
+    expect(() => validateApiBase("localhost:3001")).toThrow();
   });
 });

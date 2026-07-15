@@ -1,31 +1,23 @@
 const API_BASE =
   process.env.NEXT_PUBLIC_STABLEROUTE_API_BASE ?? "http://localhost:3001";
 
-function parseApiBase(value: string): URL {
-  let url: URL;
+/** Validates that a URL uses http(s) and is an absolute URL. */
+export function validateApiBase(url: string): void {
+  if (!/^https?:\/\//i.test(url)) {
+    throw new Error(
+      `NEXT_PUBLIC_STABLEROUTE_API_BASE must use http or https; got "${url}"`,
+    );
+  }
   try {
-    url = new URL(value);
+    new URL(url);
   } catch {
-    throw new Error("Invalid StableRoute API base URL configuration");
+    throw new Error(
+      `NEXT_PUBLIC_STABLEROUTE_API_BASE must be a valid absolute URL; got "${url}"`,
+    );
   }
-  if (url.protocol !== "http:" && url.protocol !== "https:") {
-    throw new Error("Invalid StableRoute API base URL configuration");
-  }
-  return url;
 }
 
-const API_BASE_URL = parseApiBase(API_BASE);
-
-function resolveApiUrl(path: string): string {
-  if (!path.startsWith("/") || path.startsWith("//")) {
-    throw new Error("API request path must be a relative path starting with /");
-  }
-  const url = new URL(path, API_BASE_URL);
-  if (url.origin !== API_BASE_URL.origin) {
-    throw new Error("API request path must stay on the configured API origin");
-  }
-  return url.toString();
-}
+validateApiBase(API_BASE);
 
 export type ApiError = {
   error: string;
