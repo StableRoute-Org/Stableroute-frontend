@@ -1,13 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Badge } from "@/components/Badge";
 import { Button } from "@/components/Button";
+import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { apiGet, apiPost } from "@/lib/apiClient";
 
 export default function AdminClient() {
   const [paused, setPaused] = useState<boolean | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [confirmPause, setConfirmPause] = useState(false);
 
   const load = () =>
     apiGet<{ paused: boolean }>("/api/v1/admin/status")
@@ -18,8 +21,7 @@ export default function AdminClient() {
     load();
   }, []);
 
-  /** Toggle router pause state; guards double-submit while the request is in flight. */
-  const toggle = async () => {
+  const applyToggle = async () => {
     if (busy || paused === null) return;
     setError(null);
     setBusy(true);
@@ -31,6 +33,15 @@ export default function AdminClient() {
     } finally {
       setBusy(false);
     }
+  };
+
+  const onToggleClick = () => {
+    if (busy || paused === null) return;
+    if (paused) {
+      void applyToggle();
+      return;
+    }
+    setConfirmPause(true);
   };
 
   return (
@@ -49,12 +60,13 @@ export default function AdminClient() {
           <h2 id="admin-status-heading" className="sr-only">
             Router pause status
           </h2>
-          <p>
-            Status: <strong>{paused ? "Paused" : "Live"}</strong>
-          </p>
+          <div className="flex items-center gap-2">
+            <p>Status:</p>
+            <Badge variant={paused ? "warning" : "ok"}>{paused ? "Paused" : "Live"}</Badge>
+          </div>
           <Button
             type="button"
-            onClick={toggle}
+            onClick={onToggleClick}
             disabled={busy}
             aria-pressed={paused}
             aria-busy={busy}
@@ -68,6 +80,17 @@ export default function AdminClient() {
           {error}
         </p>
       )}
+      <ConfirmDialog
+        open={confirmPause}
+        tone="danger"
+        title="Pause routing?"
+        confirmLabel="Pause router"
+        onConfirm={() => {
+          setConfirmPause(false);
+          void applyToggle();
+        }}
+        onCancel={() => setConfirmPause(false)}
+      />
     </main>
   );
 }
