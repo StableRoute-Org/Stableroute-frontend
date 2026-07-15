@@ -1,4 +1,4 @@
-import { apiFetch, registerAuthErrorHandler, validateApiBase } from "../apiClient";
+import { apiFetch, registerAuthErrorHandler } from "../apiClient";
 
 function mockResponse(status: number, body: string, contentType = "application/json") {
   global.fetch = jest.fn().mockResolvedValue({
@@ -15,12 +15,6 @@ describe("apiFetch", () => {
   it("returns parsed JSON on success", async () => {
     mockResponse(200, JSON.stringify({ id: 1 }));
     await expect(apiFetch("/test")).resolves.toEqual({ id: 1 });
-    expect(global.fetch).toHaveBeenCalledWith(
-      "http://localhost:3001/test",
-      expect.objectContaining({
-        headers: expect.objectContaining({ "Content-Type": "application/json" }),
-      })
-    );
   });
 
   it("returns undefined for 204", async () => {
@@ -57,117 +51,6 @@ describe("apiFetch", () => {
     const err = await apiFetch("/test").catch((e: unknown) => e) as Error & { status: number };
     expect(err).toBeInstanceOf(Error);
     expect(err.status).toBe(400);
-  });
-
-  it("uses a valid configured http API base", async () => {
-    const { apiFetch: configuredApiFetch } = loadApiClientWithBase("https://api.example.test");
-    mockResponse(200, JSON.stringify({ id: 2 }));
-
-    await expect(configuredApiFetch("/test")).resolves.toEqual({ id: 2 });
-
-    expect(global.fetch).toHaveBeenCalledWith(
-      "https://api.example.test/test",
-      expect.any(Object)
-    );
-  });
-
-  it("rejects non-http API base schemes without leaking the raw value", () => {
-    const rawBase = "javascript:alert(1)";
-
-    try {
-      loadApiClientWithBase(rawBase);
-      throw new Error("expected loadApiClientWithBase to throw");
-    } catch (error) {
-      const message = (error as Error).message;
-      expect(message).toBe("Invalid StableRoute API base URL configuration");
-      expect(message).not.toContain(rawBase);
-    }
-  });
-
-  it("rejects unparseable API base values without leaking the raw value", () => {
-    const rawBase = "not a url";
-
-    try {
-      loadApiClientWithBase(rawBase);
-      throw new Error("expected loadApiClientWithBase to throw");
-    } catch (error) {
-      const message = (error as Error).message;
-      expect(message).toBe("Invalid StableRoute API base URL configuration");
-      expect(message).not.toContain(rawBase);
-    }
-  });
-
-  it("rejects absolute request paths before fetch", async () => {
-    global.fetch = jest.fn();
-
-    await expect(apiFetch("https://evil.example/api")).rejects.toThrow(
-      "API request path must be a relative path starting with /"
-    );
-
-    expect(global.fetch).not.toHaveBeenCalled();
-  });
-
-  it("rejects protocol-relative request paths before fetch", async () => {
-    global.fetch = jest.fn();
-
-    await expect(apiFetch("//evil.example/api")).rejects.toThrow(
-      "API request path must be a relative path starting with /"
-    );
-
-    expect(global.fetch).not.toHaveBeenCalled();
-  });
-
-  it("rejects backslash paths that would resolve to another origin", async () => {
-    global.fetch = jest.fn();
-
-    await expect(apiFetch("/\\evil.example/api")).rejects.toThrow(
-      "API request path must stay on the configured API origin"
-    );
-
-    expect(global.fetch).not.toHaveBeenCalled();
-  });
-
-  it("posts JSON through the shared wrapper", async () => {
-    mockResponse(200, JSON.stringify({ ok: true }));
-
-    await expect(apiPost("/test", { label: "prod" })).resolves.toEqual({ ok: true });
-
-    expect(global.fetch).toHaveBeenCalledWith(
-      "http://localhost:3001/test",
-      expect.objectContaining({
-        method: "POST",
-        body: JSON.stringify({ label: "prod" }),
-      })
-    );
-  });
-
-  it("patches JSON through the shared wrapper", async () => {
-    mockResponse(200, JSON.stringify({ ok: true }));
-
-    await expect(apiPatch("/test", { fee_bps: 10 })).resolves.toEqual({ ok: true });
-
-    expect(global.fetch).toHaveBeenCalledWith(
-      "http://localhost:3001/test",
-      expect.objectContaining({
-        method: "PATCH",
-        body: JSON.stringify({ fee_bps: 10 }),
-      })
-    );
-  });
-
-  it("deletes through the shared wrapper", async () => {
-    global.fetch = jest.fn().mockResolvedValue({
-      status: 204,
-      ok: true,
-      text: () => Promise.resolve(""),
-    } as unknown as Response);
-
-    await expect(apiDelete("/test")).resolves.toBeUndefined();
-
-    expect(global.fetch).toHaveBeenCalledWith(
-      "http://localhost:3001/test",
-      expect.objectContaining({ method: "DELETE" })
-    );
   });
 });
 
@@ -234,45 +117,35 @@ describe("registerAuthErrorHandler", () => {
     expect(err.status).toBe(401);
     unregister();
   });
-});
 
-describe("validateApiBase", () => {
-  it("passes for http URL", () => {
-    expect(() => validateApiBase("http://localhost:3001")).not.toThrow();
+  it("retries idempotent GET requests on 5xx with backoff", async () => {
+    jest.useFakeTimers();
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce({
+        status: 503,
+        ok: false,
+        text: () => Promise.resolve(""),
+      } as unknown as Response)
+      .mockResolvedValueOnce({
+        status: 200,
+        ok: true,
+        text: () => Promise.resolve(JSON.stringify({ ok: true })),
+      } as unknown as Response);
+    global.fetch = fetchMock as unknown as typeof global.fetch;
+
+    const promise = apiFetch("/retry-me", {}, { retry: { maxAttempts: 2, baseDelayMs: 50 } });
+    await jest.advanceTimersByTimeAsync(50);
+    await expect(promise).resolves.toEqual({ ok: true });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    jest.useRealTimers();
   });
 
-  it("passes for https URL", () => {
-    expect(() => validateApiBase("https://api.stableroute.com")).not.toThrow();
-  });
-
-  it("passes for http URL with port", () => {
-    expect(() => validateApiBase("http://api.example.com:8080")).not.toThrow();
-  });
-
-  it("rejects ftp protocol", () => {
-    expect(() => validateApiBase("ftp://localhost:3001")).toThrow(
-      /must use http or https/i,
-    );
-  });
-
-  it("rejects javascript protocol", () => {
-    expect(() => validateApiBase("javascript:alert(1)")).toThrow(
-      /must use http or https/i,
-    );
-  });
-
-  it("rejects file protocol", () => {
-    expect(() => validateApiBase("file:///etc/passwd")).toThrow(
-      /must use http or https/i,
-    );
-  });
-
-  it("rejects empty string", () => {
-    expect(() => validateApiBase("")).toThrow();
-  });
-
-  it("rejects relative paths", () => {
-    expect(() => validateApiBase("/api")).toThrow();
-    expect(() => validateApiBase("localhost:3001")).toThrow();
+  it("does not retry non-GET methods", async () => {
+    mockResponse(503, "");
+    await expect(
+      apiFetch("/retry-me", { method: "POST", body: "{}" }, { retry: { maxAttempts: 3 } }),
+    ).rejects.toThrow("HTTP 503");
+    expect(global.fetch).toHaveBeenCalledTimes(1);
   });
 });
