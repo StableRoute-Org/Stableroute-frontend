@@ -196,6 +196,19 @@ without each call site re-implementing the check. Because the slot is
 single, only the most recent registration is active; always store and
 call the unregister function from the most recent call.
 
+## Data pages
+
+Data-fetching pages (e.g. `/pairs`, `/events`, `/api-keys`, `/webhooks`,
+`/stats`) standardize on the [`src/lib/useApi.ts`](src/lib/useApi.ts)
+hook. The hook returns a discriminated `state` (`loading | error | ok`)
+and provides built-in cancellation on unmount; do **not** hand-roll a
+`useEffect` + `useState` fetch pair inside a page or component — it
+duplicates the loading/error/empty machinery and skips the cancellation
+behaviour the hook provides.
+
+The pairs list page is the reference implementation: see
+[`src/app/pairs/Client.tsx`](src/app/pairs/Client.tsx).
+
 ## Accessibility
 
 ### UI styleguide

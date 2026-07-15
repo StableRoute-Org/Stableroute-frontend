@@ -6,10 +6,14 @@ import { useApi } from "@/lib/useApi";
 type Pair = { source: string; destination: string };
 
 export default function PairsClient() {
-  const pairsState = useApi<{ pairs: Pair[] }>("/api/v1/pairs");
-  const isLoading = pairsState.status === "loading";
-  const error = pairsState.status === "error" ? pairsState.error : null;
-  const pairs = pairsState.status === "ok" ? pairsState.data.pairs : null;
+  const state = useApi<{ pairs: Pair[] }>("/api/v1/pairs");
+
+  // Discriminated state — derives loading/empty/list/error UI without
+  // a separate isLoading flag. Cancellation on unmount is provided by
+  // useApi (the inline fetch effect did not have it).
+  const isLoading = state.status === "loading";
+  const pairs = state.status === "ok" ? state.data.pairs : null;
+  const error = state.status === "error" ? state.error : null;
 
   return (
     <main
@@ -46,7 +50,10 @@ export default function PairsClient() {
         {pairs && pairs.length > 0 && (
           <ul className="divide-y divide-neutral-200 dark:divide-neutral-800">
             {pairs.map((p) => (
-              <li key={`${p.source}::${p.destination}`} className="py-3 font-mono text-sm">
+              <li
+                key={`${p.source}::${p.destination}`}
+                className="py-3 font-mono text-sm"
+              >
                 {p.source} → {p.destination}
               </li>
             ))}
