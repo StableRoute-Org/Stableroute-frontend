@@ -30,6 +30,17 @@ describe("StatsPage", () => {
     await screen.findByText("Live");
   });
 
+  it("names the metrics panel with an accessible region", async () => {
+    mockFetch({ totalPairs: 12, paused: false });
+    render(<StatsPage />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("region", { name: /router metrics/i }),
+      ).toBeInTheDocument();
+    });
+  });
+
   it("formats totalPairs with thousands separators via formatNumber", async () => {
     mockFetch({ totalPairs: 1234567, paused: false });
     render(<StatsPage />);

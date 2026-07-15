@@ -34,7 +34,13 @@ export default function AdminClient() {
       <h1 className="text-3xl font-semibold tracking-tight">Admin</h1>
       {paused === null && !error && <p>Loading status…</p>}
       {paused !== null && (
-        <section className="flex items-center justify-between rounded-lg border border-neutral-200 p-4 dark:border-neutral-800">
+        <section
+          aria-labelledby="admin-status-heading"
+          className="flex items-center justify-between rounded-lg border border-neutral-200 p-4 dark:border-neutral-800"
+        >
+          <h2 id="admin-status-heading" className="sr-only">
+            Router pause status
+          </h2>
           <p>
             Status: <strong>{paused ? "Paused" : "Live"}</strong>
           </p>

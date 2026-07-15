@@ -71,6 +71,20 @@ describe("EventsPage", () => {
     expect(document.querySelectorAll("[aria-live=polite]")).toHaveLength(1);
   });
 
+  it("names the event log region for assistive tech", async () => {
+    global.fetch = jest.fn().mockResolvedValueOnce({
+      ok: true,
+      text: async () => JSON.stringify({ items: [] }),
+    } as unknown as Response);
+
+    render(<EventsPage />);
+    await waitFor(() => {
+      expect(
+        screen.getByRole("region", { name: /event log entries/i }),
+      ).toBeInTheDocument();
+    });
+  });
+
   it("drops malformed event records instead of throwing during render", async () => {
     global.fetch = jest.fn().mockResolvedValueOnce({
       ok: true,
