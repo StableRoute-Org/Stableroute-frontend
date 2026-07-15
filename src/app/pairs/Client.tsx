@@ -1,25 +1,22 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
+import { EmptyState } from "@/components/EmptyState";
 import { PageHeading } from "@/components/PageHeading";
-import { apiDelete, apiGet } from "@/lib/apiClient";
+import { Spinner } from "@/components/Spinner";
+import { apiDelete } from "@/lib/apiClient";
+import { useApi } from "@/lib/useApi";
 
 type Pair = { source: string; destination: string };
 
 export default function PairsClient() {
-  const [pairs, setPairs] = useState<Pair[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const { status, data, error, refetch } = useApi<{ pairs: Pair[] }>("/api/v1/pairs");
   const [query, setQuery] = useState("");
   const [pendingDelete, setPendingDelete] = useState<Pair | null>(null);
 
-  useEffect(() => {
-    apiGet<{ pairs: Pair[] }>("/api/v1/pairs")
-      .then((body) => setPairs(body.pairs))
-      .catch((err) => setError(err.message));
-  }, []);
-
+  const pairs = status === "ok" ? data.pairs : null;
   const filtered = useMemo(() => {
     if (!pairs) return null;
     const needle = query.trim().toLowerCase();
@@ -30,8 +27,6 @@ export default function PairsClient() {
         pair.destination.toLowerCase().includes(needle),
     );
   }, [pairs, query]);
-
-  const isLoading = pairs === null && error === null;
 
   return (
     <main id="main-content" tabIndex={-1} className="mx-auto flex min-h-[60vh] max-w-3xl flex-col gap-6 p-8">
@@ -53,11 +48,20 @@ export default function PairsClient() {
           className="rounded-md border border-neutral-300 px-3 py-2 dark:border-neutral-700 dark:bg-neutral-900"
         />
       </label>
-      {error && <p role="alert" className="text-sm text-rose-600">{error}</p>}
-      <section aria-live="polite" aria-busy={isLoading} className="contents">
-        {isLoading && <p>Loading…</p>}
+      {status === "error" && (
+        <p role="alert" className="text-sm text-rose-600">
+          {error}
+        </p>
+      )}
+      <section aria-live="polite" aria-busy={status === "loading"} className="contents">
+        {status === "loading" && (
+          <div className="flex items-center gap-2 text-sm text-neutral-600">
+            <Spinner label="Loading pairs" />
+            Loading…
+          </div>
+        )}
         {filtered && filtered.length === 0 && (
-          <p className="text-sm text-neutral-600">No pairs match your filter.</p>
+          <EmptyState title="No pairs found" description="Try a different filter or register a new pair." />
         )}
         {filtered && filtered.length > 0 && (
           <ul className="divide-y divide-neutral-200 dark:divide-neutral-800">
@@ -93,14 +97,7 @@ export default function PairsClient() {
           setPendingDelete(null);
           void apiDelete(
             `/api/v1/pairs/${encodeURIComponent(target.source)}/${encodeURIComponent(target.destination)}`,
-          ).then(() =>
-            setPairs((current) =>
-              (current ?? []).filter(
-                (pair) =>
-                  !(pair.source === target.source && pair.destination === target.destination),
-              ),
-            ),
-          );
+          ).then(() => refetch());
         }}
         onCancel={() => setPendingDelete(null)}
       />
