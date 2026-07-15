@@ -1,8 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { type FormEvent, useState } from "react";
 import type { ApiError } from "@/lib/apiClient";
-import { formatNumber, formatStroops } from "@/lib/format";
 import { assetsDiffer, isValidAmount } from "@/lib/quote";
 
 type Quote = {
@@ -52,7 +51,7 @@ export default function QuoteClient() {
   const [requestId, setRequestId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+  const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
     setRequestId(null);
