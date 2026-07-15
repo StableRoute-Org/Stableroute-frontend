@@ -70,13 +70,17 @@ hosts through misconfiguration or absolute-path call sites.
 - **`/api/v1/events`**: Retrieves system event audit logs (`GET`).
 - **`/api/v1/webhooks`**: Creates (`POST`), lists (`GET`), and revokes (`DELETE` at `/api/v1/webhooks/:id`) webhook subscriptions.
 
-### Quote Amount Display
+### Security Headers
 
-The quote API accepts and returns amounts in base units. The `/quote` page keeps
-the raw API values intact for requests and operator inspection, while rendering
-safe integer quote amounts through the shared `formatStroops` helper and numeric
-rates through `formatNumber`. If a backend value cannot be parsed safely, the UI
-falls back to the raw string instead of rounding or coercing it.
+`next.config.ts` applies baseline hardening headers to every route:
+
+- `X-Content-Type-Options: nosniff` prevents MIME sniffing from treating a
+  response as executable content.
+- `Referrer-Policy: strict-origin-when-cross-origin` limits cross-origin
+  referrers to the origin instead of full dashboard URLs.
+- `X-Frame-Options: DENY` prevents the operator console from being framed.
+- `Permissions-Policy: camera=(), microphone=(), geolocation=()` disables
+  browser capabilities that this dashboard does not use.
 
 ### Asset Codes
 
