@@ -5,6 +5,7 @@ import { Badge } from "@/components/Badge";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { IconButton } from "@/components/IconButton";
 import { TextField } from "@/components/TextField";
+import { PageHeading } from "@/components/PageHeading";
 import { TimeAgo } from "@/components/TimeAgo";
 import { apiDelete, apiGet, apiPost } from "@/lib/apiClient";
 import { useList } from "@/lib/useList";
@@ -65,7 +66,7 @@ export default function WebhooksClient() {
 
   return (
     <main id="main-content" tabIndex={-1} className="mx-auto flex min-h-[60vh] max-w-3xl flex-col gap-6 p-8">
-      <h1 className="text-3xl font-semibold tracking-tight">Webhooks</h1>
+      <PageHeading title="Webhooks" description="Register and manage webhook endpoints to receive router events." />
       <form
         onSubmit={(event) => {
           event.preventDefault();

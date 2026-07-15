@@ -6,6 +6,7 @@ import { IconButton } from "@/components/IconButton";
 import { TextField } from "@/components/TextField";
 import { TimeAgo } from "@/components/TimeAgo";
 import { Badge } from "@/components/Badge";
+import { PageHeading } from "@/components/PageHeading";
 import { apiDelete, apiGet, apiPost } from "@/lib/apiClient";
 import { useList } from "@/lib/useList";
 
@@ -53,7 +54,7 @@ export default function ApiKeysClient() {
 
   return (
     <main id="main-content" tabIndex={-1} className="mx-auto flex min-h-[60vh] max-w-3xl flex-col gap-6 p-8">
-      <h1 className="text-3xl font-semibold tracking-tight">API keys</h1>
+      <PageHeading title="API keys" description="Create, view and revoke API keys for programmatic access to StableRoute." />
       <form onSubmit={onCreate} className="flex items-end gap-2">
         <TextField
           label="Label"
