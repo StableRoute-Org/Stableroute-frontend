@@ -10,7 +10,7 @@ export default function ErrorBoundary({
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error("App error boundary caught:", error);
+    console.error("App error boundary caught:", error.digest ?? error.message);
   }, [error]);
 
   return (
