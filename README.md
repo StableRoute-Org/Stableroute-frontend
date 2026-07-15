@@ -214,6 +214,14 @@ Dynamic list updates (loading -> loaded / loading -> empty) on the pairs, events
 The API keys create form uses a labelled group and a persistent associated field
 label so the purpose of the create controls remains available after focus.
 
+For pending/success form submissions, follow the same pattern: a
+`<p role="status" aria-live="polite" className="sr-only">` node that is
+always rendered in the DOM and updated via component state. The error
+path stays on `role="alert"` (assertive); the polite status is cleared
+on error so the two announcements do not collide. See
+[`src/app/pairs/new/page.tsx`](src/app/pairs/new/page.tsx) for the
+reference implementation.
+
 ## CI/CD
 
 On every push/PR to `main`, GitHub Actions runs:
