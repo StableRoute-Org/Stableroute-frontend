@@ -130,14 +130,13 @@ normalization so duplicate pairs such as `usdc` and `USDC` cannot be registered.
 
 ## Accessibility
 
-### StatTile Trend Indicators
+### Toast queue behavior
 
-`StatTile` accepts optional `delta?: number` and `trend?: "up" | "down" | "flat"`
-props for dashboards that need to show movement between polling intervals. A
-numeric `delta` automatically selects the trend direction; an explicit `trend`
-can be used when the caller already has direction metadata. The rendered badge
-uses direction text such as `Up +4`, `Down -2`, or `Flat 0` plus screen-reader
-copy, so color is never the only signal.
+The shared `ToastProvider` caps visible notifications at three toasts. Repeated
+messages with the same severity collapse into one toast with a count badge and
+refresh the auto-dismiss timer, while timers for dropped toasts are cleared.
+Info toasts keep `role="status"`, error toasts keep `role="alert"`, and the
+stack remains inside a polite live region.
 
 ### ARIA Live Regions
 
