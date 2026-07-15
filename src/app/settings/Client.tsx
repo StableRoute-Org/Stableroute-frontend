@@ -3,17 +3,49 @@
 import { Card } from "@/components/Card";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { readTheme, effectiveTheme, type Theme } from "@/lib/theme";
+import { getApiBase } from "@/lib/config";
+import { useApi } from "@/lib/useApi";
 import { useEffect, useState } from "react";
-
-const API_BASE =
-  process.env.NEXT_PUBLIC_STABLEROUTE_API_BASE || "http://localhost:3001";
 
 function ApiBaseRow() {
   return (
     <Card title="API Base">
-      <p className="text-sm text-neutral-600 dark:text-neutral-400 font-mono">
-        {API_BASE}
+      <p className="font-mono text-sm text-neutral-600 dark:text-neutral-400">
+        {getApiBase()}
       </p>
+    </Card>
+  );
+}
+
+type RouterStatus = { paused: boolean };
+
+function RouterStatusRow() {
+  const status = useApi<RouterStatus>("/api/v1/admin/status");
+
+  return (
+    <Card title="Router status">
+      <div className="flex items-center justify-between gap-3">
+        {status.status === "loading" && (
+          <p className="text-sm text-neutral-600 dark:text-neutral-400">Loading…</p>
+        )}
+        {status.status === "error" && (
+          <p role="alert" className="text-sm text-rose-600">
+            {status.error}
+          </p>
+        )}
+        {status.status === "ok" && (
+          <p className="text-sm">
+            Router is <strong>{status.data.paused ? "Paused" : "Live"}</strong>
+          </p>
+        )}
+        <button
+          type="button"
+          onClick={status.refetch}
+          className="rounded-full border border-neutral-300 px-4 py-1.5 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 dark:border-neutral-700"
+        >
+          Refresh
+        </button>
+      </div>
     </Card>
   );
 }
@@ -68,6 +100,7 @@ export default function SettingsClient() {
         <ThemeToggle />
       </section>
       <AppearancePreview />
+      <RouterStatusRow />
       <ApiBaseRow />
     </main>
   );

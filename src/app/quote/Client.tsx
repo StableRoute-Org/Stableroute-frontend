@@ -4,6 +4,7 @@ import { useState } from "react";
 import { TextField } from "@/components/TextField";
 import type { ApiError } from "@/lib/apiClient";
 import { formatQuoteAmountDisplay, formatQuoteRateDisplay } from "@/lib/format";
+import { getApiBase } from "@/lib/config";
 
 type Quote = {
   source_asset: string;
@@ -19,8 +20,6 @@ type FieldErrors = {
   amount?: string;
 };
 
-const API_BASE =
-  process.env.NEXT_PUBLIC_STABLEROUTE_API_BASE ?? "http://localhost:3001";
 const ASSET_CODE_PATTERN = /^[A-Za-z0-9]{1,12}$/;
 
 /** Returns a trimmed Stellar asset code when it is safe to send to the quote API. */
@@ -80,7 +79,7 @@ export default function QuoteClient() {
 
     setLoading(true);
     try {
-      const url = `${API_BASE}/api/v1/quote?source_asset=${encodeURIComponent(normalizedSource)}&dest_asset=${encodeURIComponent(normalizedDest)}&amount=${encodeURIComponent(normalizedAmount)}`;
+      const url = `${getApiBase()}/api/v1/quote?source_asset=${encodeURIComponent(normalizedSource)}&dest_asset=${encodeURIComponent(normalizedDest)}&amount=${encodeURIComponent(normalizedAmount)}`;
       const res = await fetch(url);
       const body = await res.json();
       if (!res.ok) {
@@ -160,9 +159,22 @@ export default function QuoteClient() {
             aria-live="polite"
             className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm dark:border-emerald-900 dark:bg-emerald-950"
           >
-            <p className="font-medium">Route: {quote.route.join(" → ")}</p>
-            <p title={amountFmt.title}>Amount: {amountFmt.display}</p>
-            <p title={rateFmt.title}>Estimated rate: {rateFmt.display}</p>
+            <dl className="grid gap-2">
+              <div>
+                <dt className="font-medium text-neutral-700 dark:text-neutral-300">Route</dt>
+                <dd>{quote.route.join(" → ")}</dd>
+              </div>
+              <div>
+                <dt className="font-medium text-neutral-700 dark:text-neutral-300">Amount</dt>
+                <dd title={amountFmt.title}>{amountFmt.display}</dd>
+              </div>
+              <div>
+                <dt className="font-medium text-neutral-700 dark:text-neutral-300">
+                  Estimated rate
+                </dt>
+                <dd title={rateFmt.title}>{rateFmt.display}</dd>
+              </div>
+            </dl>
           </section>
         );
       })()}
