@@ -1,6 +1,6 @@
 "use client";
 
-import { type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { Button } from "./Button";
 
 type Tone = "danger" | "default";
@@ -11,7 +11,6 @@ type Props = {
   description?: ReactNode;
   confirmLabel?: string;
   cancelLabel?: string;
-  /** Controls confirm button styling; defaults to destructive red. */
   tone?: Tone;
   onConfirm: () => void;
   onCancel: () => void;
@@ -27,6 +26,18 @@ export function ConfirmDialog({
   onConfirm,
   onCancel,
 }: Props) {
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onCancel();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    panelRef.current?.querySelector<HTMLElement>("button")?.focus();
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [open, onCancel]);
+
   if (!open) return null;
   return (
     <div
@@ -34,8 +45,13 @@ export function ConfirmDialog({
       aria-modal="true"
       aria-labelledby="confirm-title"
       className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4"
+      onClick={onCancel}
     >
-      <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow-xl dark:bg-neutral-900">
+      <div
+        ref={panelRef}
+        className="w-full max-w-sm rounded-lg bg-white p-6 shadow-xl dark:bg-neutral-900"
+        onClick={(event) => event.stopPropagation()}
+      >
         <h2 id="confirm-title" className="text-lg font-semibold">
           {title}
         </h2>
