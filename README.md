@@ -138,6 +138,10 @@ normalization so duplicate pairs such as `usdc` and `USDC` cannot be registered.
 - Use `npm test -- --coverage` to run the same Jest suite with coverage
   reporting. The repository does not define a separate coverage script.
 
+The new-pair form has focused Jest coverage for asset normalization, same-asset
+rejection, backend error alerts, redirect-on-success, and the in-flight saving
+state.
+
 ## Accessibility
 
 ### Toast queue behavior
