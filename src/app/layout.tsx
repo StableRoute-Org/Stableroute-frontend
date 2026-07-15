@@ -4,6 +4,7 @@ import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
 import { ToastProvider } from "@/components/ToastProvider";
 import { ApiAuthGuard } from "@/components/ApiAuthGuard";
+import { ShortcutsHelp } from "@/components/ShortcutsHelp";
 
 export const metadata: Metadata = {
   title: {
@@ -40,6 +41,7 @@ export default function RootLayout({
         </a>
         <ToastProvider>
           <ApiAuthGuard />
+          <ShortcutsHelp />
           <Header />
           {children}
           <Footer />
