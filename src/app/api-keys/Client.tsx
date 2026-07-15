@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { IconButton } from "@/components/IconButton";
 import { TextField } from "@/components/TextField";
@@ -20,7 +20,19 @@ export default function ApiKeysClient() {
   const [label, setLabel] = useState("");
   const [created, setCreated] = useState<string | null>(null);
   const [recentPrefix, setRecentPrefix] = useState<string | null>(null);
+  const RECENT_MS = 5 * 60 * 1000; // 5 minutes
   const [submitting, setSubmitting] = useState(false);
+
+  const recentItems = useMemo(() => {
+    if (!items) return [];
+    const now = Date.now();
+    return items.filter((item) => item.prefix === recentPrefix || now - item.createdAt < RECENT_MS);
+  }, [items, recentPrefix]);
+
+  const existingItems = useMemo(() => {
+    if (!items) return [];
+    return items.filter((item) => !recentItems.some((r) => r.prefix === item.prefix));
+  }, [items, recentItems]);
   const [pendingRevoke, setPendingRevoke] = useState<string | null>(null);
 
   const onCreate = async (event: React.FormEvent) => {
@@ -92,30 +104,62 @@ export default function ApiKeysClient() {
       {error && <p role="alert" className="text-sm text-rose-600">{error}</p>}
       {loading && !items && <p>Loading…</p>}
       {items && items.length === 0 && <p className="text-sm text-neutral-600">No API keys yet.</p>}
-      {items && items.length > 0 && (
-        <ul className="divide-y divide-neutral-200 dark:divide-neutral-800">
-          {items.map((key) => (
-            <li key={key.prefix} className="flex items-center justify-between py-3">
-              <div>
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-medium">{key.label}</p>
-                  {key.prefix === recentPrefix && <Badge variant="ok">New</Badge>}
+      {recentItems.length > 0 && (
+        <section aria-labelledby="recent-keys-heading">
+          <h2 id="recent-keys-heading" className="mb-2 text-sm font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
+            Recently created
+          </h2>
+          <ul className="divide-y divide-neutral-200 rounded border border-emerald-200 bg-emerald-50/50 dark:divide-neutral-800 dark:border-emerald-900 dark:bg-emerald-950/30">
+            {recentItems.map((key) => (
+              <li key={key.prefix} className="flex items-center justify-between px-3 py-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium">{key.label}</p>
+                    {key.prefix === recentPrefix && <Badge variant="ok">New</Badge>}
+                  </div>
+                  <p className="font-mono text-xs text-neutral-500">{key.prefix}…</p>
+                  <p className="text-xs text-neutral-500">
+                    Created <TimeAgo ts={key.createdAt} />
+                  </p>
                 </div>
-                <p className="font-mono text-xs text-neutral-500">{key.prefix}…</p>
-                <p className="text-xs text-neutral-500">
-                  Created <TimeAgo ts={key.createdAt} />
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setPendingRevoke(key.prefix)}
-                className="rounded border border-neutral-300 px-3 py-1 text-xs dark:border-neutral-700"
-              >
-                Revoke
-              </button>
-            </li>
-          ))}
-        </ul>
+                <button
+                  type="button"
+                  onClick={() => setPendingRevoke(key.prefix)}
+                  className="rounded border border-neutral-300 px-3 py-1 text-xs dark:border-neutral-700"
+                >
+                  Revoke
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+      {existingItems.length > 0 && (
+        <section aria-labelledby="existing-keys-heading">
+          <h2 id="existing-keys-heading" className="mb-2 text-sm font-semibold uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
+            Existing keys
+          </h2>
+          <ul className="divide-y divide-neutral-200 dark:divide-neutral-800">
+            {existingItems.map((key) => (
+              <li key={key.prefix} className="flex items-center justify-between py-3">
+                <div>
+                  <p className="text-sm font-medium">{key.label}</p>
+                  <p className="font-mono text-xs text-neutral-500">{key.prefix}…</p>
+                  <p className="text-xs text-neutral-500">
+                    Created <TimeAgo ts={key.createdAt} />
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPendingRevoke(key.prefix)}
+                  className="rounded border border-neutral-300 px-3 py-1 text-xs dark:border-neutral-700"
+                >
+                  Revoke
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
       <ConfirmDialog
         open={pendingRevoke !== null}

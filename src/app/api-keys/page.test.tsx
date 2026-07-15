@@ -69,4 +69,45 @@ describe("ApiKeysPage", () => {
     });
     expect(document.querySelectorAll("[aria-live=polite]")).toHaveLength(1);
   });
+
+  it("separates recently created keys into a distinct section", async () => {
+    const now = Date.now();
+    global.fetch = jest.fn().mockResolvedValueOnce({
+      ok: true,
+      text: async () =>
+        JSON.stringify({
+          items: [
+            { prefix: "sk_old", label: "Old key", createdAt: now - 10 * 60 * 1000 },
+            { prefix: "sk_new", label: "New key", createdAt: now - 60 * 1000 },
+          ],
+        }),
+    } as unknown as Response);
+
+    render(<ApiKeysPage />);
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: /Recently created/i })).toBeInTheDocument();
+    });
+    expect(screen.getByRole("heading", { name: /Existing keys/i })).toBeInTheDocument();
+    expect(screen.getByText("New key")).toBeInTheDocument();
+    expect(screen.getByText("Old key")).toBeInTheDocument();
+  });
+
+  it("shows only existing section when no recent keys", async () => {
+    const now = Date.now();
+    global.fetch = jest.fn().mockResolvedValueOnce({
+      ok: true,
+      text: async () =>
+        JSON.stringify({
+          items: [
+            { prefix: "sk_old", label: "Old key", createdAt: now - 10 * 60 * 1000 },
+          ],
+        }),
+    } as unknown as Response);
+
+    render(<ApiKeysPage />);
+    await waitFor(() => {
+      expect(screen.getByText("Old key")).toBeInTheDocument();
+    });
+    expect(screen.queryByRole("heading", { name: /Recently created/i })).not.toBeInTheDocument();
+  });
 });
