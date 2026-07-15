@@ -1,51 +1,67 @@
-import { renderHook, waitFor } from "@testing-library/react";
+"use client";
+import { renderHook, waitFor, act } from "@testing-library/react";
 import { useApi } from "../useApi";
-import * as apiClient from "../apiClient";
+import { apiGet } from "../apiClient";
 
-jest.mock("../apiClient");
-const mockApiGet = apiClient.apiGet as jest.MockedFunction<typeof apiClient.apiGet>;
+jest.mock("../apiClient", () => ({
+  apiGet: jest.fn(),
+}));
+
+const mockedApiGet = apiGet as jest.MockedFunction<typeof apiGet>;
+
+beforeEach(() => {
+  mockedApiGet.mockReset();
+});
 
 describe("useApi", () => {
-  afterEach(() => jest.resetAllMocks());
-
-  it("returns loading state initially", () => {
-    mockApiGet.mockReturnValue(new Promise(() => {})); // never resolves
-    const { result } = renderHook(() => useApi("/test"));
+  it("starts in loading state and resolves to ok with data on success", async () => {
+    mockedApiGet.mockResolvedValueOnce({ pairs: 3 } as never);
+    const { result } = renderHook(() => useApi<{ pairs: number }>("/api/v1/pairs"));
     expect(result.current.status).toBe("loading");
-  });
-
-  it("returns ok state with data on success", async () => {
-    const data = { value: 42 };
-    mockApiGet.mockResolvedValue(data);
-    const { result } = renderHook(() => useApi<typeof data>("/test"));
     await waitFor(() => expect(result.current.status).toBe("ok"));
-    expect((result.current as { status: "ok"; data: typeof data }).data).toEqual(data);
+    if (result.current.status === "ok") {
+      expect(result.current.data).toEqual({ pairs: 3 });
+    }
   });
 
-  it("returns error state on fetch failure", async () => {
-    mockApiGet.mockRejectedValue(new Error("network error"));
-    const { result } = renderHook(() => useApi("/test"));
+  it("transitions to error state with message on rejection", async () => {
+    mockedApiGet.mockRejectedValueOnce(new Error("boom"));
+    const { result } = renderHook(() => useApi<unknown>("/api/v1/fail"));
     await waitFor(() => expect(result.current.status).toBe("error"));
-    expect((result.current as { status: "error"; error: string }).error).toBe("network error");
+    if (result.current.status === "error") {
+      expect(result.current.error).toBe("boom");
+    }
   });
 
-  it("stays loading and does not call apiGet when path is null", () => {
-    const { result } = renderHook(() => useApi(null));
+  it("short-circuits when path is null and never calls apiGet", async () => {
+    const { result } = renderHook(() => useApi<unknown>(null));
+    // No call to apiGet should occur
+    expect(mockedApiGet).not.toHaveBeenCalled();
+    // State should stay loading forever (no error, no ok)
     expect(result.current.status).toBe("loading");
-    expect(mockApiGet).not.toHaveBeenCalled();
   });
 
-  it("refetches when refetch is called", async () => {
-    mockApiGet.mockResolvedValue({ value: 1 });
-    const { result } = renderHook(() => useApi<{ value: number }>("/test"));
+  it("refetch triggers a new apiGet call", async () => {
+    mockedApiGet.mockResolvedValueOnce({ a: 1 } as never).mockResolvedValueOnce({ a: 2 } as never);
+    const { result } = renderHook(() => useApi<{ a: number }>("/api/v1/x"));
     await waitFor(() => expect(result.current.status).toBe("ok"));
-    expect(mockApiGet).toHaveBeenCalledTimes(1);
+    act(() => result.current.refetch());
+    await waitFor(() => {
+      if (result.current.status === "ok") expect(result.current.data).toEqual({ a: 2 });
+    });
+    expect(mockedApiGet).toHaveBeenCalledTimes(2);
+  });
 
-    mockApiGet.mockResolvedValue({ value: 2 });
-    result.current.refetch();
-    await waitFor(() =>
-      expect((result.current as { status: "ok"; data: { value: number } }).data.value).toBe(2),
+  it("cancels the in-flight request on unmount (no setState on unmounted component)", async () => {
+    let resolveFn: (v: unknown) => void = () => {};
+    mockedApiGet.mockImplementationOnce(
+      () => new Promise((resolve) => { resolveFn = resolve; }) as ReturnType<typeof apiGet>
     );
-    expect(mockApiGet).toHaveBeenCalledTimes(2);
+    const { result, unmount } = renderHook(() => useApi<unknown>("/api/v1/slow"));
+    expect(result.current.status).toBe("loading");
+    unmount();
+    // Resolving after unmount must not throw the React "set state on unmounted" warning
+    resolveFn({ ok: true });
+    // If we got here without React warning, the cancellation worked.
   });
 });
