@@ -93,6 +93,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     <ToastCtx.Provider value={{ push }}>
       {children}
       <div
+        role="region"
+        aria-label="Notifications"
         aria-live="polite"
         aria-atomic="true"
         className="pointer-events-none fixed bottom-4 right-4 flex flex-col gap-2"
