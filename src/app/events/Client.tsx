@@ -13,7 +13,15 @@ export default function EventsClient() {
   const [capped, setCapped] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [paused, setPaused] = useState(false);
+  const [typeFilter, setTypeFilter] = useState("");
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+
+  const filteredItems = useMemo(() => {
+    if (!items) return null;
+    const needle = typeFilter.trim().toLowerCase();
+    if (!needle) return items;
+    return items.filter((event) => event.type.toLowerCase().includes(needle));
+  }, [items, typeFilter]);
 
   const load = useCallback(() => {
     return apiGet<unknown>("/api/v1/events?limit=100")
@@ -79,6 +87,15 @@ export default function EventsClient() {
           </button>
         </div>
       </div>
+      <label className="flex max-w-sm flex-col gap-1 text-sm">
+        <span>Filter by event type</span>
+        <input
+          value={typeFilter}
+          onChange={(event) => setTypeFilter(event.target.value)}
+          placeholder="pair.registered"
+          className="rounded-md border border-neutral-300 px-3 py-2 dark:border-neutral-700 dark:bg-neutral-900"
+        />
+      </label>
       {error && <p role="alert" className="text-sm text-rose-600">{error}</p>}
       <section
         aria-labelledby="events-log-heading"
@@ -96,11 +113,11 @@ export default function EventsClient() {
             description="Router events will appear here once activity starts."
           />
         )}
-        {items && items.length > 0 && (
+        {filteredItems && filteredItems.length > 0 && (
           <>
             <p className="text-sm text-neutral-600 dark:text-neutral-400">{resultLabel}</p>
             <ol className="flex flex-col gap-2">
-              {items.map((event) => {
+              {filteredItems.map((event) => {
                 const isOpen = expanded[event.id] ?? true;
                 return (
                   <li
