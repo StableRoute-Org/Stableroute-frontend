@@ -1,12 +1,32 @@
 const API_BASE =
   process.env.NEXT_PUBLIC_STABLEROUTE_API_BASE ?? "http://localhost:3001";
 
-/**
- * Canonical JSON error envelope returned by the StableRoute backend.
- *
- * `requestId` is optional because network failures and some legacy responses
- * may not include the backend correlation id.
- */
+function parseApiBase(value: string): URL {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new Error("Invalid StableRoute API base URL configuration");
+  }
+  if (url.protocol !== "http:" && url.protocol !== "https:") {
+    throw new Error("Invalid StableRoute API base URL configuration");
+  }
+  return url;
+}
+
+const API_BASE_URL = parseApiBase(API_BASE);
+
+function resolveApiUrl(path: string): string {
+  if (!path.startsWith("/") || path.startsWith("//")) {
+    throw new Error("API request path must be a relative path starting with /");
+  }
+  const url = new URL(path, API_BASE_URL);
+  if (url.origin !== API_BASE_URL.origin) {
+    throw new Error("API request path must stay on the configured API origin");
+  }
+  return url.toString();
+}
+
 export type ApiError = {
   error: string;
   message: string;
@@ -52,7 +72,7 @@ export async function apiFetch<T>(
   path: string,
   init: RequestInit = {}
 ): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
+  const res = await fetch(resolveApiUrl(path), {
     headers: { "Content-Type": "application/json", ...(init.headers ?? {}) },
     ...init,
   });

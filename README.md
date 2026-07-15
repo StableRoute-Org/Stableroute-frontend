@@ -54,12 +54,10 @@ and cleanup behavior consistent across pages.
 
 - **`NEXT_PUBLIC_STABLEROUTE_API_BASE`**: Specifies the base URL of the StableRoute API backend (defaults to `http://localhost:3001` if unset).
 
-`src/lib/apiClient.ts` reads this value once at module load and appends each
-`/api/v1/...` path to it. The pairs, stats, admin, API keys, events, webhooks,
-and new-pair pages use that shared client; the quote page also targets the same
-base URL directly for `/api/v1/quote`. Run the backend at
-`http://localhost:3001` for the default local setup, or set the environment
-variable before starting Next.js.
+The API base must be an absolute `http` or `https` URL. Shared API helpers also
+require request paths to start with `/`, which keeps frontend requests on the
+configured StableRoute API origin and avoids leaking requests to arbitrary
+hosts through misconfiguration or absolute-path call sites.
 
 ### API Endpoints Consumed
 
