@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { TextField } from "@/components/TextField";
-import type { ApiError } from "@/lib/apiClient";
-import { getApiBase } from "@/lib/config";
+import { apiGet, type ApiError } from "@/lib/apiClient";
 import { formatQuoteAmountDisplay, formatQuoteRateDisplay } from "@/lib/format";
 
 type Quote = {
@@ -160,19 +159,17 @@ export default function QuoteClient() {
 
     setLoading(true);
     try {
-      const url = `${getApiBase()}/api/v1/quote?source_asset=${encodeURIComponent(normalizedSource)}&dest_asset=${encodeURIComponent(normalizedDest)}&amount=${encodeURIComponent(inputs.amount)}`;
-      const res = await fetch(url);
-      const body = await res.json();
-      if (!res.ok) {
-        const apiError = body as ApiError | undefined;
-        setFormError(apiError?.message ?? "quote request failed");
-        setRequestId(apiError?.requestId ?? null);
-        return;
-      }
-      setQuote(body as Quote);
+      const path =
+        `/api/v1/quote?source_asset=${encodeURIComponent(normalizedSource)}` +
+        `&dest_asset=${encodeURIComponent(normalizedDest)}` +
+        `&amount=${encodeURIComponent(inputs.amount)}`;
+      const body = await apiGet<Quote>(path);
+      setQuote(body);
       setHistory(pushHistory(inputs));
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : "network error");
+      const apiError = err as ApiError & { requestId?: string };
+      setFormError(apiError.message ?? "quote request failed");
+      setRequestId(apiError.requestId ?? null);
     } finally {
       setLoading(false);
     }
