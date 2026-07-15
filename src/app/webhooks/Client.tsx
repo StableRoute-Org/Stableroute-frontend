@@ -92,6 +92,7 @@ export default function WebhooksClient() {
         <button
           type="submit"
           disabled={submitting}
+          aria-busy={submitting}
           className="self-start rounded-full bg-black px-5 py-2 text-sm text-white disabled:opacity-50"
         >
           {submitting ? "Registering…" : "Register"}

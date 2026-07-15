@@ -43,10 +43,13 @@ export default function ApiKeysClient() {
     if (!created) return;
     try {
       await navigator.clipboard.writeText(created);
+      setCreated(null);
     } catch {
       /* ignore in jsdom */
     }
   };
+
+  const secretVisible = created && typeof window !== "undefined" && window.isSecureContext;
 
   return (
     <main id="main-content" tabIndex={-1} className="mx-auto flex min-h-[60vh] max-w-3xl flex-col gap-6 p-8">
@@ -61,11 +64,21 @@ export default function ApiKeysClient() {
           placeholder="Production operator"
           className="flex-1"
         />
-        <button type="submit" disabled={submitting} className="rounded-full bg-black px-4 py-2 text-sm text-white disabled:opacity-50">
+        <button
+          type="submit"
+          disabled={submitting}
+          aria-busy={submitting}
+          className="rounded-full bg-black px-4 py-2 text-sm text-white disabled:opacity-50"
+        >
           {submitting ? "Creating…" : "Create"}
         </button>
       </form>
-      {created && (
+      {created && !secretVisible && (
+        <p role="alert" className="text-sm text-amber-700 dark:text-amber-300">
+          API secrets are only shown over HTTPS in a secure browser context.
+        </p>
+      )}
+      {secretVisible && (
         <div role="status" className="flex items-start justify-between gap-3 rounded border border-emerald-300 bg-emerald-50 p-3 text-sm dark:border-emerald-900 dark:bg-emerald-950">
           <div>
             <p className="font-medium">Copy now — shown only once:</p>
