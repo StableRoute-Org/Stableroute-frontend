@@ -18,7 +18,9 @@ export default function StatsClient() {
         .then((s) => !cancelled && setStats(s))
         .catch((e) => !cancelled && setError(e.message));
     tick();
-    const t = setInterval(tick, 5000);
+    const t = setInterval(() => {
+      if (document.visibilityState === "visible") tick();
+    }, 5000);
     return () => {
       cancelled = true;
       clearInterval(t);
