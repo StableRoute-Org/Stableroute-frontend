@@ -1,4 +1,4 @@
-import { formatNumber, formatStroops, formatTime } from "../format";
+import { formatNumber, formatQuoteAmountDisplay, formatQuoteRateDisplay, formatStroops, formatTime } from "../format";
 
 describe("format", () => {
   it("formatStroops scales to XLM", () => {
@@ -11,5 +11,20 @@ describe("format", () => {
   });
   it("formatTime returns HH:MM:SS", () => {
     expect(formatTime(0)).toBe("00:00:00");
+  });
+  it("formatQuoteAmountDisplay falls back for non-numeric input", () => {
+    expect(formatQuoteAmountDisplay("abc")).toEqual({ display: "abc", title: "abc" });
+  });
+  it("formatQuoteAmountDisplay formats base units via formatStroops", () => {
+    expect(formatQuoteAmountDisplay("10000000")).toEqual({
+      display: "1.00 XLM",
+      title: "10000000",
+    });
+  });
+  it("formatQuoteRateDisplay preserves the raw rate in title", () => {
+    expect(formatQuoteRateDisplay("1234.5")).toEqual({
+      display: "1,234.5",
+      title: "1234.5",
+    });
   });
 });

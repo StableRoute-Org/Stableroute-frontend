@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { TextField } from "@/components/TextField";
 import type { ApiError } from "@/lib/apiClient";
+import { formatQuoteAmountDisplay, formatQuoteRateDisplay } from "@/lib/format";
 
 type Quote = {
   source_asset: string;
@@ -150,17 +151,21 @@ export default function QuoteClient() {
         </button>
       </form>
 
-      {quote && (
-        <section
-          role="status"
-          aria-live="polite"
-          className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm dark:border-emerald-900 dark:bg-emerald-950"
-        >
-          <p className="font-medium">Route: {quote.route.join(" → ")}</p>
-          <p>Amount: {quote.amount}</p>
-          <p>Estimated rate: {quote.estimated_rate}</p>
-        </section>
-      )}
+      {quote && (() => {
+        const amountFmt = formatQuoteAmountDisplay(quote.amount);
+        const rateFmt = formatQuoteRateDisplay(quote.estimated_rate);
+        return (
+          <section
+            role="status"
+            aria-live="polite"
+            className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm dark:border-emerald-900 dark:bg-emerald-950"
+          >
+            <p className="font-medium">Route: {quote.route.join(" → ")}</p>
+            <p title={amountFmt.title}>Amount: {amountFmt.display}</p>
+            <p title={rateFmt.title}>Estimated rate: {rateFmt.display}</p>
+          </section>
+        );
+      })()}
       {formError && (
         <div role="alert" className="text-sm text-rose-700 dark:text-rose-400">
           <p>{formError}</p>

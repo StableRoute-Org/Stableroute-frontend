@@ -53,6 +53,39 @@ describe("QuotePage", () => {
     );
   });
 
+  it("formats quote amount and rate while preserving raw values in title", async () => {
+    const mockFetch = jest.fn().mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        source_asset: "USDC",
+        dest_asset: "EURC",
+        amount: "10000000",
+        estimated_rate: "1234",
+        route: ["USDC", "EURC"],
+      }),
+    } as unknown as Response);
+    globalThis.fetch = mockFetch as unknown as typeof globalThis.fetch;
+
+    render(<QuotePage />);
+    fireEvent.change(screen.getByLabelText(/Source asset/i), {
+      target: { value: "USDC" },
+    });
+    fireEvent.change(screen.getByLabelText(/Destination asset/i), {
+      target: { value: "EURC" },
+    });
+    fireEvent.change(screen.getByLabelText(/Amount/i), {
+      target: { value: "10000000" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Get quote/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("status")).toHaveTextContent(/1\.00 XLM/);
+    });
+    expect(screen.getByText(/Amount:/)).toHaveAttribute("title", "10000000");
+    expect(screen.getByText(/Estimated rate:/)).toHaveAttribute("title", "1234");
+    expect(screen.getByText(/Estimated rate:/)).toHaveTextContent("1,234");
+  });
+
   it("blocks submission when source == destination", async () => {
     const mockFetch = jest.fn();
     globalThis.fetch = mockFetch as unknown as typeof globalThis.fetch;
