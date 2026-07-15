@@ -1,4 +1,4 @@
-import { formatNumber, formatQuoteAmountDisplay, formatQuoteRateDisplay, formatStroops, formatTime } from "../format";
+import { formatNumber, formatQuoteAmountDisplay, formatQuoteRateDisplay, formatStroops, formatTime, formatTimestamp } from "../format";
 
 describe("format", () => {
   it("formatStroops scales to XLM", () => {
@@ -26,5 +26,8 @@ describe("format", () => {
       display: "1,234.5",
       title: "1234.5",
     });
+  });
+  it("formatTimestamp renders a locale date/time", () => {
+    expect(formatTimestamp(Date.UTC(2024, 0, 15, 12, 30))).toMatch(/Jan 15, 2024/);
   });
 });

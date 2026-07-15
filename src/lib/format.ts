@@ -42,3 +42,11 @@ export function formatQuoteRateDisplay(rate: string): {
 export function formatTime(ms: number): string {
   return new Date(ms).toISOString().slice(11, 19);
 }
+
+/** Format a timestamp for absolute display (locale-aware date + time). */
+export function formatTimestamp(ms: number): string {
+  return new Date(ms).toLocaleString("en-US", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+}
