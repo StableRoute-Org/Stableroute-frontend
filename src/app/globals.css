@@ -5,6 +5,19 @@
 :root {
   --foreground: #0a0a0a;
   --background: #fafafa;
+  --muted: #525252;
+  --border: #e5e5e5;
+  --card: #ffffff;
+  color-scheme: light;
+}
+
+.dark {
+  --foreground: #f5f5f5;
+  --background: #0a0a0a;
+  --muted: #a3a3a3;
+  --border: #262626;
+  --card: #171717;
+  color-scheme: dark;
 }
 
 body {
