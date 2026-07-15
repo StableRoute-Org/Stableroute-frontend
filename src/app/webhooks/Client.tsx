@@ -2,6 +2,8 @@
 
 import { useCallback, useState } from "react";
 import { Badge } from "@/components/Badge";
+import { EmptyState } from "@/components/EmptyState";
+import { Spinner } from "@/components/Spinner";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { IconButton } from "@/components/IconButton";
 import { TextField } from "@/components/TextField";
@@ -99,8 +101,18 @@ export default function WebhooksClient() {
         </button>
         {displayError && <p role="alert" className="text-sm text-rose-600">{displayError}</p>}
       </form>
-      {loading && !items && <p>Loading…</p>}
-      {items && items.length === 0 && <p className="text-sm text-neutral-600">No webhooks registered.</p>}
+      {loading && !items && (
+        <div className="flex items-center gap-2 text-sm text-neutral-600 dark:text-neutral-400">
+          <Spinner label="Loading webhooks" />
+          Loading webhooks…
+        </div>
+      )}
+      {items && items.length === 0 && (
+        <EmptyState
+          title="No webhooks registered"
+          description="Register a URL above to start receiving router events."
+        />
+      )}
       {items && items.length > 0 && (
         <ul className="divide-y divide-neutral-200 dark:divide-neutral-800">
           {items.map((hook) => (
