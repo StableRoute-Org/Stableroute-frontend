@@ -83,8 +83,8 @@ export default function PairsClient() {
         {grouped && grouped.length > 0 && (
           <div className="flex flex-col gap-6">
             <p className="text-sm text-neutral-600 dark:text-neutral-400">
-              {grouped.length} source{grouped.length === 1 ? "" : "s"} · {filtered.length} pair
-              {filtered.length === 1 ? "" : "s"} total
+              {grouped.length} source{grouped.length === 1 ? "" : "s"} · {filtered!.length} pair
+              {filtered!.length === 1 ? "" : "s"} total
             </p>
             {grouped.map(({ source, destinations }) => (
               <section
