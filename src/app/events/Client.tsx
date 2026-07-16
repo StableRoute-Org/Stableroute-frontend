@@ -2,10 +2,39 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { EmptyState } from "@/components/EmptyState";
+import { Button } from "@/components/Button";
 import { apiGet } from "@/lib/apiClient";
 import { parseEventsResponse, type DisplayEvent } from "@/lib/events";
 
 const REFRESH_MS = 10_000;
+const COLLAPSE_THRESHOLD = 400;
+
+type ClipboardLike = Pick<Clipboard, "writeText">;
+
+/**
+ * Returns the payload JSON string used for both rendering and copy actions.
+ */
+function getPayloadJson(payloadPreview: string) {
+  return payloadPreview;
+}
+
+/**
+ * Determines whether a payload should start collapsed based on the serialized
+ * payload length.
+ */
+function shouldStartCollapsed(payloadJson: string) {
+  return payloadJson.length > COLLAPSE_THRESHOLD;
+}
+
+/**
+ * Writes JSON to the clipboard when the Clipboard API is available.
+ * Falls back to a no-op in environments that do not expose it.
+ */
+async function copyJsonToClipboard(payloadJson: string) {
+  const clipboard = globalThis.navigator?.clipboard as ClipboardLike | undefined;
+  if (!clipboard?.writeText) return;
+  await clipboard.writeText(payloadJson);
+}
 
 export default function EventsClient() {
   const [items, setItems] = useState<DisplayEvent[] | null>(null);
@@ -53,13 +82,13 @@ export default function EventsClient() {
     return capped ? `${items.length} of ${totalValid} events` : `${items.length} events`;
   }, [items, capped, totalValid]);
 
-  const copyPayload = async (payload: string) => {
+  const handleCopyPayload = useCallback(async (payloadJson: string) => {
     try {
-      await navigator.clipboard.writeText(payload);
+      await copyJsonToClipboard(payloadJson);
     } catch {
-      /* clipboard unavailable in test/jsdom */
+      // Clipboard access is best-effort and must never break the row UI.
     }
-  };
+  }, []);
 
   return (
     <main
@@ -118,7 +147,10 @@ export default function EventsClient() {
             <p className="text-sm text-neutral-600 dark:text-neutral-400">{resultLabel}</p>
             <ol className="flex flex-col gap-2">
               {filteredItems.map((event) => {
-                const isOpen = expanded[event.id] ?? true;
+                const payloadJson = getPayloadJson(event.payloadPreview);
+                const defaultOpen = !shouldStartCollapsed(payloadJson);
+                const isOpen = expanded[event.id] ?? defaultOpen;
+                const controlsId = `event-payload-${event.id}`;
                 return (
                   <li
                     key={event.id}
@@ -129,31 +161,35 @@ export default function EventsClient() {
                       <span>{new Date(event.ts).toISOString()}</span>
                     </div>
                     <div className="mt-2 flex gap-2">
-                      <button
+                      <Button
                         type="button"
+                        variant="secondary"
+                        aria-expanded={isOpen}
+                        aria-controls={controlsId}
                         onClick={() =>
                           setExpanded((current) => ({
                             ...current,
                             [event.id]: !isOpen,
                           }))
                         }
-                        className="rounded border border-neutral-300 px-2 py-0.5 text-[11px] dark:border-neutral-700"
+                        className="px-3 py-1 text-[11px]"
                       >
                         {isOpen ? "Collapse" : "Expand"}
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         type="button"
-                        onClick={() => void copyPayload(event.payloadPreview)}
-                        className="rounded border border-neutral-300 px-2 py-0.5 text-[11px] dark:border-neutral-700"
+                        variant="secondary"
+                        onClick={() => void handleCopyPayload(payloadJson)}
+                        className="px-3 py-1 text-[11px]"
                       >
                         Copy JSON
-                      </button>
+                      </Button>
                     </div>
-                    {isOpen && (
+                    <div id={controlsId} hidden={!isOpen}>
                       <pre className="mt-2 whitespace-pre-wrap break-words">
-                        {event.payloadPreview}
+                        {payloadJson}
                       </pre>
-                    )}
+                    </div>
                   </li>
                 );
               })}

@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import EventsPage from "./page";
 import { MAX_RENDERED_EVENTS } from "@/lib/events";
 
@@ -7,10 +7,12 @@ describe("EventsPage", () => {
 
   beforeEach(() => {
     originalFetch = global.fetch;
+    delete (navigator as Navigator & { clipboard?: Clipboard }).clipboard;
   });
 
   afterEach(() => {
     global.fetch = originalFetch;
+    delete (navigator as Navigator & { clipboard?: Clipboard }).clipboard;
   });
 
   it("shows loading before data arrives", () => {
@@ -54,7 +56,7 @@ describe("EventsPage", () => {
 
     render(<EventsPage />);
     await waitFor(() => {
-      expect(screen.getByRole("alert")).toHaveTextContent(/Failed to load/i);
+      expect(screen.getByRole("alert")).toHaveTextContent(/Network request failed/i);
     });
   });
 
@@ -124,11 +126,7 @@ describe("EventsPage", () => {
 
     render(<EventsPage />);
 
-    expect(
-      await screen.findByText(
-        `Showing ${MAX_RENDERED_EVENTS} of ${MAX_RENDERED_EVENTS + 3} events (capped).`,
-      ),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(`200 of ${MAX_RENDERED_EVENTS + 3} events`)).toBeInTheDocument();
     expect(screen.getByText("event.0")).toBeInTheDocument();
     expect(screen.getByText(`event.${MAX_RENDERED_EVENTS - 1}`)).toBeInTheDocument();
     expect(screen.queryByText(`event.${MAX_RENDERED_EVENTS}`)).not.toBeInTheDocument();
@@ -189,6 +187,112 @@ describe("EventsPage", () => {
     expect(items).toHaveLength(2);
     expect(items[0]).toHaveTextContent("pair.registered");
     expect(items[1]).toHaveTextContent("pair.updated");
+  });
+
+  it("copies the pretty-printed payload when clipboard support is available", async () => {
+    const writeText = jest.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText },
+    });
+
+    global.fetch = jest.fn().mockResolvedValueOnce({
+      ok: true,
+      text: async () =>
+        JSON.stringify({
+          items: [
+            {
+              id: "evt-copy",
+              ts: 1_782_460_000_000,
+              type: "pair.registered",
+              payload: { pairId: "USDC/EURC" },
+            },
+          ],
+        }),
+    } as unknown as Response);
+
+    render(<EventsPage />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /copy json/i }));
+
+    await waitFor(() => {
+      expect(writeText).toHaveBeenCalledWith('{\n  "pairId": "USDC/EURC"\n}');
+    });
+  });
+
+  it("does not throw when clipboard support is absent", async () => {
+    global.fetch = jest.fn().mockResolvedValueOnce({
+      ok: true,
+      text: async () =>
+        JSON.stringify({
+          items: [
+            {
+              id: "evt-copy-missing",
+              ts: 1_782_460_000_000,
+              type: "pair.registered",
+              payload: { pairId: "USDC/EURC" },
+            },
+          ],
+        }),
+    } as unknown as Response);
+
+    render(<EventsPage />);
+
+    const copyButton = await screen.findByRole("button", { name: /copy json/i });
+    expect(() => fireEvent.click(copyButton)).not.toThrow();
+  });
+
+  it("defaults large payloads to collapsed and toggles aria-expanded", async () => {
+    global.fetch = jest.fn().mockResolvedValueOnce({
+      ok: true,
+      text: async () =>
+        JSON.stringify({
+          items: [
+            {
+              id: "evt-large",
+              ts: 1_782_460_000_000,
+              type: "payload.large",
+              payload: { body: "x".repeat(5000) },
+            },
+          ],
+        }),
+    } as unknown as Response);
+
+    render(<EventsPage />);
+
+    const toggle = await screen.findByRole("button", { name: /expand/i });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    const controlsId = toggle.getAttribute("aria-controls");
+    expect(controlsId).toBeTruthy();
+    expect(document.getElementById(controlsId ?? "")).toHaveAttribute("hidden");
+
+    fireEvent.click(toggle);
+
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByText(/"body": "x/)).toBeInTheDocument();
+  });
+
+  it("keeps small payloads expanded by default", async () => {
+    global.fetch = jest.fn().mockResolvedValueOnce({
+      ok: true,
+      text: async () =>
+        JSON.stringify({
+          items: [
+            {
+              id: "evt-small",
+              ts: 1_782_460_000_000,
+              type: "payload.small",
+              payload: { note: "small" },
+            },
+          ],
+        }),
+    } as unknown as Response);
+
+    render(<EventsPage />);
+
+    const toggle = await screen.findByRole("button", { name: /collapse/i });
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByText(/"note": "small"/)).toBeInTheDocument();
   });
 
   it("preserves chronological order returned by the API", async () => {

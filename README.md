@@ -166,6 +166,8 @@ The client reads this value in [`src/lib/apiClient.ts`](src/lib/apiClient.ts). R
 
 Dynamic list updates (loading → loaded / loading → empty) on the pairs, events, api-keys, and webhooks pages are wrapped in `aria-live="polite"` regions so screen-reader users are notified when content arrives. Error messages continue to use `role="alert"` for assertive announcements. A single polite region per page prevents double announcements.
 
+The events log also gives each row a `Copy JSON` button and an expand/collapse toggle. Large payloads start collapsed so verbose entries stay scannable, and the payload region is linked to the toggle with `aria-controls` and `aria-expanded` for assistive technology.
+
 ## CI/CD
 
 On every push/PR to `main`, GitHub Actions runs:
