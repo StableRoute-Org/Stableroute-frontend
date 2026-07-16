@@ -16,7 +16,7 @@ export default function PairsClient() {
   const [query, setQuery] = useState("");
   const [pendingDelete, setPendingDelete] = useState<Pair | null>(null);
 
-  const pairs = status === "ok" ? data.pairs : null;
+  const pairs = status === "ok" && data ? data.pairs : null;
   const filtered = useMemo(() => {
     if (!pairs) return null;
     const needle = query.trim().toLowerCase();
