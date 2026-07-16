@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { EmptyState } from "@/components/EmptyState";
+import { TimeAgo } from "@/components/TimeAgo";
 import { apiGet } from "@/lib/apiClient";
 import { parseEventsResponse, type DisplayEvent } from "@/lib/events";
 
@@ -12,7 +13,11 @@ export default function EventsClient() {
   const [totalValid, setTotalValid] = useState(0);
   const [capped, setCapped] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [paused, setPaused] = useState(false);
+  const [live, setLive] = useState(false);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null);
+  const [isVisible, setIsVisible] = useState(
+    () => typeof document === "undefined" || document.visibilityState === "visible",
+  );
   const [typeFilter, setTypeFilter] = useState("");
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
@@ -30,6 +35,7 @@ export default function EventsClient() {
         setItems(parsed.events);
         setTotalValid(parsed.totalValid);
         setCapped(parsed.capped);
+        setLastUpdatedAt(Date.now());
         setError(null);
       })
       .catch((err) => setError((err as Error).message));
@@ -40,17 +46,38 @@ export default function EventsClient() {
   }, [load]);
 
   useEffect(() => {
-    if (paused) return;
+    const handleVisibilityChange = () => {
+      setIsVisible(document.visibilityState === "visible");
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, []);
+
+  /**
+   * Runs the opt-in event-log polling loop only while Live mode is enabled and
+   * the tab is visible. Hidden tabs clear the interval; returning to a visible
+   * tab refreshes once immediately and then resumes the fixed cadence.
+   */
+  useEffect(() => {
+    if (!live || !isVisible) return;
+    void load();
     const timer = setInterval(() => {
       void load();
     }, REFRESH_MS);
-    return () => clearInterval(timer);
-  }, [load, paused]);
+    return () => {
+      clearInterval(timer);
+    };
+  }, [isVisible, live, load]);
 
   const resultLabel = useMemo(() => {
     if (!items) return "";
     if (items.length === 0) return "0 events";
-    return capped ? `${items.length} of ${totalValid} events` : `${items.length} events`;
+    return capped
+      ? `Showing ${items.length} of ${totalValid} events (capped).`
+      : `${items.length} events`;
   }, [items, capped, totalValid]);
 
   const copyPayload = async (payload: string) => {
@@ -79,14 +106,19 @@ export default function EventsClient() {
           </button>
           <button
             type="button"
-            aria-pressed={paused}
-            onClick={() => setPaused((value) => !value)}
+            aria-pressed={live}
+            onClick={() => setLive((value) => !value)}
             className="rounded-full border border-neutral-300 px-4 py-1.5 text-sm dark:border-neutral-700"
           >
-            {paused ? "Resume auto-refresh" : "Pause auto-refresh"}
+            {live ? "Live on" : "Live off"}
           </button>
         </div>
       </div>
+      {lastUpdatedAt && (
+        <p className="text-sm text-neutral-600 dark:text-neutral-400">
+          Last updated <TimeAgo ts={lastUpdatedAt} />
+        </p>
+      )}
       <label className="flex max-w-sm flex-col gap-1 text-sm">
         <span>Filter by event type</span>
         <input
