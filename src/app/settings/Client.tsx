@@ -33,7 +33,7 @@ function RouterStatusRow() {
             {status.error}
           </p>
         )}
-        {status.status === "ok" && (
+        {status.status === "ok" && status.data && (
           <p className="text-sm">
             Router is <strong>{status.data.paused ? "Paused" : "Live"}</strong>
           </p>

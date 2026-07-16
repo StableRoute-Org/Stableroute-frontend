@@ -29,7 +29,7 @@ export default function StatsClient() {
           Loading…
         </div>
       )}
-      {status === "ok" && (
+      {status === "ok" && data && (
         <section aria-labelledby="stats-metrics-heading">
           <h2 id="stats-metrics-heading" className="sr-only">
             Router metrics
@@ -40,7 +40,7 @@ export default function StatsClient() {
           </dl>
         </section>
       )}
-      {status === "ok" && data.totalPairs === 0 && (
+      {status === "ok" && data && data.totalPairs === 0 && (
         <EmptyState title="No pairs yet" description="Register a pair to see metrics." />
       )}
     </main>
