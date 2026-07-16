@@ -8,7 +8,18 @@ type State<T> =
   | { status: "error"; error: string }
   | { status: "ok"; data: T };
 
-export type UseApiResult<T> = State<T> & { refetch: () => void };
+// Flatten the discriminated union so consumers can destructure
+// `status`, `data`, and `error` from the result without TypeScript
+// losing track of which fields are present on the current variant.
+// Callers still narrow on `status` before reading the data-specific
+// fields, but the type now exposes all three so a single-line
+// `const { status, data, error } = useApi(...)` type-checks.
+export type UseApiResult<T> = {
+  status: State<T>["status"];
+  data: T | null;
+  error: string | null;
+  refetch: () => void;
+};
 
 export function useApi<T>(path: string | null): UseApiResult<T> {
   const [state, setState] = useState<State<T>>({ status: "loading" });
@@ -37,5 +48,11 @@ export function useApi<T>(path: string | null): UseApiResult<T> {
     };
   }, [path, reloadKey]);
 
-  return { ...state, refetch };
+  if (state.status === "ok") {
+    return { status: "ok", data: state.data, error: null, refetch };
+  }
+  if (state.status === "error") {
+    return { status: "error", data: null, error: state.error, refetch };
+  }
+  return { status: "loading", data: null, error: null, refetch };
 }
