@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Badge } from "@/components/Badge";
+import { Button } from "@/components/Button";
 import { TextField } from "@/components/TextField";
 import { apiGet, type ApiError } from "@/lib/apiClient";
 import { formatQuoteAmountDisplay, formatQuoteRateDisplay } from "@/lib/format";
@@ -31,6 +33,23 @@ const INPUTS_KEY = "stableroute.quote.inputs";
 const HISTORY_KEY = "stableroute.quote.history";
 const MAX_HISTORY = 5;
 const ASSET_CODE_PATTERN = /^[A-Za-z0-9]{1,12}$/;
+
+/**
+ * Copy `text` to the clipboard when the browser exposes `navigator.clipboard`,
+ * otherwise resolve silently so the UI never throws on an absent or
+ * permission-denied clipboard (e.g. insecure context, jsdom, locked-down
+ * iframe). The function never rejects; the caller can `await` it safely.
+ */
+async function copyToClipboard(text: string): Promise<void> {
+  if (typeof navigator === "undefined") return;
+  const clipboard = navigator.clipboard;
+  if (!clipboard || typeof clipboard.writeText !== "function") return;
+  try {
+    await clipboard.writeText(text);
+  } catch {
+    /* permission denied, insecure context, or focus loss — ignore */
+  }
+}
 
 function normalizeAssetCode(value: string): string | null {
   const trimmed = value.trim();
@@ -260,16 +279,51 @@ export default function QuoteClient() {
       {quote && (() => {
         const amountFmt = formatQuoteAmountDisplay(quote.amount);
         const rateFmt = formatQuoteRateDisplay(quote.estimated_rate);
+        const routePath = quote.route.join(" → ");
+        const isDirect = quote.route.length <= 2;
         return (
           <section
             role="status"
             aria-live="polite"
             className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm dark:border-emerald-900 dark:bg-emerald-950"
           >
-            <dl className="grid gap-2">
+            <dl className="grid gap-3">
               <div>
-                <dt className="font-medium text-neutral-700 dark:text-neutral-300">Route</dt>
-                <dd>{quote.route.join(" → ")}</dd>
+                <dt className="font-medium text-neutral-700 dark:text-neutral-300">
+                  Route{" "}
+                  {isDirect && (
+                    <span className="ml-1 text-xs font-normal text-neutral-500">
+                      (Direct route)
+                    </span>
+                  )}
+                </dt>
+                <dd>
+                  <ol
+                    aria-label="Routing hops"
+                    className="mt-1 flex flex-wrap items-center gap-2"
+                  >
+                    {quote.route.map((hop, index) => (
+                      <li key={`${hop}-${index}`} className="flex items-center gap-2">
+                        <Badge variant="neutral">{hop}</Badge>
+                        {index < quote.route.length - 1 && (
+                          <span aria-hidden="true" className="text-neutral-500">
+                            →
+                          </span>
+                        )}
+                      </li>
+                    ))}
+                  </ol>
+                </dd>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => void copyToClipboard(routePath)}
+                  aria-label={`Copy route ${routePath}`}
+                >
+                  Copy route
+                </Button>
               </div>
               <div>
                 <dt className="font-medium text-neutral-700 dark:text-neutral-300">Amount</dt>

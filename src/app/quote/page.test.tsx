@@ -333,4 +333,160 @@ describe("QuotePage", () => {
     });
     expect(screen.getByRole("alert")).not.toHaveTextContent(/Request ID/);
   });
+
+  it("renders multi-hop routes as distinct badges separated by arrows", async () => {
+    globalThis.fetch = jest.fn().mockResolvedValueOnce({
+      ok: true,
+      text: async () =>
+        JSON.stringify({
+          source_asset: "USDC",
+          dest_asset: "BRL",
+          amount: "100",
+          estimated_rate: "5.0",
+          route: ["USDC", "XLM", "BRL"],
+        }),
+    } as unknown as Response);
+
+    render(<QuotePage />);
+    fireEvent.change(screen.getByLabelText(/Source asset/i), {
+      target: { value: "USDC" },
+    });
+    fireEvent.change(screen.getByLabelText("Destination asset"), {
+      target: { value: "BRL" },
+    });
+    fireEvent.change(screen.getByLabelText(/Amount/i), {
+      target: { value: "100" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Get quote/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("status")).toHaveTextContent(/USDC/);
+    });
+    const status = screen.getByRole("status");
+    expect(status).toHaveTextContent(/USDC/);
+    expect(status).toHaveTextContent(/XLM/);
+    expect(status).toHaveTextContent(/BRL/);
+    expect(status.textContent ?? "").toMatch(/USDC.*XLM.*BRL/);
+    expect(status.querySelectorAll("ol[aria-label='Routing hops'] li")).toHaveLength(3);
+  });
+
+  it("labels two-hop routes as Direct route", async () => {
+    globalThis.fetch = jest.fn().mockResolvedValueOnce({
+      ok: true,
+      text: async () =>
+        JSON.stringify({
+          source_asset: "USDC",
+          dest_asset: "EURC",
+          amount: "100",
+          estimated_rate: "1.0",
+          route: ["USDC", "EURC"],
+        }),
+    } as unknown as Response);
+
+    render(<QuotePage />);
+    fireEvent.change(screen.getByLabelText(/Source asset/i), {
+      target: { value: "USDC" },
+    });
+    fireEvent.change(screen.getByLabelText("Destination asset"), {
+      target: { value: "EURC" },
+    });
+    fireEvent.change(screen.getByLabelText(/Amount/i), {
+      target: { value: "100" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Get quote/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/Direct route/i)).toBeInTheDocument();
+    });
+  });
+
+  it("copies the route path to the clipboard when the Copy route button is clicked", async () => {
+    const writeText = jest.fn().mockResolvedValue(undefined);
+    const originalClipboard = Object.getOwnPropertyDescriptor(
+      globalThis.navigator,
+      "clipboard",
+    );
+    Object.defineProperty(globalThis.navigator, "clipboard", {
+      value: { writeText },
+      configurable: true,
+      writable: true,
+    });
+
+    globalThis.fetch = jest.fn().mockResolvedValueOnce({
+      ok: true,
+      text: async () =>
+        JSON.stringify({
+          source_asset: "USDC",
+          dest_asset: "BRL",
+          amount: "100",
+          estimated_rate: "5.0",
+          route: ["USDC", "XLM", "BRL"],
+        }),
+    } as unknown as Response);
+
+    render(<QuotePage />);
+    fireEvent.change(screen.getByLabelText(/Source asset/i), {
+      target: { value: "USDC" },
+    });
+    fireEvent.change(screen.getByLabelText("Destination asset"), {
+      target: { value: "BRL" },
+    });
+    fireEvent.change(screen.getByLabelText(/Amount/i), {
+      target: { value: "100" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Get quote/i }));
+
+    const copy = await screen.findByRole("button", { name: /Copy route/ });
+    fireEvent.click(copy);
+    await waitFor(() => {
+      expect(writeText).toHaveBeenCalledWith("USDC → XLM → BRL");
+    });
+
+    if (originalClipboard) {
+      Object.defineProperty(globalThis.navigator, "clipboard", originalClipboard);
+    }
+  });
+
+  it("does not throw when clipboard is unavailable", async () => {
+    const originalClipboard = Object.getOwnPropertyDescriptor(
+      globalThis.navigator,
+      "clipboard",
+    );
+    Object.defineProperty(globalThis.navigator, "clipboard", {
+      value: undefined,
+      configurable: true,
+      writable: true,
+    });
+
+    globalThis.fetch = jest.fn().mockResolvedValueOnce({
+      ok: true,
+      text: async () =>
+        JSON.stringify({
+          source_asset: "USDC",
+          dest_asset: "EURC",
+          amount: "100",
+          estimated_rate: "1.0",
+          route: ["USDC", "EURC"],
+        }),
+    } as unknown as Response);
+
+    render(<QuotePage />);
+    fireEvent.change(screen.getByLabelText(/Source asset/i), {
+      target: { value: "USDC" },
+    });
+    fireEvent.change(screen.getByLabelText("Destination asset"), {
+      target: { value: "EURC" },
+    });
+    fireEvent.change(screen.getByLabelText(/Amount/i), {
+      target: { value: "100" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /Get quote/i }));
+
+    const copy = await screen.findByRole("button", { name: /Copy route/i });
+    expect(() => fireEvent.click(copy)).not.toThrow();
+
+    if (originalClipboard) {
+      Object.defineProperty(globalThis.navigator, "clipboard", originalClipboard);
+    }
+  });
 });
