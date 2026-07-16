@@ -92,43 +92,45 @@ export default function ApiKeysClient() {
         </div>
       )}
       {error && <p role="alert" className="text-sm text-rose-600">{error}</p>}
-      {loading && !items && (
-        <div className="flex items-center gap-2 text-sm text-neutral-600 dark:text-neutral-400">
-          <Spinner label="Loading API keys" />
-          Loading API keys…
-        </div>
-      )}
-      {items && items.length === 0 && (
-        <EmptyState
-          title="No API keys yet"
-          description="Create a key above to authenticate programmatic access."
-        />
-      )}
-      {items && items.length > 0 && (
-        <ul className="divide-y divide-neutral-200 dark:divide-neutral-800">
-          {items.map((key) => (
-            <li key={key.prefix} className="flex items-center justify-between py-3">
-              <div>
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-medium">{key.label}</p>
-                  {key.prefix === recentPrefix && <Badge variant="ok">New</Badge>}
+      <section aria-live="polite" aria-atomic="true" className="contents">
+        {loading && !items && (
+          <div className="flex items-center gap-2 text-sm text-neutral-600 dark:text-neutral-400">
+            <Spinner label="Loading API keys" />
+            Loading API keys…
+          </div>
+        )}
+        {items && items.length === 0 && (
+          <EmptyState
+            title="No API keys yet"
+            description="Create a key above to authenticate programmatic access."
+          />
+        )}
+        {items && items.length > 0 && (
+          <ul className="divide-y divide-neutral-200 dark:divide-neutral-800">
+            {items.map((key) => (
+              <li key={key.prefix} className="flex items-center justify-between py-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium">{key.label}</p>
+                    {key.prefix === recentPrefix && <Badge variant="ok">New</Badge>}
+                  </div>
+                  <p className="font-mono text-xs text-neutral-500">{key.prefix}…</p>
+                  <p className="text-xs text-neutral-500">
+                    Created <TimeAgo ts={key.createdAt} />
+                  </p>
                 </div>
-                <p className="font-mono text-xs text-neutral-500">{key.prefix}…</p>
-                <p className="text-xs text-neutral-500">
-                  Created <TimeAgo ts={key.createdAt} />
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setPendingRevoke(key.prefix)}
-                className="rounded border border-neutral-300 px-3 py-1 text-xs dark:border-neutral-700"
-              >
-                Revoke
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
+                <button
+                  type="button"
+                  onClick={() => setPendingRevoke(key.prefix)}
+                  className="rounded border border-neutral-300 px-3 py-1 text-xs dark:border-neutral-700"
+                >
+                  Revoke
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
       <ConfirmDialog
         open={pendingRevoke !== null}
         tone="danger"

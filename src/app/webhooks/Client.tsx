@@ -100,41 +100,43 @@ export default function WebhooksClient() {
           {submitting ? "Registering…" : "Register"}
         </button>
         {displayError && <p role="alert" className="text-sm text-rose-600">{displayError}</p>}
-      </form>
-      {loading && !items && (
-        <div className="flex items-center gap-2 text-sm text-neutral-600 dark:text-neutral-400">
-          <Spinner label="Loading webhooks" />
-          Loading webhooks…
-        </div>
-      )}
-      {items && items.length === 0 && (
-        <EmptyState
-          title="No webhooks registered"
-          description="Register a URL above to start receiving router events."
-        />
-      )}
-      {items && items.length > 0 && (
-        <ul className="divide-y divide-neutral-200 dark:divide-neutral-800">
-          {items.map((hook) => (
-            <li key={hook.id} className="flex items-center justify-between gap-3 py-3">
-              <div>
-                <p className="break-all text-sm font-medium">{hook.url}</p>
-                <p className="text-xs text-neutral-500">
-                  Registered <TimeAgo ts={hook.createdAt} />
-                </p>
-                <div className="mt-1 flex flex-wrap gap-1">
-                  {hook.events.map((event) => (
-                    <Badge key={event}>{event}</Badge>
-                  ))}
+      {displayError && <p role="alert" className="text-sm text-rose-600">{displayError}</p>}
+      <section aria-live="polite" aria-atomic="true" className="contents">
+        {loading && !items && (
+          <div className="flex items-center gap-2 text-sm text-neutral-600 dark:text-neutral-400">
+            <Spinner label="Loading webhooks" />
+            Loading webhooks…
+          </div>
+        )}
+        {items && items.length === 0 && (
+          <EmptyState
+            title="No webhooks registered"
+            description="Register a URL above to start receiving router events."
+          />
+        )}
+        {items && items.length > 0 && (
+          <ul className="divide-y divide-neutral-200 dark:divide-neutral-800">
+            {items.map((hook) => (
+              <li key={hook.id} className="flex items-center justify-between gap-3 py-3">
+                <div>
+                  <p className="break-all text-sm font-medium">{hook.url}</p>
+                  <p className="text-xs text-neutral-500">
+                    Registered <TimeAgo ts={hook.createdAt} />
+                  </p>
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {hook.events.map((event) => (
+                      <Badge key={event}>{event}</Badge>
+                    ))}
+                  </div>
                 </div>
-              </div>
-              <IconButton label="Remove webhook" onClick={() => setPendingDeleteId(hook.id)}>
-                ×
-              </IconButton>
-            </li>
-          ))}
-        </ul>
-      )}
+                <IconButton label="Remove webhook" onClick={() => setPendingDeleteId(hook.id)}>
+                  ×
+                </IconButton>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
       <ConfirmDialog
         open={confirmRegister}
         tone="default"
