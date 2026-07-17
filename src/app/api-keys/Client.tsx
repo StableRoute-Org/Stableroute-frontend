@@ -18,7 +18,9 @@ export default function ApiKeysClient() {
   );
   const { items, error, loading, reload } = useList(loadItems);
   const [label, setLabel] = useState("");
+  /** The full API key secret, shown once immediately after creation. Cleared after copy or when reloading. */
   const [created, setCreated] = useState<string | null>(null);
+  /** The prefix of the most recently created API key, used to mark its row with a "New" badge. Persists until page reload or navigation. */
   const [recentPrefix, setRecentPrefix] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [pendingRevoke, setPendingRevoke] = useState<string | null>(null);
@@ -90,33 +92,35 @@ export default function ApiKeysClient() {
         </div>
       )}
       {error && <p role="alert" className="text-sm text-rose-600">{error}</p>}
-      {loading && !items && <p>Loading…</p>}
-      {items && items.length === 0 && <p className="text-sm text-neutral-600">No API keys yet.</p>}
-      {items && items.length > 0 && (
-        <ul className="divide-y divide-neutral-200 dark:divide-neutral-800">
-          {items.map((key) => (
-            <li key={key.prefix} className="flex items-center justify-between py-3">
-              <div>
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-medium">{key.label}</p>
-                  {key.prefix === recentPrefix && <Badge variant="ok">New</Badge>}
+      <div aria-live="polite" aria-atomic="true">
+        {loading && !items && <p>Loading…</p>}
+        {items && items.length === 0 && <p className="text-sm text-neutral-600">No API keys yet.</p>}
+        {items && items.length > 0 && (
+          <ul className="divide-y divide-neutral-200 dark:divide-neutral-800">
+            {items.map((key) => (
+              <li key={key.prefix} className="flex items-center justify-between py-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium">{key.label}</p>
+                    {key.prefix === recentPrefix && <Badge variant="ok">New</Badge>}
+                  </div>
+                  <p className="font-mono text-xs text-neutral-500">{key.prefix}…</p>
+                  <p className="text-xs text-neutral-500">
+                    Created <TimeAgo ts={key.createdAt} />
+                  </p>
                 </div>
-                <p className="font-mono text-xs text-neutral-500">{key.prefix}…</p>
-                <p className="text-xs text-neutral-500">
-                  Created <TimeAgo ts={key.createdAt} />
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setPendingRevoke(key.prefix)}
-                className="rounded border border-neutral-300 px-3 py-1 text-xs dark:border-neutral-700"
-              >
-                Revoke
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
+                <button
+                  type="button"
+                  onClick={() => setPendingRevoke(key.prefix)}
+                  className="rounded border border-neutral-300 px-3 py-1 text-xs dark:border-neutral-700"
+                >
+                  Revoke
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
       <ConfirmDialog
         open={pendingRevoke !== null}
         tone="danger"
