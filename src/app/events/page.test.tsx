@@ -1,18 +1,43 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import EventsPage from "./page";
 import { MAX_RENDERED_EVENTS } from "@/lib/events";
 
+const okEventsResponse = (items: unknown[]) =>
+  ({
+    ok: true,
+    text: async () => JSON.stringify({ items }),
+  }) as unknown as Response;
+
+const eventRecord = (id: string, type = `event.${id}`) => ({
+  id,
+  ts: 1_782_460_000_000,
+  type,
+  payload: { id },
+});
+
+function setDocumentVisibility(state: DocumentVisibilityState, dispatch = true) {
+  Object.defineProperty(document, "visibilityState", {
+    configurable: true,
+    value: state,
+  });
+  if (!dispatch) return;
+  document.dispatchEvent(new Event("visibilitychange"));
+}
+
 describe("EventsPage", () => {
   let originalFetch: typeof global.fetch;
+  let originalVisibilityState: DocumentVisibilityState;
 
   beforeEach(() => {
     originalFetch = global.fetch;
-    delete (navigator as Navigator & { clipboard?: Clipboard }).clipboard;
+    originalVisibilityState = document.visibilityState;
+    setDocumentVisibility("visible", false);
   });
 
   afterEach(() => {
     global.fetch = originalFetch;
-    delete (navigator as Navigator & { clipboard?: Clipboard }).clipboard;
+    jest.useRealTimers();
+    setDocumentVisibility(originalVisibilityState, false);
   });
 
   it("shows loading before data arrives", () => {
@@ -330,6 +355,172 @@ describe("EventsPage", () => {
     expect(types[0]).toContain("event.first");
     expect(types[1]).toContain("event.second");
     expect(types[2]).toContain("event.third");
+  });
+
+  it("keeps live refresh off by default after the initial load", async () => {
+    jest.useFakeTimers();
+    global.fetch = jest.fn().mockResolvedValue(okEventsResponse([eventRecord("initial")]));
+
+    render(<EventsPage />);
+
+    expect(await screen.findByText("event.initial")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Live off" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
+
+    await act(async () => {
+      jest.advanceTimersByTime(30_000);
+    });
+
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("polls on the fixed interval while live refresh is enabled", async () => {
+    jest.useFakeTimers();
+    global.fetch = jest
+      .fn()
+      .mockResolvedValueOnce(okEventsResponse([eventRecord("initial")]))
+      .mockResolvedValueOnce(okEventsResponse([eventRecord("live")]))
+      .mockResolvedValueOnce(okEventsResponse([eventRecord("tick")]));
+
+    render(<EventsPage />);
+
+    expect(await screen.findByText("event.initial")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Live off" }));
+
+    expect(await screen.findByText("event.live")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Live on" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+
+    await act(async () => {
+      jest.advanceTimersByTime(10_000);
+    });
+
+    expect(await screen.findByText("event.tick")).toBeInTheDocument();
+    expect(global.fetch).toHaveBeenCalledTimes(3);
+  });
+
+  it("stops the interval when live refresh is toggled off", async () => {
+    jest.useFakeTimers();
+    global.fetch = jest
+      .fn()
+      .mockResolvedValueOnce(okEventsResponse([eventRecord("initial")]))
+      .mockResolvedValueOnce(okEventsResponse([eventRecord("live")]));
+
+    render(<EventsPage />);
+
+    expect(await screen.findByText("event.initial")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Live off" }));
+    expect(await screen.findByText("event.live")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Live on" }));
+    await act(async () => {
+      jest.advanceTimersByTime(20_000);
+    });
+
+    expect(global.fetch).toHaveBeenCalledTimes(2);
+    expect(screen.getByRole("button", { name: "Live off" })).toHaveAttribute(
+      "aria-pressed",
+      "false",
+    );
+  });
+
+  it("pauses live polling while the tab is hidden and resumes when visible", async () => {
+    jest.useFakeTimers();
+    global.fetch = jest
+      .fn()
+      .mockResolvedValueOnce(okEventsResponse([eventRecord("initial")]))
+      .mockResolvedValueOnce(okEventsResponse([eventRecord("live")]))
+      .mockResolvedValueOnce(okEventsResponse([eventRecord("visible")]))
+      .mockResolvedValueOnce(okEventsResponse([eventRecord("tick")]));
+
+    render(<EventsPage />);
+
+    expect(await screen.findByText("event.initial")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Live off" }));
+    expect(await screen.findByText("event.live")).toBeInTheDocument();
+
+    act(() => {
+      setDocumentVisibility("hidden");
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(20_000);
+    });
+    expect(global.fetch).toHaveBeenCalledTimes(2);
+
+    act(() => {
+      setDocumentVisibility("visible");
+    });
+    expect(await screen.findByText("event.visible")).toBeInTheDocument();
+
+    await act(async () => {
+      jest.advanceTimersByTime(10_000);
+    });
+
+    expect(await screen.findByText("event.tick")).toBeInTheDocument();
+    expect(global.fetch).toHaveBeenCalledTimes(4);
+  });
+
+  it("keeps the last successful list when a live refresh fails", async () => {
+    jest.useFakeTimers();
+    global.fetch = jest
+      .fn()
+      .mockResolvedValueOnce(okEventsResponse([eventRecord("initial")]))
+      .mockResolvedValueOnce(okEventsResponse([eventRecord("live")]))
+      .mockRejectedValueOnce(new Error("refresh failed"));
+
+    render(<EventsPage />);
+
+    expect(await screen.findByText("event.initial")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Live off" }));
+    expect(await screen.findByText("event.live")).toBeInTheDocument();
+
+    await act(async () => {
+      jest.advanceTimersByTime(10_000);
+    });
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Network request failed");
+    expect(screen.getByText("event.live")).toBeInTheDocument();
+  });
+
+  it("shows when the event list was last updated", async () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date("2026-07-16T10:00:00.000Z"));
+    global.fetch = jest.fn().mockResolvedValue(okEventsResponse([eventRecord("initial")]));
+
+    render(<EventsPage />);
+
+    expect(await screen.findByText("event.initial")).toBeInTheDocument();
+    expect(screen.getByText(/Last updated/i)).toBeInTheDocument();
+    expect(screen.getByText("just now")).toBeInTheDocument();
+  });
+
+  it("cleans up the live interval and visibility listener on unmount", async () => {
+    jest.useFakeTimers();
+    const removeEventListenerSpy = jest.spyOn(document, "removeEventListener");
+    global.fetch = jest.fn().mockResolvedValue(okEventsResponse([eventRecord("initial")]));
+
+    const { unmount } = render(<EventsPage />);
+
+    expect(await screen.findByText("event.initial")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Live off" }));
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledTimes(2);
+    });
+
+    unmount();
+
+    expect(removeEventListenerSpy).toHaveBeenCalledWith(
+      "visibilitychange",
+      expect.any(Function),
+    );
+    expect(jest.getTimerCount()).toBe(0);
+
+    removeEventListenerSpy.mockRestore();
   });
 
 });
