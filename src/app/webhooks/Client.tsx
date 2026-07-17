@@ -99,30 +99,32 @@ export default function WebhooksClient() {
         </button>
         {displayError && <p role="alert" className="text-sm text-rose-600">{displayError}</p>}
       </form>
-      {loading && !items && <p>Loading…</p>}
-      {items && items.length === 0 && <p className="text-sm text-neutral-600">No webhooks registered.</p>}
-      {items && items.length > 0 && (
-        <ul className="divide-y divide-neutral-200 dark:divide-neutral-800">
-          {items.map((hook) => (
-            <li key={hook.id} className="flex items-center justify-between gap-3 py-3">
-              <div>
-                <p className="break-all text-sm font-medium">{hook.url}</p>
-                <p className="text-xs text-neutral-500">
-                  Registered <TimeAgo ts={hook.createdAt} />
-                </p>
-                <div className="mt-1 flex flex-wrap gap-1">
-                  {hook.events.map((event) => (
-                    <Badge key={event}>{event}</Badge>
-                  ))}
+      <div aria-live="polite" aria-atomic="true">
+        {loading && !items && <p>Loading…</p>}
+        {items && items.length === 0 && <p className="text-sm text-neutral-600">No webhooks registered.</p>}
+        {items && items.length > 0 && (
+          <ul className="divide-y divide-neutral-200 dark:divide-neutral-800">
+            {items.map((hook) => (
+              <li key={hook.id} className="flex items-center justify-between gap-3 py-3">
+                <div>
+                  <p className="break-all text-sm font-medium">{hook.url}</p>
+                  <p className="text-xs text-neutral-500">
+                    Registered <TimeAgo ts={hook.createdAt} />
+                  </p>
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {hook.events.map((event) => (
+                      <Badge key={event}>{event}</Badge>
+                    ))}
+                  </div>
                 </div>
-              </div>
-              <IconButton label="Remove webhook" onClick={() => setPendingDeleteId(hook.id)}>
-                ×
-              </IconButton>
-            </li>
-          ))}
-        </ul>
-      )}
+                <IconButton label="Remove webhook" onClick={() => setPendingDeleteId(hook.id)}>
+                  ×
+                </IconButton>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
       <ConfirmDialog
         open={confirmRegister}
         tone="default"
