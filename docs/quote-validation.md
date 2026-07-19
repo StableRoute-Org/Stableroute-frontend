@@ -9,3 +9,10 @@ and destination codes, and invalid amounts stop submission before any network
 request is issued.
 
 Validated values are still URL-encoded when the request URL is constructed.
+
+Quote submissions are also throttled to prevent duplicate requests from rapid
+re-submits, held Enter presses, or double clicks. While a quote request is in
+flight, additional submissions are ignored, and a later submission after the
+cooldown replaces any earlier in-flight request by aborting it first. The submit
+button exposes busy state through the existing disabled styling and `aria-busy`
+attribute so the UI reflects the throttled request lifecycle.

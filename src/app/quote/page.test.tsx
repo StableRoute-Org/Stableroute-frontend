@@ -1,23 +1,30 @@
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import QuotePage from "./page";
+
+const getSourceInput = () => screen.getByRole("textbox", { name: /Source asset/i });
+const getDestinationInput = () => screen.getByRole("textbox", { name: /Destination asset/i });
+const getAmountInput = () => screen.getByRole("textbox", { name: /Amount \(base units\)/i });
 
 describe("QuotePage", () => {
   let originalFetch: typeof globalThis.fetch;
 
   beforeEach(() => {
     originalFetch = globalThis.fetch;
+    localStorage.clear();
   });
 
   afterEach(() => {
+    cleanup();
     globalThis.fetch = originalFetch;
+    jest.useRealTimers();
   });
 
   it("renders the heading and form fields", () => {
     render(<QuotePage />);
     expect(screen.getByRole("heading", { name: /Get a quote/i })).toBeInTheDocument();
-    expect(screen.getByLabelText(/Source asset/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Destination asset/i)).toBeInTheDocument();
-    expect(screen.getByLabelText(/Amount/i)).toBeInTheDocument();
+    expect(getSourceInput()).toBeInTheDocument();
+    expect(getDestinationInput()).toBeInTheDocument();
+    expect(getAmountInput()).toBeInTheDocument();
   });
 
   it("calls the backend and renders the route on success", async () => {
@@ -34,13 +41,13 @@ describe("QuotePage", () => {
     globalThis.fetch = mockFetch as unknown as typeof globalThis.fetch;
 
     render(<QuotePage />);
-    fireEvent.change(screen.getByLabelText(/Source asset/i), {
+    fireEvent.change(getSourceInput(), {
       target: { value: "USDC" },
     });
-    fireEvent.change(screen.getByLabelText(/Destination asset/i), {
+    fireEvent.change(getDestinationInput(), {
       target: { value: "EURC" },
     });
-    fireEvent.change(screen.getByLabelText(/Amount/i), {
+    fireEvent.change(getAmountInput(), {
       target: { value: "1000000" },
     });
     fireEvent.click(screen.getByRole("button", { name: /Get quote/i }));
@@ -50,7 +57,112 @@ describe("QuotePage", () => {
     });
     expect(mockFetch).toHaveBeenCalledWith(
       expect.stringContaining("source_asset=USDC&dest_asset=EURC&amount=1000000"),
+      expect.anything(),
     );
+  });
+
+  it("ignores rapid duplicate submissions while a request is already in flight", async () => {
+    jest.useFakeTimers();
+
+    let resolveRequest: ((value: Response) => void) | undefined;
+    const pendingResponse = new Promise<Response>((resolve) => {
+      resolveRequest = resolve;
+    });
+
+    const mockFetch = jest.fn().mockImplementationOnce(() => pendingResponse);
+    globalThis.fetch = mockFetch as unknown as typeof globalThis.fetch;
+
+    render(<QuotePage />);
+    fireEvent.change(getSourceInput(), {
+      target: { value: "USDC" },
+    });
+    fireEvent.change(getDestinationInput(), {
+      target: { value: "EURC" },
+    });
+    fireEvent.change(getAmountInput(), {
+      target: { value: "1000000" },
+    });
+
+    const form = getAmountInput().closest("form")!;
+    fireEvent.submit(form);
+    fireEvent.submit(form);
+
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole("button", { name: /Quoting…/i })).toBeDisabled();
+
+    resolveRequest?.({
+      ok: true,
+      json: async () => ({
+        source_asset: "USDC",
+        dest_asset: "EURC",
+        amount: "1000000",
+        estimated_rate: "1.0",
+        route: ["USDC", "EURC"],
+      }),
+    } as Response);
+
+    await waitFor(() => {
+      expect(screen.getByRole("status")).toHaveTextContent(/USDC → EURC/);
+    });
+
+  });
+
+  it("aborts an earlier in-flight request before replacing it after the cooldown", async () => {
+    jest.useFakeTimers();
+
+    let firstSignal: AbortSignal | undefined;
+    let secondSignal: AbortSignal | undefined;
+
+    const mockFetch = jest
+      .fn()
+      .mockImplementationOnce((_input: string, init?: RequestInit) => {
+        firstSignal = init?.signal;
+        return new Promise<Response>(() => undefined);
+      })
+      .mockImplementationOnce((_input: string, init?: RequestInit) => {
+        secondSignal = init?.signal;
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            source_asset: "USDC",
+            dest_asset: "EURC",
+            amount: "1000000",
+            estimated_rate: "1.0",
+            route: ["USDC", "EURC"],
+          }),
+        } as Response);
+      });
+    globalThis.fetch = mockFetch as unknown as typeof globalThis.fetch;
+
+    render(<QuotePage />);
+    fireEvent.change(getSourceInput(), {
+      target: { value: "USDC" },
+    });
+    fireEvent.change(getDestinationInput(), {
+      target: { value: "EURC" },
+    });
+    fireEvent.change(getAmountInput(), {
+      target: { value: "1000000" },
+    });
+
+    const form = getAmountInput().closest("form")!;
+    fireEvent.submit(form);
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      jest.advanceTimersByTime(1000);
+    });
+
+    fireEvent.submit(form);
+
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+    expect(firstSignal?.aborted).toBe(true);
+    expect(secondSignal).toBeDefined();
+
+    await waitFor(() => {
+      expect(screen.getByRole("status")).toHaveTextContent(/USDC → EURC/);
+    });
+
   });
 
   it("formats quote amount and rate while preserving raw values in title", async () => {
@@ -67,13 +179,13 @@ describe("QuotePage", () => {
     globalThis.fetch = mockFetch as unknown as typeof globalThis.fetch;
 
     render(<QuotePage />);
-    fireEvent.change(screen.getByLabelText(/Source asset/i), {
+    fireEvent.change(getSourceInput(), {
       target: { value: "USDC" },
     });
-    fireEvent.change(screen.getByLabelText(/Destination asset/i), {
+    fireEvent.change(getDestinationInput(), {
       target: { value: "EURC" },
     });
-    fireEvent.change(screen.getByLabelText(/Amount/i), {
+    fireEvent.change(getAmountInput(), {
       target: { value: "10000000" },
     });
     fireEvent.click(screen.getByRole("button", { name: /Get quote/i }));
@@ -81,9 +193,12 @@ describe("QuotePage", () => {
     await waitFor(() => {
       expect(screen.getByRole("status")).toHaveTextContent(/1\.00 XLM/);
     });
-    expect(screen.getByText(/Amount:/)).toHaveAttribute("title", "10000000");
-    expect(screen.getByText(/Estimated rate:/)).toHaveAttribute("title", "1234");
-    expect(screen.getByText(/Estimated rate:/)).toHaveTextContent("1,234");
+    const amountValue = screen.getByText("1.00 XLM").closest("dd");
+    const rateValue = screen.getByText("1,234").closest("dd");
+
+    expect(amountValue).toHaveAttribute("title", "10000000");
+    expect(rateValue).toHaveAttribute("title", "1234");
+    expect(rateValue).toHaveTextContent("1,234");
   });
 
   it("blocks submission when source == destination", async () => {
@@ -91,16 +206,16 @@ describe("QuotePage", () => {
     globalThis.fetch = mockFetch as unknown as typeof globalThis.fetch;
     render(<QuotePage />);
 
-    fireEvent.change(screen.getByLabelText(/Source asset/i), {
+    fireEvent.change(getSourceInput(), {
       target: { value: "USDC" },
     });
-    fireEvent.change(screen.getByLabelText(/Destination asset/i), {
+    fireEvent.change(getDestinationInput(), {
       target: { value: "USDC" },
     });
-    fireEvent.change(screen.getByLabelText(/Amount/i), {
+    fireEvent.change(getAmountInput(), {
       target: { value: "1" },
     });
-    const form = screen.getByLabelText(/Amount/i).closest("form")!;
+    const form = getAmountInput().closest("form")!;
     fireEvent.submit(form);
 
     await waitFor(() => {
@@ -114,16 +229,16 @@ describe("QuotePage", () => {
     globalThis.fetch = mockFetch as unknown as typeof globalThis.fetch;
     render(<QuotePage />);
 
-    fireEvent.change(screen.getByLabelText(/Source asset/i), {
+    fireEvent.change(getSourceInput(), {
       target: { value: "USDC" },
     });
-    fireEvent.change(screen.getByLabelText(/Destination asset/i), {
+    fireEvent.change(getDestinationInput(), {
       target: { value: "EURC" },
     });
-    fireEvent.change(screen.getByLabelText(/Amount/i), {
+    fireEvent.change(getAmountInput(), {
       target: { value: "1.5" },
     });
-    const form = screen.getByLabelText(/Amount/i).closest("form")!;
+    const form = getAmountInput().closest("form")!;
     fireEvent.submit(form);
 
     await waitFor(() => {
@@ -137,16 +252,16 @@ describe("QuotePage", () => {
     globalThis.fetch = mockFetch as unknown as typeof globalThis.fetch;
     render(<QuotePage />);
 
-    fireEvent.change(screen.getByLabelText(/Source asset/i), {
+    fireEvent.change(getSourceInput(), {
       target: { value: "US$C" },
     });
-    fireEvent.change(screen.getByLabelText(/Destination asset/i), {
+    fireEvent.change(getDestinationInput(), {
       target: { value: "EURC" },
     });
-    fireEvent.change(screen.getByLabelText(/Amount/i), {
+    fireEvent.change(getAmountInput(), {
       target: { value: "100" },
     });
-    fireEvent.submit(screen.getByLabelText(/Amount/i).closest("form")!);
+    fireEvent.submit(getAmountInput().closest("form")!);
 
     await waitFor(() => {
       expect(screen.getByText(/1-12 letters or numbers/i)).toBeInTheDocument();
@@ -159,16 +274,16 @@ describe("QuotePage", () => {
     globalThis.fetch = mockFetch as unknown as typeof globalThis.fetch;
     render(<QuotePage />);
 
-    fireEvent.change(screen.getByLabelText(/Source asset/i), {
+    fireEvent.change(getSourceInput(), {
       target: { value: "TOO-LONG-ASSET" },
     });
-    fireEvent.change(screen.getByLabelText(/Destination asset/i), {
+    fireEvent.change(getDestinationInput(), {
       target: { value: "EURC" },
     });
-    fireEvent.change(screen.getByLabelText(/Amount/i), {
+    fireEvent.change(getAmountInput(), {
       target: { value: "100" },
     });
-    fireEvent.submit(screen.getByLabelText(/Amount/i).closest("form")!);
+    fireEvent.submit(getAmountInput().closest("form")!);
 
     await waitFor(() => {
       expect(screen.getByText(/1-12 letters or numbers/i)).toBeInTheDocument();
@@ -181,16 +296,16 @@ describe("QuotePage", () => {
     globalThis.fetch = mockFetch as unknown as typeof globalThis.fetch;
     render(<QuotePage />);
 
-    fireEvent.change(screen.getByLabelText(/Source asset/i), {
+    fireEvent.change(getSourceInput(), {
       target: { value: "   " },
     });
-    fireEvent.change(screen.getByLabelText(/Destination asset/i), {
+    fireEvent.change(getDestinationInput(), {
       target: { value: "EURC" },
     });
-    fireEvent.change(screen.getByLabelText(/Amount/i), {
+    fireEvent.change(getAmountInput(), {
       target: { value: "100" },
     });
-    fireEvent.submit(screen.getByLabelText(/Amount/i).closest("form")!);
+    fireEvent.submit(getAmountInput().closest("form")!);
 
     await waitFor(() => {
       expect(screen.getByText(/1-12 letters or numbers/i)).toBeInTheDocument();
@@ -212,13 +327,13 @@ describe("QuotePage", () => {
     globalThis.fetch = mockFetch as unknown as typeof globalThis.fetch;
     render(<QuotePage />);
 
-    fireEvent.change(screen.getByLabelText(/Source asset/i), {
+    fireEvent.change(getSourceInput(), {
       target: { value: " USDC " },
     });
-    fireEvent.change(screen.getByLabelText(/Destination asset/i), {
+    fireEvent.change(getDestinationInput(), {
       target: { value: " EURC " },
     });
-    fireEvent.change(screen.getByLabelText(/Amount/i), {
+    fireEvent.change(getAmountInput(), {
       target: { value: " 100 " },
     });
     fireEvent.click(screen.getByRole("button", { name: /Get quote/i }));
@@ -228,6 +343,7 @@ describe("QuotePage", () => {
     });
     expect(mockFetch).toHaveBeenCalledWith(
       expect.stringContaining("source_asset=USDC&dest_asset=EURC&amount=100"),
+      expect.anything(),
     );
   });
 
@@ -236,19 +352,19 @@ describe("QuotePage", () => {
     globalThis.fetch = mockFetch as unknown as typeof globalThis.fetch;
     render(<QuotePage />);
 
-    fireEvent.change(screen.getByLabelText(/Source asset/i), {
+    fireEvent.change(getSourceInput(), {
       target: { value: "USDC" },
     });
-    fireEvent.change(screen.getByLabelText(/Destination asset/i), {
+    fireEvent.change(getDestinationInput(), {
       target: { value: "USDC" },
     });
-    fireEvent.change(screen.getByLabelText(/Amount/i), {
+    fireEvent.change(getAmountInput(), {
       target: { value: "100" },
     });
-    fireEvent.submit(screen.getByLabelText(/Amount/i).closest("form")!);
+    fireEvent.submit(getAmountInput().closest("form")!);
 
     await waitFor(() => {
-      expect(screen.getByLabelText(/Destination asset/i)).toHaveAttribute("aria-invalid", "true");
+      expect(getDestinationInput()).toHaveAttribute("aria-invalid", "true");
     });
     expect(mockFetch).not.toHaveBeenCalled();
   });
@@ -263,13 +379,13 @@ describe("QuotePage", () => {
     } as unknown as Response);
 
     render(<QuotePage />);
-    fireEvent.change(screen.getByLabelText(/Source asset/i), {
+    fireEvent.change(getSourceInput(), {
       target: { value: "USDC" },
     });
-    fireEvent.change(screen.getByLabelText(/Destination asset/i), {
+    fireEvent.change(getDestinationInput(), {
       target: { value: "EURC" },
     });
-    fireEvent.change(screen.getByLabelText(/Amount/i), {
+    fireEvent.change(getAmountInput(), {
       target: { value: "100" },
     });
     fireEvent.click(screen.getByRole("button", { name: /Get quote/i }));
@@ -290,13 +406,13 @@ describe("QuotePage", () => {
     } as unknown as Response);
 
     render(<QuotePage />);
-    fireEvent.change(screen.getByLabelText(/Source asset/i), {
+    fireEvent.change(getSourceInput(), {
       target: { value: "USDC" },
     });
-    fireEvent.change(screen.getByLabelText(/Destination asset/i), {
+    fireEvent.change(getDestinationInput(), {
       target: { value: "EURC" },
     });
-    fireEvent.change(screen.getByLabelText(/Amount/i), {
+    fireEvent.change(getAmountInput(), {
       target: { value: "100" },
     });
     fireEvent.click(screen.getByRole("button", { name: /Get quote/i }));
@@ -317,13 +433,13 @@ describe("QuotePage", () => {
     } as unknown as Response);
 
     render(<QuotePage />);
-    fireEvent.change(screen.getByLabelText(/Source asset/i), {
+    fireEvent.change(getSourceInput(), {
       target: { value: "USDC" },
     });
-    fireEvent.change(screen.getByLabelText(/Destination asset/i), {
+    fireEvent.change(getDestinationInput(), {
       target: { value: "EURC" },
     });
-    fireEvent.change(screen.getByLabelText(/Amount/i), {
+    fireEvent.change(getAmountInput(), {
       target: { value: "100" },
     });
     fireEvent.click(screen.getByRole("button", { name: /Get quote/i }));

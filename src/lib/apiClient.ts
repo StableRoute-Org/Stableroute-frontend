@@ -33,15 +33,17 @@ export function registerAuthErrorHandler(handler: AuthErrorHandler): () => void 
 
 async function parseResponse<T>(res: Response): Promise<T> {
   if (res.status === 204) return undefined as T;
-  const text = await res.text();
   let body: T | ApiError | undefined;
-  if (text) {
-    try {
+  try {
+    const text = typeof res.text === "function" ? await res.text() : null;
+    if (text) {
       body = JSON.parse(text) as T | ApiError;
-    } catch {
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      throw new Error("Invalid JSON response");
+    } else if (typeof res.json === "function") {
+      body = (await res.json()) as T | ApiError;
     }
+  } catch {
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    throw new Error("Invalid JSON response");
   }
   if (!res.ok) {
     if (res.status === 401 || res.status === 403) {
@@ -73,8 +75,8 @@ export async function apiFetch<T>(
     try {
       const res = await fetch(`${getApiBase()}${path}`, {
         headers: { "Content-Type": "application/json", ...(init.headers ?? {}) },
-        signal: controller.signal,
         ...init,
+        signal: init.signal ?? controller.signal,
       });
       if (!res.ok && res.status >= 500 && attempt < maxAttempts) {
         await sleep(baseDelayMs * 2 ** (attempt - 1));
