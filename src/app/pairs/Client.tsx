@@ -12,11 +12,14 @@ import { useApi } from "@/lib/useApi";
 type Pair = { source: string; destination: string };
 
 export default function PairsClient() {
-  const { status, data, error, refetch } = useApi<{ pairs: Pair[] }>("/api/v1/pairs");
+  const apiResult = useApi<{ pairs: Pair[] }>("/api/v1/pairs");
+  const { status, refetch } = apiResult;
+  const data = status === "ok" ? apiResult.data : null;
+  const error = status === "error" ? apiResult.error : null;
   const [query, setQuery] = useState("");
   const [pendingDelete, setPendingDelete] = useState<Pair | null>(null);
 
-  const pairs = status === "ok" ? data.pairs : null;
+  const pairs = data ? data.pairs : null;
   const filtered = useMemo(() => {
     if (!pairs) return null;
     const needle = query.trim().toLowerCase();
