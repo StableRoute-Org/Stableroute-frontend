@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { TextField } from "@/components/TextField";
-import { apiGet, type ApiError } from "@/lib/apiClient";
+import { type ApiError } from "@/lib/apiClient";
+import { getApiBase } from "@/lib/config";
 import { formatQuoteAmountDisplay, formatQuoteRateDisplay } from "@/lib/format";
 
 type Quote = {
@@ -163,8 +164,15 @@ export default function QuoteClient() {
         `/api/v1/quote?source_asset=${encodeURIComponent(normalizedSource)}` +
         `&dest_asset=${encodeURIComponent(normalizedDest)}` +
         `&amount=${encodeURIComponent(inputs.amount)}`;
-      const body = await apiGet<Quote>(path);
-      setQuote(body);
+      const res = await fetch(`${getApiBase()}${path}`);
+      const body = await res.json() as Quote | ApiError & { requestId?: string };
+      if (!res.ok) {
+        const errBody = body as ApiError & { requestId?: string };
+        setFormError(errBody.message ?? "quote request failed");
+        setRequestId(errBody.requestId ?? null);
+        return;
+      }
+      setQuote(body as Quote);
       setHistory(pushHistory(inputs));
     } catch (err) {
       const apiError = err as ApiError & { requestId?: string };
@@ -223,7 +231,7 @@ export default function QuoteClient() {
         <button
           type="button"
           onClick={swapAssets}
-          aria-label="Swap source and destination assets"
+          aria-label="Swap source ⇄ destination"
           className="self-center rounded-full border border-neutral-300 px-3 py-1 text-xs dark:border-neutral-700"
         >
           Swap ⇄
@@ -272,14 +280,10 @@ export default function QuoteClient() {
                 <dd>{quote.route.join(" → ")}</dd>
               </div>
               <div>
-                <dt className="font-medium text-neutral-700 dark:text-neutral-300">Amount</dt>
-                <dd title={amountFmt.title}>{amountFmt.display}</dd>
+                <dd title={amountFmt.title}>{"Amount: " + amountFmt.display}</dd>
               </div>
               <div>
-                <dt className="font-medium text-neutral-700 dark:text-neutral-300">
-                  Estimated rate
-                </dt>
-                <dd title={rateFmt.title}>{rateFmt.display}</dd>
+                <dd title={rateFmt.title}>{"Estimated rate: " + rateFmt.display}</dd>
               </div>
             </dl>
           </section>

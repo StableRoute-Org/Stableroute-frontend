@@ -37,11 +37,7 @@ export default function AdminClient() {
 
   const onToggleClick = () => {
     if (busy || paused === null) return;
-    if (paused) {
-      void applyToggle();
-      return;
-    }
-    setConfirmPause(true);
+    void applyToggle();
   };
 
   return (

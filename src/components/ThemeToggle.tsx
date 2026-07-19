@@ -3,6 +3,12 @@
 import { useEffect, useState } from "react";
 import { readTheme, writeTheme, effectiveTheme, type Theme } from "@/lib/theme";
 
+const LABELS: Record<Theme, string> = {
+  light: "light",
+  dark: "dark",
+  system: "system theme",
+};
+
 export function ThemeToggle() {
   const [theme, setTheme] = useState<Theme>("system");
 
@@ -30,6 +36,7 @@ export function ThemeToggle() {
           type="button"
           onClick={() => set(t)}
           aria-pressed={theme === t}
+          aria-label={LABELS[t]}
           className={`rounded-full px-3 py-1 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 ${
             theme === t ? "bg-neutral-200 dark:bg-neutral-800" : ""
           }`}

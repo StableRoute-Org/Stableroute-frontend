@@ -94,7 +94,9 @@ export async function apiFetch<T>(
       const message =
         err instanceof DOMException && err.name === "AbortError"
           ? "Request timed out"
-          : "Network request failed";
+          : err instanceof Error
+            ? err.message
+            : "Network request failed";
       if (attempt < maxAttempts) {
         await sleep(baseDelayMs * 2 ** (attempt - 1));
         continue;

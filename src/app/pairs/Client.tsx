@@ -53,7 +53,7 @@ export default function PairsClient() {
           {error}
         </p>
       )}
-      <section aria-live="polite" aria-busy={status === "loading"} className="contents">
+      <section aria-live="polite" aria-atomic="true" aria-busy={status === "loading"} className="contents">
         {status === "loading" && (
           <div className="flex items-center gap-2 text-sm text-neutral-600">
             <Spinner label="Loading pairs" />
@@ -61,7 +61,10 @@ export default function PairsClient() {
           </div>
         )}
         {filtered && filtered.length === 0 && (
-          <EmptyState title="No pairs found" description="Try a different filter or register a new pair." />
+          <EmptyState
+            title={query.trim() ? "No pairs found" : "No pairs registered yet"}
+            description={query.trim() ? "Try a different filter or register a new pair." : "Register a pair to get started."}
+          />
         )}
         {filtered && filtered.length > 0 && (
           <ul className="divide-y divide-neutral-200 dark:divide-neutral-800">

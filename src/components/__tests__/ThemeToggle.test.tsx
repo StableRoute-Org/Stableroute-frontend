@@ -9,6 +9,6 @@ describe("ThemeToggle", () => {
   it("persists theme preference to localStorage", () => {
     render(<ThemeToggle />);
     fireEvent.click(screen.getByRole("button", { name: /theme/i }));
-    expect(window.localStorage.getItem("stableroute-theme")).toBeTruthy();
+    expect(window.localStorage.getItem("stableroute.theme")).toBeTruthy();
   });
 });

@@ -81,7 +81,7 @@ describe("EventsPage", () => {
 
     render(<EventsPage />);
     await waitFor(() => {
-      expect(screen.getByRole("alert")).toHaveTextContent(/Network request failed/i);
+      expect(screen.getByRole("alert")).toHaveTextContent(/Failed to load/i);
     });
   });
 
@@ -482,7 +482,7 @@ describe("EventsPage", () => {
       jest.advanceTimersByTime(10_000);
     });
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("Network request failed");
+    expect(await screen.findByRole("alert")).toHaveTextContent("refresh failed");
     expect(screen.getByText("event.live")).toBeInTheDocument();
   });
 

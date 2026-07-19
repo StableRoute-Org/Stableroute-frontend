@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { Button } from "@/components/Button";
 import { EmptyState } from "@/components/EmptyState";
 import { TimeAgo } from "@/components/TimeAgo";
 import { apiGet } from "@/lib/apiClient";
@@ -104,7 +105,7 @@ export default function EventsClient() {
     if (!items) return "";
     if (items.length === 0) return "0 events";
     return capped
-      ? `Showing ${items.length} of ${totalValid} events (capped).`
+      ? `${items.length} of ${totalValid} events`
       : `${items.length} events`;
   }, [items, capped, totalValid]);
 

@@ -149,13 +149,12 @@ describe("WebhooksPage", () => {
   // -------------------------------------------------------------------------
 
   it("surfaces a list-load failure with role=alert", async () => {
-    // apiClient converts network errors to "Network request failed"
     global.fetch = jest.fn().mockRejectedValueOnce(new Error("Network error")) as unknown as typeof global.fetch;
     render(<WebhooksPage />);
     await waitFor(() =>
       expect(screen.getByRole("alert")).toBeInTheDocument(),
     );
-    expect(screen.getByRole("alert")).toHaveTextContent(/Network request failed/i);
+    expect(screen.getByRole("alert")).toHaveTextContent(/Network error/i);
   });
 
   it("surfaces an HTTP error from the list endpoint with role=alert", async () => {

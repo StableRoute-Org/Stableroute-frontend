@@ -26,6 +26,7 @@ export function TextField({
       <span>{label}</span>
       <input
         id={inputId}
+        aria-label={typeof label === "string" ? label : undefined}
         aria-describedby={[descId, errId].filter(Boolean).join(" ") || undefined}
         aria-invalid={error ? true : undefined}
         className="rounded-md border border-neutral-300 px-3 py-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 dark:border-neutral-700 dark:bg-neutral-900"
