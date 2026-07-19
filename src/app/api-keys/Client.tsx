@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { IconButton } from "@/components/IconButton";
 import { TextField } from "@/components/TextField";
@@ -8,6 +8,9 @@ import { TimeAgo } from "@/components/TimeAgo";
 import { Badge } from "@/components/Badge";
 import { apiDelete, apiGet, apiPost } from "@/lib/apiClient";
 import { useList } from "@/lib/useList";
+
+/** Secret auto-clear timeout in milliseconds (30 seconds). */
+const SECRET_DISPLAY_DURATION_MS = 30_000;
 
 type Item = { prefix: string; label: string; createdAt: number };
 
@@ -18,12 +21,26 @@ export default function ApiKeysClient() {
   );
   const { items, error, loading, reload } = useList(loadItems);
   const [label, setLabel] = useState("");
-  /** The full API key secret, shown once immediately after creation. Cleared after copy or when reloading. */
+  /**
+   * The full API key secret, shown once immediately after creation.
+   * Cleared on dismiss, auto-clear timeout, copy, or reload.
+   * The secret is never persisted to localStorage, the URL, logs, or analytics.
+   */
   const [created, setCreated] = useState<string | null>(null);
   /** The prefix of the most recently created API key, used to mark its row with a "New" badge. Persists until page reload or navigation. */
   const [recentPrefix, setRecentPrefix] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [pendingRevoke, setPendingRevoke] = useState<string | null>(null);
+
+  /**
+   * Auto-clear the created secret after `SECRET_DISPLAY_DURATION_MS`.
+   * Timer is reset whenever `created` changes (including to null).
+   */
+  useEffect(() => {
+    if (!created) return;
+    const timer = setTimeout(() => setCreated(null), SECRET_DISPLAY_DURATION_MS);
+    return () => clearTimeout(timer);
+  }, [created]);
 
   const onCreate = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -51,7 +68,21 @@ export default function ApiKeysClient() {
     }
   };
 
+  /**
+   * Dismisses the one-time API key secret from the UI.
+   * Called by the dismiss button or triggered automatically
+   * after {@link SECRET_DISPLAY_DURATION_MS} via the auto-clear timer.
+   */
+  const dismissSecret = () => setCreated(null);
+
   const secretVisible = created && typeof window !== "undefined" && window.isSecureContext;
+
+  /** True when the page is served over plain HTTP (and not localhost development). */
+  const isInsecure =
+    typeof window !== "undefined" &&
+    window.location.protocol !== "https:" &&
+    window.location.hostname !== "localhost" &&
+    window.location.hostname !== "127.0.0.1";
 
   return (
     <main id="main-content" tabIndex={-1} className="mx-auto flex min-h-[60vh] max-w-3xl flex-col gap-6 p-8">
@@ -75,9 +106,15 @@ export default function ApiKeysClient() {
           {submitting ? "Creating…" : "Create"}
         </button>
       </form>
-      {created && !secretVisible && (
+      {created && !secretVisible && !isInsecure && (
         <p role="alert" className="text-sm text-amber-700 dark:text-amber-300">
           API secrets are only shown over HTTPS in a secure browser context.
+        </p>
+      )}
+      {created && isInsecure && (
+        <p role="alert" className="text-sm text-rose-700 dark:text-rose-300">
+          Warning: Your API secret is being displayed over an insecure connection (HTTP).
+          The secret could be intercepted in transit. Use HTTPS in production.
         </p>
       )}
       {secretVisible && (
@@ -86,9 +123,14 @@ export default function ApiKeysClient() {
             <p className="font-medium">Copy now — shown only once:</p>
             <code className="break-all">{created}</code>
           </div>
-          <IconButton label="Copy API key secret" onClick={() => void copySecret()}>
-            ⧉
-          </IconButton>
+          <div className="flex shrink-0 items-start gap-1">
+            <IconButton label="Copy API key secret" onClick={() => void copySecret()}>
+              ⧉
+            </IconButton>
+            <IconButton label="Dismiss API key secret" onClick={dismissSecret}>
+              ✕
+            </IconButton>
+          </div>
         </div>
       )}
       {error && <p role="alert" className="text-sm text-rose-600">{error}</p>}
