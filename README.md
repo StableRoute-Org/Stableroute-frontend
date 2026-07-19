@@ -169,6 +169,16 @@ Dynamic list updates (loading → loaded / loading → empty) on the pairs, even
 
 The events log also gives each row a `Copy JSON` button and an expand/collapse toggle. Large payloads start collapsed so verbose entries stay scannable, and the payload region is linked to the toggle with `aria-controls` and `aria-expanded` for assistive technology.
 
+### Event Payload Safety
+
+Event payloads are safetly serialised before rendering to prevent UI lockups or unsafe content leakage:
+
+- **Circular references** are detected via a `WeakSet` replacer and replaced with `"[Circular]"` so a self-referencing payload never throws at render time.
+- **Size limit**: Serialised payloads are truncated at 4 000 characters with a `… truncated` suffix. A "Show full" button reveals the complete payload on demand, and the `Copy JSON` button always copies the full (untruncated) payload.
+- **Fallback safety**: If `JSON.stringify` throws for any reason, the event is silently dropped instead of crashing the event log.
+
+All rendering uses inert text inside `<pre>` — no `dangerouslySetInnerHTML` is employed.
+
 ## CI/CD
 
 On every push/PR to `main`, GitHub Actions runs:
