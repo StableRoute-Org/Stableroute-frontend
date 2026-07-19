@@ -185,4 +185,38 @@ describe("ApiKeysPage", () => {
 
     expect(screen.getAllByText(/Key/i).length).toBeGreaterThanOrEqual(1);
   });
+
+  it("masks API key identifiers by default and reveals on button click", async () => {
+    global.fetch = jest.fn().mockResolvedValueOnce({
+      ok: true,
+      text: async () =>
+        JSON.stringify({
+          items: [{ prefix: "sk_live_123456789", label: "Production", createdAt: Date.now() }],
+        }),
+    } as unknown as Response);
+
+    render(<ApiKeysPage />);
+    await waitFor(() => {
+      expect(screen.getByText("Production")).toBeInTheDocument();
+    });
+
+    // Check it's masked
+    expect(screen.getByText("sk_live_••••••••")).toBeInTheDocument();
+    expect(screen.queryByText("sk_live_123456789")).not.toBeInTheDocument();
+
+    // Click reveal
+    const revealBtn = screen.getByLabelText("Reveal API key Production");
+    fireEvent.click(revealBtn);
+
+    // Check it's revealed
+    expect(screen.getByText("sk_live_123456789")).toBeInTheDocument();
+    expect(screen.queryByText("sk_live_••••••••")).not.toBeInTheDocument();
+
+    // Click hide
+    const hideBtn = screen.getByLabelText("Hide API key Production");
+    fireEvent.click(hideBtn);
+
+    // Check it's masked again
+    expect(screen.getByText("sk_live_••••••••")).toBeInTheDocument();
+  });
 });

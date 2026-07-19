@@ -24,6 +24,7 @@ export default function ApiKeysClient() {
   const [recentPrefix, setRecentPrefix] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [pendingRevoke, setPendingRevoke] = useState<string | null>(null);
+  const [revealedKeys, setRevealedKeys] = useState<Set<string>>(new Set());
 
   const onCreate = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -104,7 +105,29 @@ export default function ApiKeysClient() {
                     <p className="text-sm font-medium">{key.label}</p>
                     {key.prefix === recentPrefix && <Badge variant="ok">New</Badge>}
                   </div>
-                  <p className="font-mono text-xs text-neutral-500">{key.prefix}…</p>
+                  <div className="flex items-center gap-2">
+                    <p className="font-mono text-xs text-neutral-500">
+                      {revealedKeys.has(key.prefix) ? key.prefix : `${key.prefix.slice(0, 8)}••••••••`}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRevealedKeys((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(key.prefix)) {
+                            next.delete(key.prefix);
+                          } else {
+                            next.add(key.prefix);
+                          }
+                          return next;
+                        });
+                      }}
+                      aria-label={`${revealedKeys.has(key.prefix) ? "Hide" : "Reveal"} API key ${key.label}`}
+                      className="text-xs text-neutral-500 hover:text-neutral-900 underline dark:hover:text-neutral-100"
+                    >
+                      {revealedKeys.has(key.prefix) ? "Hide" : "Reveal"}
+                    </button>
+                  </div>
                   <p className="text-xs text-neutral-500">
                     Created <TimeAgo ts={key.createdAt} />
                   </p>

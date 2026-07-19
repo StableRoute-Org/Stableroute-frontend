@@ -40,3 +40,7 @@ handler shows a toast and the request still rejects so callers can react.
 
 Default timeout is 15s (`timeoutMs` option). Abort errors surface as
 `Request timed out`; network failures as `Network request failed`.
+
+## API Key Security
+
+By default, API key identifiers are partially masked in the UI (e.g. `sk_live_1••••••••`) to prevent accidental leaks in screenshots or screen shares. A toggle allows the user to explicitly reveal the full identifier. The revealed value is strictly maintained in local component state and is never persisted to storage or logs.
