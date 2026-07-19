@@ -40,3 +40,47 @@ handler shows a toast and the request still rejects so callers can react.
 
 Default timeout is 15s (`timeoutMs` option). Abort errors surface as
 `Request timed out`; network failures as `Network request failed`.
+
+## Routes catalogue
+
+`src/lib/routes.ts` exports a `ROUTES` constant that drives navigation,
+the command palette, and page headings. Every entry has a unique `href`,
+`title`, and `description`.
+
+```ts
+type RouteEntry = {
+  href: string;        // URL path (e.g. "/pairs")
+  title: string;       // Display label (e.g. "Pairs")
+  description: string; // Tooltip / palette subtitle
+};
+```
+
+The keys are: `home`, `pairs`, `quote`, `stats`, `admin`, `events`,
+`webhooks`, `apiKeys`, `settings`, `docs`.
+
+Tests assert uniqueness and non-emptiness of every field so that adding
+a route without a description fails the test.
+
+## Webhook events catalogue
+
+`src/lib/webhookEvents.ts` exports the documented set of webhook event
+identifiers as `WEBHOOK_EVENT_OPTIONS` and a type guard
+`isWebhookEventType()`.
+
+```ts
+const WEBHOOK_EVENT_OPTIONS = [
+  "pair.registered",
+  "pair.deleted",
+  "quote.requested",
+  "router.paused",
+  "router.unpaused",
+] as const;
+
+type WebhookEventType = (typeof WEBHOOK_EVENT_OPTIONS)[number];
+
+function isWebhookEventType(value: string): value is WebhookEventType;
+```
+
+Tests assert the exact set of identifiers matches the documented
+canonical list and that `isWebhookEventType` correctly discriminates
+valid events from invalid ones.
