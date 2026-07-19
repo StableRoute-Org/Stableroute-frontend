@@ -34,3 +34,58 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+/*
+ * Forced-colors (Windows High Contrast) support
+ *
+ * In forced-colors mode the browser replaces author colours with system
+ * palette values. Backgrounds and box-shadows that carry semantic meaning
+ * (borders, status indicators) become invisible. The rules below restore
+ * those boundaries using ButtonText / CanvasText / Highlight system keywords
+ * so shapes and states remain perceivable without relying on colour alone.
+ *
+ * Pattern for new components:
+ *   1. Re-assert borders with `border: 1px solid ButtonText`.
+ *   2. Replace colour-only status cues with a visible text prefix or icon.
+ *   3. Use `forced-color-adjust: none` only on small self-contained elements.
+ *
+ * See docs/DESIGN_TOKENS.md for the full authoring guide.
+ */
+@media (forced-colors: active) {
+  /* ── Card ──────────────────────────────────────────────────────────────── */
+  [data-card] {
+    border: 1px solid ButtonText;
+    outline: none;
+  }
+
+  [data-card-footer] {
+    border-top: 1px solid ButtonText;
+  }
+
+  /* ── Badge ─────────────────────────────────────────────────────────────── */
+  [data-badge] {
+    border: 1px solid ButtonText;
+    forced-color-adjust: none;
+    background-color: Canvas;
+    color: CanvasText;
+    outline: none;
+  }
+
+  /* ── StatTile ──────────────────────────────────────────────────────────── */
+  [data-stattile] {
+    border: 1px solid ButtonText;
+    outline: none;
+  }
+
+  /* ── Focus rings ───────────────────────────────────────────────────────── */
+  :focus-visible {
+    outline: 2px solid Highlight;
+    outline-offset: 2px;
+  }
+
+  /* ── Buttons ───────────────────────────────────────────────────────────── */
+  button,
+  [role="button"] {
+    border: 1px solid ButtonText;
+  }
+}
