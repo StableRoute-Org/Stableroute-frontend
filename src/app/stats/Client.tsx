@@ -9,7 +9,8 @@ import { StatTile } from "@/components/StatTile";
 type Stats = { totalPairs: number; paused: boolean };
 
 export default function StatsClient() {
-  const { status, data, error } = useApi<Stats>("/api/v1/stats");
+  const result = useApi<Stats>("/api/v1/stats");
+  const { status } = result;
 
   return (
     <main
@@ -20,7 +21,7 @@ export default function StatsClient() {
       <h1 className="text-3xl font-semibold tracking-tight">Stats</h1>
       {status === "error" && (
         <p role="alert" className="text-sm text-rose-600">
-          {error}
+          {result.status === "error" ? result.error : null}
         </p>
       )}
       {status === "loading" && (
@@ -29,18 +30,18 @@ export default function StatsClient() {
           Loading…
         </div>
       )}
-      {status === "ok" && (
+      {result.status === "ok" && (
         <section aria-labelledby="stats-metrics-heading">
           <h2 id="stats-metrics-heading" className="sr-only">
             Router metrics
           </h2>
           <dl className="grid grid-cols-2 gap-4">
-            <StatTile label="Pairs" value={formatNumber(data.totalPairs)} />
-            <StatTile label="Status" value={data.paused ? "Paused" : "Live"} />
+            <StatTile label="Pairs" value={formatNumber(result.data.totalPairs)} />
+            <StatTile label="Status" value={result.data.paused ? "Paused" : "Live"} />
           </dl>
         </section>
       )}
-      {status === "ok" && data.totalPairs === 0 && (
+      {result.status === "ok" && result.data.totalPairs === 0 && (
         <EmptyState title="No pairs yet" description="Register a pair to see metrics." />
       )}
     </main>
