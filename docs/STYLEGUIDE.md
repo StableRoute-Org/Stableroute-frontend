@@ -155,6 +155,71 @@ If you find yourself reaching for a class like `bg-teal-500` or
 Adding a new color in isolation is the most common source of design drift and
 will be requested for revision in review.
 
+## Sortable table columns
+
+When a data table must be operator-sortable, follow the pattern from
+[`src/app/pairs/Client.tsx`](../src/app/pairs/Client.tsx).
+
+### Rules
+
+1. **`aria-sort` lives on `<th>`**, not on the button inside it. Allowed
+   values are `ascending`, `descending`, or `none`.  
+   Never set `aria-sort` to `"none"` on a column that has never been clicked —
+   initialise to `"none"` because the attribute is still required for
+   assistive-technology to announce the column as sortable.
+
+2. **Sort is toggled via a `<button type="button">`** nested inside the `<th>`.
+   The button receives the shared focus ring (see [Focus rings](#focus-rings)):
+
+   ```tsx
+   const ring =
+     "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500";
+   ```
+
+3. **Direction cycles:** first click → `ascending`, second click on the same
+   column → `descending`. Clicking a *different* column always resets to
+   `ascending`.
+
+4. **Sort is stable.** Use `[...array].sort(compareFn)` (spread to avoid
+   mutating state). V8 and JavaScriptCore both provide a stable `Array.sort`,
+   so equal values preserve their original insertion order.
+
+5. **Accessible label** — give the button a descriptive `aria-label` that
+   includes the current sort state for screen-reader users:
+
+   ```tsx
+   aria-label={`Sort by ${label}${isActive ? `, currently ${sortDir}` : ""}`}
+   ```
+
+6. **Visual indicator** — render a `▲` / `▼` character inside a fixed-width
+   `<span aria-hidden="true">` so the indicator never shifts surrounding text.
+
+### Minimal reference implementation
+
+```tsx
+type SortKey = "source" | "destination";
+type SortDir = "ascending" | "descending";
+
+function SortHeader({ label, sortKey, activeSortKey, sortDir, onSort }) {
+  const isActive = activeSortKey === sortKey;
+  const ariaSort: React.AriaAttributes["aria-sort"] = isActive ? sortDir : "none";
+
+  return (
+    <th scope="col" aria-sort={ariaSort}>
+      <button
+        type="button"
+        onClick={() => onSort(sortKey)}
+        className={ring}
+        aria-label={`Sort by ${label}${isActive ? `, currently ${sortDir}` : ""}`}
+      >
+        {label}
+        <span aria-hidden="true">{isActive ? (sortDir === "ascending" ? " ▲" : " ▼") : ""}</span>
+      </button>
+    </th>
+  );
+}
+```
+
 ## Related
 
 - [`README.md`](../README.md) — overview, routes, scripts.
