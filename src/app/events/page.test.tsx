@@ -1,6 +1,9 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { Component, type ReactNode } from "react";
 import EventsPage from "./page";
-import { MAX_RENDERED_EVENTS, MAX_PAYLOAD_PREVIEW_LENGTH } from "@/lib/events";
+import EventsError from "./error";
+import { Header } from "@/components/Header";
+import { MAX_RENDERED_EVENTS } from "@/lib/events";
 
 const okEventsResponse = (items: unknown[]) =>
   ({
@@ -151,7 +154,11 @@ describe("EventsPage", () => {
 
     render(<EventsPage />);
 
-    expect(await screen.findByText(/200 of 203 events/)).toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        `Showing ${MAX_RENDERED_EVENTS} of ${MAX_RENDERED_EVENTS + 3} events (capped).`,
+      ),
+    ).toBeInTheDocument();
     expect(screen.getByText("event.0")).toBeInTheDocument();
     expect(screen.getByText(`event.${MAX_RENDERED_EVENTS - 1}`)).toBeInTheDocument();
     expect(screen.queryByText(`event.${MAX_RENDERED_EVENTS}`)).not.toBeInTheDocument();
@@ -752,5 +759,112 @@ describe("EventsPage", () => {
       expect(await screen.findByText("payload.array")).toBeInTheDocument();
       expect(screen.getByText(/nested/)).toBeInTheDocument();
     });
+  });
+});
+
+describe("EventsError segment boundary", () => {
+  let errorSpy: jest.SpyInstance;
+
+  beforeEach(() => {
+    errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+    // jsdom does not implement matchMedia; Header renders ThemeToggle which
+    // resolves the effective theme through it on mount.
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      writable: true,
+      value: jest.fn().mockReturnValue({ matches: false }),
+    });
+  });
+
+  afterEach(() => {
+    errorSpy.mockRestore();
+  });
+
+  /**
+   * Minimal stand-in for the Next.js segment boundary: renders the segment's
+   * `error.tsx` default export when a child throws, and re-renders the
+   * children when the fallback's `reset()` fires — mirroring App Router
+   * semantics.
+   */
+  class SegmentBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
+    state: { error: Error | null } = { error: null };
+
+    static getDerivedStateFromError(error: Error) {
+      return { error };
+    }
+
+    render() {
+      if (this.state.error) {
+        return (
+          <EventsError error={this.state.error} reset={() => this.setState({ error: null })} />
+        );
+      }
+      return this.props.children;
+    }
+  }
+
+  function CrashingSegment(): ReactNode {
+    throw new Error("events segment exploded");
+  }
+
+  it("renders the segment-scoped fallback with the thrown message", () => {
+    render(
+      <SegmentBoundary>
+        <CrashingSegment />
+      </SegmentBoundary>,
+    );
+    expect(
+      screen.getByRole("heading", { name: /The events page hit an error\./i }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent("events segment exploded");
+  });
+
+  it("keeps the header and navigation mounted during the error state", () => {
+    render(
+      <>
+        <Header />
+        <SegmentBoundary>
+          <CrashingSegment />
+        </SegmentBoundary>
+      </>,
+    );
+    expect(screen.getByRole("banner")).toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: /main navigation/i })).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent("events segment exploded");
+  });
+
+  it("recovers the segment via reset without a full page reload", () => {
+    let crash = true;
+    function FlakySegment(): ReactNode {
+      if (crash) throw new Error("events segment exploded");
+      return <p>events content</p>;
+    }
+    render(
+      <>
+        <Header />
+        <SegmentBoundary>
+          <FlakySegment />
+        </SegmentBoundary>
+      </>,
+    );
+    const headerEl = screen.getByRole("banner");
+    expect(screen.queryByText("events content")).not.toBeInTheDocument();
+
+    crash = false;
+    fireEvent.click(screen.getByRole("button", { name: /Try again/i }));
+
+    // Same header DOM node after recovery proves the shell never remounted.
+    expect(screen.getByText("events content")).toBeInTheDocument();
+    expect(screen.getByRole("banner")).toBe(headerEl);
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("logs the digest when the thrown error carries one", () => {
+    const error = Object.assign(new Error("boom"), { digest: "digest-events-1" });
+    render(<EventsError error={error} reset={() => {}} />);
+    expect(errorSpy).toHaveBeenCalledWith(
+      "events segment error boundary caught:",
+      "digest-events-1",
+    );
   });
 });

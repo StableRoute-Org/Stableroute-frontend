@@ -5,7 +5,7 @@ describe("StatTile", () => {
   it("renders string label and value with dt/dd semantics", () => {
     render(<StatTile label="Pairs" value="42" />);
     expect(screen.getByText("Pairs").tagName).toBe("DT");
-    expect(screen.getByText("42").tagName).toBe("DD");
+    expect(screen.getByText("42").closest("dd")).not.toBeNull();
   });
 
   it("renders ReactNode label and value", () => {

@@ -49,12 +49,17 @@ export default function PairsClient() {
           className="rounded-md border border-neutral-300 px-3 py-2 dark:border-neutral-700 dark:bg-neutral-900"
         />
       </label>
-      {status === "error" && (
+      {result.status === "error" && (
         <p role="alert" className="text-sm text-rose-600">
-          {result.status === "error" ? result.error : null}
+          {result.error}
         </p>
       )}
-      <section aria-live="polite" aria-busy={status === "loading"} className="contents">
+      <section
+        aria-live="polite"
+        aria-atomic="true"
+        aria-busy={status === "loading"}
+        className="contents"
+      >
         {status === "loading" && (
           <div className="flex items-center gap-2 text-sm text-neutral-600">
             <Spinner label="Loading pairs" />
@@ -62,7 +67,11 @@ export default function PairsClient() {
           </div>
         )}
         {filtered && filtered.length === 0 && (
-          <EmptyState title="No pairs found" description="Try a different filter or register a new pair." />
+          query.trim() ? (
+            <EmptyState title="No pairs found" description="Try a different filter or register a new pair." />
+          ) : (
+            <EmptyState title="No pairs registered yet" description="Register a pair to get started." />
+          )
         )}
         {filtered && filtered.length > 0 && (
           <ul className="divide-y divide-neutral-200 dark:divide-neutral-800">

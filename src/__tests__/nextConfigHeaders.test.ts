@@ -12,7 +12,9 @@ describe("next.config security headers", () => {
       "X-Content-Type-Options": "nosniff",
       "Referrer-Policy": "strict-origin-when-cross-origin",
       "X-Frame-Options": "DENY",
-      "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
+      "Permissions-Policy": "camera=(), microphone=(), geolocation=(), interest-cohort=()",
+      "Content-Security-Policy":
+        "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' http://localhost:3001 https:; font-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
     });
   });
 });

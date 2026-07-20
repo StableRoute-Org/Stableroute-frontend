@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { useApi } from "@/lib/useApi";
 import { formatNumber } from "@/lib/format";
 import { EmptyState } from "@/components/EmptyState";
@@ -8,9 +9,17 @@ import { StatTile } from "@/components/StatTile";
 
 type Stats = { totalPairs: number; paused: boolean };
 
+/** Poll cadence for the stats dashboard (see ARCHITECTURE.md, "Data flow"). */
+const POLL_MS = 5_000;
+
 export default function StatsClient() {
   const result = useApi<Stats>("/api/v1/stats");
-  const { status } = result;
+  const { refetch } = result;
+
+  useEffect(() => {
+    const id = setInterval(refetch, POLL_MS);
+    return () => clearInterval(id);
+  }, [refetch]);
 
   return (
     <main
@@ -19,12 +28,12 @@ export default function StatsClient() {
       className="mx-auto flex min-h-[60vh] max-w-3xl flex-col gap-6 p-8 focus:outline-none"
     >
       <h1 className="text-3xl font-semibold tracking-tight">Stats</h1>
-      {status === "error" && (
+      {result.status === "error" && (
         <p role="alert" className="text-sm text-rose-600">
-          {result.status === "error" ? result.error : null}
+          {result.error}
         </p>
       )}
-      {status === "loading" && (
+      {result.status === "loading" && (
         <div className="flex items-center gap-2 text-sm">
           <Spinner label="Loading stats" />
           Loading…
