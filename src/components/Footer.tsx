@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 const footerLinkClass =
-  "rounded px-1 underline-offset-4 hover:text-neutral-900 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 dark:hover:text-neutral-100";
+  "rounded px-1 underline-offset-4 hover:text-neutral-900 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[var(--focus-ring-offset)] focus-visible:outline-[color:var(--focus-ring-color)] dark:hover:text-neutral-100";
 
 /**
  * Site-wide footer with the StableRoute tagline, current year, and primary

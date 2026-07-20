@@ -43,12 +43,14 @@ const ring =
   "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[var(--focus-ring-offset)] focus-visible:outline-[color:var(--focus-ring-color)]";
 ```
 
-Use this exact class string on every `<button>`, `<a>`, and form control.
-Never replace it with a Tailwind `ring-*` utility — the explicit outline is
-visible against the dark-mode background where the default ring is not.
-Never hardcode a Tailwind color utility (e.g. `outline-blue-500`) here either
-— the token swaps shade between themes to stay above the 3:1 WCAG contrast
-minimum, which a single static color can't do.
+Use this exact class string on every `<button>`, `<a>`, and form control —
+`TextField`, `ThemeToggle`, `Header`, `Footer`, `ShortcutsHelp`,
+`ToastProvider`, and the app-level pages all apply it. Never replace it with
+a Tailwind `ring-*` utility — the explicit outline is visible against the
+dark-mode background where the default ring is not. Never hardcode a
+Tailwind color utility (e.g. `outline-blue-500`) here either — the token
+swaps shade between themes to stay above the 3:1 WCAG contrast minimum,
+which a single static color can't do.
 
 ## `Button` variants
 

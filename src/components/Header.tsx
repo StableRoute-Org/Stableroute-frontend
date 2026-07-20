@@ -28,7 +28,7 @@ export function Header() {
       <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 p-4">
         <Link
           href="/"
-          className="text-lg font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+          className="text-lg font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[var(--focus-ring-offset)] focus-visible:outline-[color:var(--focus-ring-color)]"
         >
           StableRoute
         </Link>
@@ -58,7 +58,7 @@ export function Header() {
                 <Link
                   href={link.href}
                   aria-current={active ? "page" : undefined}
-                  className="block rounded px-2 py-1 hover:bg-neutral-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 dark:hover:bg-neutral-800"
+                  className="block rounded px-2 py-1 hover:bg-neutral-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[var(--focus-ring-offset)] focus-visible:outline-[color:var(--focus-ring-color)] dark:hover:bg-neutral-800"
                   onClick={() => setMobileOpen(false)}
                 >
                   {link.title}

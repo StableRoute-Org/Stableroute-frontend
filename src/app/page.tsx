@@ -31,7 +31,7 @@ export default function Home() {
       </p>
       <div className="mt-8 grid w-full max-w-3xl grid-cols-1 gap-4 sm:grid-cols-2">
         {routes.map((r) => (
-          <Link key={r.href} href={r.href} className="focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 rounded-lg">
+          <Link key={r.href} href={r.href} className="focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[var(--focus-ring-offset)] focus-visible:outline-[color:var(--focus-ring-color)] rounded-lg">
             <Card title={r.label}>
               <p className="text-sm text-neutral-500">{r.desc}</p>
             </Card>
