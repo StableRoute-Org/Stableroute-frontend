@@ -59,7 +59,7 @@ describe("PairsPage", () => {
 
     render(<PairsPage />);
     await waitFor(() => {
-      expect(screen.getByRole("alert")).toHaveTextContent(/Network error/i);
+      expect(screen.getByRole("alert")).toHaveTextContent(/Network request failed/i);
     });
     expect(document.querySelector("[aria-live=polite]")).toHaveAttribute(
       "aria-busy",
