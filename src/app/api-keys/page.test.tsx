@@ -78,7 +78,7 @@ describe("ApiKeysPage", () => {
     });
   });
 
-  it("has exactly one aria-live=polite region", async () => {
+  it("has exactly one aria-live=polite region in the page content", async () => {
     global.fetch = jest.fn().mockResolvedValueOnce({
       ok: true,
       text: async () => JSON.stringify({ items: [] }),
@@ -88,7 +88,9 @@ describe("ApiKeysPage", () => {
     await waitFor(() => {
       expect(screen.getByText(/No API keys yet/i)).toBeInTheDocument();
     });
-    expect(document.querySelectorAll("[aria-live=polite]")).toHaveLength(1);
+    // Scoped to <main>: ToastProvider (required for useToast) contributes its own
+    // aria-live=polite notifications region outside the page content.
+    expect(document.querySelectorAll("main [aria-live=polite]")).toHaveLength(1);
   });
 
   it("renders createdAt timestamps with TimeAgo component", async () => {

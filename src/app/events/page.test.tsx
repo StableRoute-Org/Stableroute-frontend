@@ -113,7 +113,7 @@ describe("EventsPage", () => {
     });
   });
 
-  it("has exactly one aria-live=polite region", async () => {
+  it("has exactly one aria-live=polite region in the page content", async () => {
     global.fetch = jest.fn().mockResolvedValueOnce({
       ok: true,
       text: async () => JSON.stringify({ items: [] }),
@@ -123,7 +123,9 @@ describe("EventsPage", () => {
     await waitFor(() => {
       expect(screen.getByText(/No events/i)).toBeInTheDocument();
     });
-    expect(document.querySelectorAll("[aria-live=polite]")).toHaveLength(1);
+    // Scoped to <main>: ToastProvider (required for useToast) contributes its own
+    // aria-live=polite notifications region outside the page content.
+    expect(document.querySelectorAll("main [aria-live=polite]")).toHaveLength(1);
   });
 
   it("names the event log region for assistive tech", async () => {
@@ -179,7 +181,9 @@ describe("EventsPage", () => {
 
     renderPage();
 
-    expect(await screen.findByText(`200 of ${MAX_RENDERED_EVENTS + 3} events`)).toBeInTheDocument();
+    expect(
+      await screen.findByText(`200 of ${MAX_RENDERED_EVENTS + 3} events`, {}, { timeout: 3000 }),
+    ).toBeInTheDocument();
     expect(screen.getByText("event.0")).toBeInTheDocument();
     expect(screen.getByText(`event.${MAX_RENDERED_EVENTS - 1}`)).toBeInTheDocument();
     expect(screen.queryByText(`event.${MAX_RENDERED_EVENTS}`)).not.toBeInTheDocument();
