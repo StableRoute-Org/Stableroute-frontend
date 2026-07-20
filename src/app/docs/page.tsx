@@ -1,4 +1,9 @@
-export const metadata = { title: "Docs — StableRoute" };
+import { getApiBase } from "@/lib/config";
+
+export const metadata = {
+  title: "Docs — StableRoute",
+  description: "Short reference for the StableRoute HTTP API common endpoints.",
+};
 
 const sections = [
   {
@@ -30,10 +35,15 @@ export default function DocsPage() {
       <h1 className="text-3xl font-semibold tracking-tight">API documentation</h1>
       <p className="text-sm text-neutral-600 dark:text-neutral-400">
         Companion to{" "}
-        <a className="underline" href="/api/v1/openapi.json">
+        <a
+          className="underline"
+          href={`${getApiBase()}/api/v1/openapi.json`}
+          rel="noopener noreferrer"
+          target="_blank"
+        >
           GET /api/v1/openapi.json
         </a>{" "}
-        — short prose for the most common endpoints.
+        (opens external API spec) — short prose for the most common endpoints.
       </p>
       <dl className="space-y-4">
         {sections.map((s) => (

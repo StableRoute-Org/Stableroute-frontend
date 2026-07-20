@@ -1,52 +1,120 @@
-import { render, screen, waitFor } from "@testing-library/react";
-import { StatsClient } from "./Client";
+import { act, render, screen, waitFor } from "@testing-library/react";
+import StatsPage from "./page";
 
-describe("StatsClient", () => {
-  let originalFetch: typeof global.fetch;
+const mockFetch = (data: unknown) => {
+  global.fetch = jest.fn().mockResolvedValue({
+    ok: true,
+    text: () => Promise.resolve(JSON.stringify(data)),
+  } as unknown as Response);
+};
 
-  beforeEach(() => {
-    originalFetch = global.fetch;
+afterEach(() => {
+  jest.useRealTimers();
+  jest.restoreAllMocks();
+});
+
+describe("StatsPage", () => {
+  it("renders the heading", async () => {
+    mockFetch({ totalPairs: 0, paused: false });
+    render(<StatsPage />);
+    expect(screen.getByRole("heading", { name: /stats/i })).toBeInTheDocument();
+    await screen.findByText("Live");
   });
 
-  afterEach(() => {
-    global.fetch = originalFetch;
+  it("renders one canonical stats page region and heading", async () => {
+    mockFetch({ totalPairs: 0, paused: false });
+    render(<StatsPage />);
+
+    expect(screen.getAllByRole("heading", { name: /stats/i })).toHaveLength(1);
+    expect(document.querySelectorAll("#main-content")).toHaveLength(1);
+    await screen.findByText("Live");
   });
 
-  it("renders initial stats without waiting for the first poll", () => {
-    const initial = { totalPairs: 42, paused: false };
-    render(<StatsClient initial={initial} error={null} />);
-    expect(screen.getByText("42")).toBeInTheDocument();
-    expect(screen.getByText("Live")).toBeInTheDocument();
+  it("names the metrics panel with an accessible region", async () => {
+    mockFetch({ totalPairs: 12, paused: false });
+    render(<StatsPage />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("region", { name: /router metrics/i }),
+      ).toBeInTheDocument();
+    });
   });
 
-  it("renders the initial error when provided", () => {
-    render(<StatsClient initial={null} error="backend down" />);
-    expect(screen.getByRole("alert")).toHaveTextContent("backend down");
+  it("formats totalPairs with thousands separators via formatNumber", async () => {
+    mockFetch({ totalPairs: 1234567, paused: false });
+    render(<StatsPage />);
+    const pairs = await screen.findByText("1,234,567");
+    expect(pairs).toBeInTheDocument();
   });
 
-  it("polls for updates after mounting", async () => {
-    global.fetch = jest.fn().mockResolvedValueOnce({
+  it("renders Live when paused is false", async () => {
+    mockFetch({ totalPairs: 0, paused: false });
+    render(<StatsPage />);
+    const status = await screen.findByText("Live");
+    expect(status).toBeInTheDocument();
+  });
+
+  it("renders Paused when paused is true", async () => {
+    mockFetch({ totalPairs: 0, paused: true });
+    render(<StatsPage />);
+    const status = await screen.findByText("Paused");
+    expect(status).toBeInTheDocument();
+  });
+
+  it("renders error message on fetch failure", async () => {
+    global.fetch = jest.fn().mockRejectedValue(new Error("Network error"));
+    render(<StatsPage />);
+    await waitFor(() => {
+      const alert = screen.getByRole("alert");
+      expect(alert).toHaveTextContent(/network error/i);
+    });
+  });
+
+  it("keeps the existing 5 second polling update behavior", async () => {
+    jest.useFakeTimers();
+    global.fetch = jest
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        text: () => Promise.resolve(JSON.stringify({ totalPairs: 1, paused: false })),
+      } as unknown as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        text: () => Promise.resolve(JSON.stringify({ totalPairs: 2000, paused: true })),
+      } as unknown as Response);
+
+    render(<StatsPage />);
+
+    expect(await screen.findByText("1")).toBeInTheDocument();
+    expect(await screen.findByText("Live")).toBeInTheDocument();
+
+    await act(async () => {
+      jest.advanceTimersByTime(5000);
+    });
+
+    expect(await screen.findByText("2,000")).toBeInTheDocument();
+    expect(await screen.findByText("Paused")).toBeInTheDocument();
+    expect(global.fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("clears the polling interval on unmount", async () => {
+    jest.useFakeTimers();
+    global.fetch = jest.fn().mockResolvedValue({
       ok: true,
-      text: async () => JSON.stringify({ totalPairs: 10, paused: true }),
-    }) as unknown as typeof global.fetch;
+      text: () => Promise.resolve(JSON.stringify({ totalPairs: 42, paused: false })),
+    } as unknown as Response);
 
-    render(<StatsClient initial={null} error={null} />);
-    await waitFor(() => {
-      expect(screen.getByText("10")).toBeInTheDocument();
+    const { unmount } = render(<StatsPage />);
+    expect(await screen.findByText("42")).toBeInTheDocument();
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+
+    unmount();
+
+    await act(async () => {
+      jest.advanceTimersByTime(15000);
     });
-    expect(screen.getByText("Paused")).toBeInTheDocument();
-  });
 
-  it("surfaces fetch errors in the live region", async () => {
-    global.fetch = jest.fn().mockResolvedValueOnce({
-      ok: false,
-      status: 502,
-      text: async () => "Bad Gateway",
-    }) as unknown as typeof global.fetch;
-
-    render(<StatsClient initial={null} error={null} />);
-    await waitFor(() => {
-      expect(screen.getByRole("alert")).toHaveTextContent("HTTP 502");
-    });
+    expect(global.fetch).toHaveBeenCalledTimes(1);
   });
 });

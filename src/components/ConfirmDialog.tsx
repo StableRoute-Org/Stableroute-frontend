@@ -1,6 +1,9 @@
 "use client";
 
-import { type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
+import { Button } from "./Button";
+
+type Tone = "danger" | "default";
 
 type Props = {
   open: boolean;
@@ -8,6 +11,7 @@ type Props = {
   description?: ReactNode;
   confirmLabel?: string;
   cancelLabel?: string;
+  tone?: Tone;
   onConfirm: () => void;
   onCancel: () => void;
 };
@@ -18,9 +22,22 @@ export function ConfirmDialog({
   description,
   confirmLabel = "Confirm",
   cancelLabel = "Cancel",
+  tone = "danger",
   onConfirm,
   onCancel,
 }: Props) {
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onCancel();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    panelRef.current?.querySelector<HTMLElement>("button")?.focus();
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [open, onCancel]);
+
   if (!open) return null;
   return (
     <div
@@ -28,8 +45,13 @@ export function ConfirmDialog({
       aria-modal="true"
       aria-labelledby="confirm-title"
       className="fixed inset-0 z-40 flex items-center justify-center bg-black/40 p-4"
+      onClick={onCancel}
     >
-      <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow-xl dark:bg-neutral-900">
+      <div
+        ref={panelRef}
+        className="w-full max-w-sm rounded-lg bg-white p-6 shadow-xl dark:bg-neutral-900"
+        onClick={(event) => event.stopPropagation()}
+      >
         <h2 id="confirm-title" className="text-lg font-semibold">
           {title}
         </h2>
@@ -39,20 +61,16 @@ export function ConfirmDialog({
           </p>
         )}
         <div className="mt-4 flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="rounded-full border border-neutral-300 px-4 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 dark:border-neutral-700"
-          >
+          <Button type="button" variant="secondary" onClick={onCancel}>
             {cancelLabel}
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
+            variant={tone === "danger" ? "danger" : "primary"}
             onClick={onConfirm}
-            className="rounded-full bg-rose-600 px-4 py-2 text-sm font-medium text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
           >
             {confirmLabel}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

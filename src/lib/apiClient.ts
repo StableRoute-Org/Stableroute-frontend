@@ -1,5 +1,4 @@
-const API_BASE =
-  process.env.NEXT_PUBLIC_STABLEROUTE_API_BASE ?? "http://localhost:3001";
+import { getApiBase } from "./config";
 
 export type ApiError = {
   error: string;
@@ -7,14 +6,32 @@ export type ApiError = {
   requestId?: string;
 };
 
-export async function apiFetch<T>(
-  path: string,
-  init: RequestInit = {}
-): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
-    headers: { "Content-Type": "application/json", ...(init.headers ?? {}) },
-    ...init,
-  });
+export type ApiFetchOptions = {
+  /** Opt-in retry with exponential backoff for idempotent GET/HEAD requests. */
+  retry?: {
+    maxAttempts?: number;
+    baseDelayMs?: number;
+  };
+  /** Request timeout in milliseconds. Default 15000. */
+  timeoutMs?: number;
+};
+
+type AuthErrorHandler = (status: 401 | 403) => void;
+let _authErrorHandler: AuthErrorHandler | null = null;
+
+const DEFAULT_TIMEOUT_MS = 15_000;
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/** Called once by <ApiAuthGuard> when it mounts inside <ToastProvider>. */
+export function registerAuthErrorHandler(handler: AuthErrorHandler): () => void {
+  _authErrorHandler = handler;
+  return () => {
+    if (_authErrorHandler === handler) _authErrorHandler = null;
+  };
+}
+
+async function parseResponse<T>(res: Response): Promise<T> {
   if (res.status === 204) return undefined as T;
   const text = await res.text();
   let body: T | ApiError | undefined;
@@ -27,13 +44,71 @@ export async function apiFetch<T>(
     }
   }
   if (!res.ok) {
+    if (res.status === 401 || res.status === 403) {
+      _authErrorHandler?.(res.status as 401 | 403);
+    }
     const msg = (body as ApiError | undefined)?.message ?? `HTTP ${res.status}`;
-    throw Object.assign(new Error(msg), body ?? {});
+    const err = Object.assign(new Error(msg), { status: res.status }, body ?? {});
+    throw err;
   }
   return body as T;
 }
 
-export const apiGet = <T>(path: string) => apiFetch<T>(path);
+export async function apiFetch<T>(
+  path: string,
+  init: RequestInit = {},
+  options?: ApiFetchOptions,
+): Promise<T> {
+  const method = (init.method ?? "GET").toUpperCase();
+  const canRetry = method === "GET" || method === "HEAD";
+  const maxAttempts =
+    canRetry && options?.retry ? Math.max(1, options.retry.maxAttempts ?? 3) : 1;
+  const baseDelayMs = options?.retry?.baseDelayMs ?? 100;
+
+  let lastError: unknown;
+  const timeoutMs = options?.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch(`${getApiBase()}${path}`, {
+        headers: { "Content-Type": "application/json", ...(init.headers ?? {}) },
+        signal: controller.signal,
+        ...init,
+      });
+      if (!res.ok && res.status >= 500 && attempt < maxAttempts) {
+        await sleep(baseDelayMs * 2 ** (attempt - 1));
+        continue;
+      }
+      return await parseResponse<T>(res);
+    } catch (err) {
+      if (
+        err instanceof Error &&
+        ("status" in err ||
+          err.message === "Invalid JSON response" ||
+          err.message.startsWith("HTTP "))
+      ) {
+        throw err;
+      }
+      lastError = err;
+      const message =
+        err instanceof DOMException && err.name === "AbortError"
+          ? "Request timed out"
+          : "Network request failed";
+      if (attempt < maxAttempts) {
+        await sleep(baseDelayMs * 2 ** (attempt - 1));
+        continue;
+      }
+      throw new Error(message);
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+  throw lastError ?? new Error("request failed");
+}
+
+export const apiGet = <T>(path: string, options?: ApiFetchOptions) =>
+  apiFetch<T>(path, {}, options);
 export const apiPost = <T>(path: string, body: unknown) =>
   apiFetch<T>(path, { method: "POST", body: JSON.stringify(body) });
 export const apiPatch = <T>(path: string, body: unknown) =>

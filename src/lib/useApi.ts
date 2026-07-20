@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { apiGet } from "./apiClient";
 
 type State<T> =
@@ -8,8 +8,15 @@ type State<T> =
   | { status: "error"; error: string }
   | { status: "ok"; data: T };
 
-export function useApi<T>(path: string | null): State<T> {
+export type UseApiResult<T> = State<T> & { refetch: () => void };
+
+export function useApi<T>(path: string | null): UseApiResult<T> {
   const [state, setState] = useState<State<T>>({ status: "loading" });
+  const [reloadKey, setReloadKey] = useState(0);
+
+  const refetch = useCallback(() => {
+    setReloadKey((key) => key + 1);
+  }, []);
 
   useEffect(() => {
     if (path === null) return;
@@ -23,12 +30,12 @@ export function useApi<T>(path: string | null): State<T> {
           setState({
             status: "error",
             error: (e as Error).message ?? "failed to load",
-          })
+          }),
       );
     return () => {
       cancelled = true;
     };
-  }, [path]);
+  }, [path, reloadKey]);
 
-  return state;
+  return { ...state, refetch };
 }

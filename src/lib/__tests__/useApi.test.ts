@@ -34,4 +34,18 @@ describe("useApi", () => {
     expect(result.current.status).toBe("loading");
     expect(mockApiGet).not.toHaveBeenCalled();
   });
+
+  it("refetches when refetch is called", async () => {
+    mockApiGet.mockResolvedValue({ value: 1 });
+    const { result } = renderHook(() => useApi<{ value: number }>("/test"));
+    await waitFor(() => expect(result.current.status).toBe("ok"));
+    expect(mockApiGet).toHaveBeenCalledTimes(1);
+
+    mockApiGet.mockResolvedValue({ value: 2 });
+    result.current.refetch();
+    await waitFor(() =>
+      expect((result.current as { status: "ok"; data: { value: number } }).data.value).toBe(2),
+    );
+    expect(mockApiGet).toHaveBeenCalledTimes(2);
+  });
 });

@@ -1,4 +1,10 @@
-import { type ButtonHTMLAttributes } from "react";
+import {
+  cloneElement,
+  isValidElement,
+  type ButtonHTMLAttributes,
+  type ReactElement,
+  type ReactNode,
+} from "react";
 
 type Variant = "primary" | "secondary" | "danger";
 
@@ -15,17 +21,31 @@ const ring =
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: Variant;
+  /** When true, merge styles onto the single child element (e.g. next/link). */
+  asChild?: boolean;
+  children?: ReactNode;
 };
 
 export function Button({
   variant = "primary",
   className = "",
+  asChild = false,
+  children,
   ...rest
 }: ButtonProps) {
+  const classes = `rounded-full px-5 py-2 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed ${variants[variant]} ${ring} ${className}`;
+
+  if (asChild && isValidElement(children)) {
+    const child = children as ReactElement<{ className?: string }>;
+    return cloneElement(child, {
+      ...rest,
+      className: `${classes} ${child.props.className ?? ""}`.trim(),
+    });
+  }
+
   return (
-    <button
-      {...rest}
-      className={`rounded-full px-5 py-2 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed ${variants[variant]} ${ring} ${className}`}
-    />
+    <button {...rest} className={classes}>
+      {children}
+    </button>
   );
 }

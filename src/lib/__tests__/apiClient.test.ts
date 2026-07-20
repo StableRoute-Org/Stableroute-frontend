@@ -1,4 +1,4 @@
-import { apiFetch } from "../apiClient";
+import { apiFetch, registerAuthErrorHandler } from "../apiClient";
 
 function mockResponse(status: number, body: string, contentType = "application/json") {
   global.fetch = jest.fn().mockResolvedValue({
@@ -44,5 +44,108 @@ describe("apiFetch", () => {
   it("throws on non-JSON success body", async () => {
     mockResponse(200, "not json");
     await expect(apiFetch("/test")).rejects.toThrow("Invalid JSON response");
+  });
+
+  it("attaches status to the thrown error for non-auth failures", async () => {
+    mockResponse(400, JSON.stringify({ error: "bad_request", message: "Invalid input" }));
+    const err = await apiFetch("/test").catch((e: unknown) => e) as Error & { status: number };
+    expect(err).toBeInstanceOf(Error);
+    expect(err.status).toBe(400);
+  });
+});
+
+describe("registerAuthErrorHandler", () => {
+  it("calls the handler with 401 when the server returns 401", async () => {
+    mockResponse(401, JSON.stringify({ error: "unauthorized", message: "Not authenticated" }));
+    const handler = jest.fn();
+    const unregister = registerAuthErrorHandler(handler);
+
+    await apiFetch("/secure").catch(() => {/* expected rejection */});
+
+    expect(handler).toHaveBeenCalledTimes(1);
+    expect(handler).toHaveBeenCalledWith(401);
+    unregister();
+  });
+
+  it("calls the handler with 403 when the server returns 403", async () => {
+    mockResponse(403, JSON.stringify({ error: "forbidden", message: "Access denied" }));
+    const handler = jest.fn();
+    const unregister = registerAuthErrorHandler(handler);
+
+    await apiFetch("/secure").catch(() => {/* expected rejection */});
+
+    expect(handler).toHaveBeenCalledTimes(1);
+    expect(handler).toHaveBeenCalledWith(403);
+    unregister();
+  });
+
+  it("does NOT call the handler for non-auth errors", async () => {
+    mockResponse(500, "");
+    const handler = jest.fn();
+    const unregister = registerAuthErrorHandler(handler);
+
+    await apiFetch("/test").catch(() => {/* expected rejection */});
+
+    expect(handler).not.toHaveBeenCalled();
+    unregister();
+  });
+
+  it("does NOT call the handler after unregistering", async () => {
+    mockResponse(401, JSON.stringify({ error: "unauthorized", message: "Gone" }));
+    const handler = jest.fn();
+    const unregister = registerAuthErrorHandler(handler);
+    unregister(); // remove before the request
+
+    await apiFetch("/secure").catch(() => {/* expected rejection */});
+
+    expect(handler).not.toHaveBeenCalled();
+  });
+
+  it("still throws the error even when the handler is registered", async () => {
+    mockResponse(401, JSON.stringify({ error: "unauthorized", message: "Not authenticated" }));
+    const unregister = registerAuthErrorHandler(jest.fn());
+
+    await expect(apiFetch("/secure")).rejects.toThrow("Not authenticated");
+    unregister();
+  });
+
+  it("attaches status 401 to the thrown error", async () => {
+    mockResponse(401, JSON.stringify({ error: "unauthorized", message: "Not authenticated" }));
+    const unregister = registerAuthErrorHandler(jest.fn());
+
+    const err = await apiFetch("/secure").catch((e: unknown) => e) as Error & { status: number };
+    expect(err.status).toBe(401);
+    unregister();
+  });
+
+  it("retries idempotent GET requests on 5xx with backoff", async () => {
+    jest.useFakeTimers();
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce({
+        status: 503,
+        ok: false,
+        text: () => Promise.resolve(""),
+      } as unknown as Response)
+      .mockResolvedValueOnce({
+        status: 200,
+        ok: true,
+        text: () => Promise.resolve(JSON.stringify({ ok: true })),
+      } as unknown as Response);
+    global.fetch = fetchMock as unknown as typeof global.fetch;
+
+    const promise = apiFetch("/retry-me", {}, { retry: { maxAttempts: 2, baseDelayMs: 50 } });
+    await jest.advanceTimersByTimeAsync(50);
+    await expect(promise).resolves.toEqual({ ok: true });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    jest.useRealTimers();
+  });
+
+  it("does not retry non-GET methods", async () => {
+    mockResponse(503, "");
+    await expect(
+      apiFetch("/retry-me", { method: "POST", body: "{}" }, { retry: { maxAttempts: 3 } }),
+    ).rejects.toThrow("HTTP 503");
+    expect(global.fetch).toHaveBeenCalledTimes(1);
   });
 });
