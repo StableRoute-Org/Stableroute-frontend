@@ -31,6 +31,44 @@ export function registerAuthErrorHandler(handler: AuthErrorHandler): () => void 
   };
 }
 
+/**
+ * Removes sensitive data from an error message before it is displayed in a
+ * toast or inline error.
+ *
+ * Two classes of sensitive data are redacted:
+ *
+ * 1. **Query strings** – any `?…` or `&…` segment that looks like a URL query
+ *    parameter (key=value pairs) is stripped so asset codes, amounts, and other
+ *    request inputs are not leaked into UI copy.
+ *
+ * 2. **Key-like tokens** – contiguous runs of 20+ hex or Base58 characters that
+ *    resemble API keys, wallet addresses, or secrets are replaced with
+ *    `[redacted]`.
+ *
+ * The `requestId` field is preserved on the thrown error *object* (not in the
+ * message string) so support can still correlate failures.
+ */
+export function sanitizeErrorMessage(message: string): string {
+  // Strip query strings: remove everything from the first `?` through the end
+  // of each key=value pair sequence, including `&`-separated continuations.
+  // Matches patterns like: ?foo=bar&baz=qux  or  &baz=qux
+  let sanitized = message.replace(/[?&][^?&\s#"']*=[^?&\s#"']*/g, "");
+
+  // Redact tokens that look like API keys, secrets, or wallet addresses:
+  // 20+ consecutive hex characters (0-9a-fA-F)
+  sanitized = sanitized.replace(/\b[0-9a-fA-F]{20,}\b/g, "[redacted]");
+
+  // 20+ consecutive Base58 characters (alphanumeric excluding 0, O, I, l)
+  sanitized = sanitized.replace(/\b[1-9A-HJ-NP-Za-km-z]{20,}\b/g, "[redacted]");
+
+  // Stellar / base32 addresses: 20+ consecutive uppercase letters and digits
+  // (covers G-addresses and other uppercase-only opaque identifiers)
+  sanitized = sanitized.replace(/\b[A-Z0-9]{20,}\b/g, "[redacted]");
+
+  // Collapse any double-spaces left by the removals and trim
+  return sanitized.replace(/\s{2,}/g, " ").trim();
+}
+
 async function parseResponse<T>(res: Response): Promise<T> {
   if (res.status === 204) return undefined as T;
   const text = await res.text();
@@ -47,9 +85,16 @@ async function parseResponse<T>(res: Response): Promise<T> {
     if (res.status === 401 || res.status === 403) {
       _authErrorHandler?.(res.status as 401 | 403);
     }
-    const msg = (body as ApiError | undefined)?.message ?? `HTTP ${res.status}`;
-    const err = Object.assign(new Error(msg), { status: res.status }, body ?? {});
-    throw err;
+    const rawMsg = (body as ApiError | undefined)?.message ?? `HTTP ${res.status}`;
+    const safeMsg = sanitizeErrorMessage(rawMsg);
+    // Build the error with the sanitized message. We deliberately exclude
+    // body.message when spreading so the raw server text never overwrites
+    // the redacted copy. Only status, error code, and requestId are kept.
+    const apiBody = body as ApiError | undefined;
+    const extra: Record<string, unknown> = { status: res.status };
+    if (apiBody?.error !== undefined) extra.error = apiBody.error;
+    if (apiBody?.requestId !== undefined) extra.requestId = apiBody.requestId;
+    throw Object.assign(new Error(safeMsg), extra);
   }
   return body as T;
 }

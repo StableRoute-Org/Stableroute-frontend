@@ -1,4 +1,4 @@
-import { apiFetch, registerAuthErrorHandler } from "../apiClient";
+import { apiFetch, registerAuthErrorHandler, sanitizeErrorMessage } from "../apiClient";
 
 function mockResponse(status: number, body: string, contentType = "application/json") {
   global.fetch = jest.fn().mockResolvedValue({
@@ -10,6 +10,159 @@ function mockResponse(status: number, body: string, contentType = "application/j
 }
 
 afterEach(() => jest.restoreAllMocks());
+
+// ---------------------------------------------------------------------------
+// sanitizeErrorMessage — unit tests
+// ---------------------------------------------------------------------------
+
+describe("sanitizeErrorMessage", () => {
+  // --- query string stripping ---
+
+  it("strips a single query parameter from a message", () => {
+    expect(sanitizeErrorMessage("Bad request: ?amount=1000000")).toBe(
+      "Bad request:",
+    );
+  });
+
+  it("strips multiple query parameters", () => {
+    expect(
+      sanitizeErrorMessage(
+        "Failed: ?source_asset=USDC&dest_asset=EURC&amount=1000000",
+      ),
+    ).toBe("Failed:");
+  });
+
+  it("strips query parameters mid-sentence", () => {
+    expect(
+      sanitizeErrorMessage("route ?source=USDC&dest=EURC not found"),
+    ).toBe("route not found");
+  });
+
+  it("strips lone ampersand-prefixed parameter", () => {
+    expect(sanitizeErrorMessage("error &token=abc123defghijklmnop")).toBe(
+      "error",
+    );
+  });
+
+  it("leaves a plain message without query params unchanged", () => {
+    expect(sanitizeErrorMessage("Invalid input")).toBe("Invalid input");
+  });
+
+  it("leaves HTTP status messages unchanged", () => {
+    expect(sanitizeErrorMessage("HTTP 500")).toBe("HTTP 500");
+  });
+
+  it("leaves timeout message unchanged", () => {
+    expect(sanitizeErrorMessage("Request timed out")).toBe(
+      "Request timed out",
+    );
+  });
+
+  it("leaves network failure message unchanged", () => {
+    expect(sanitizeErrorMessage("Network request failed")).toBe(
+      "Network request failed",
+    );
+  });
+
+  it("leaves an empty string as empty", () => {
+    expect(sanitizeErrorMessage("")).toBe("");
+  });
+
+  // --- hex token redaction ---
+
+  it("redacts a 20-character hex token", () => {
+    expect(sanitizeErrorMessage("key: 1a2b3c4d5e6f7a8b9c0d")).toBe(
+      "key: [redacted]",
+    );
+  });
+
+  it("redacts a long API key that is all hex", () => {
+    expect(
+      sanitizeErrorMessage("Unauthorized: deadbeefcafebabedeadbeefcafebabe"),
+    ).toBe("Unauthorized: [redacted]");
+  });
+
+  it("does NOT redact a hex string shorter than 20 chars", () => {
+    expect(sanitizeErrorMessage("ref: 1a2b3c4d5e6f")).toBe(
+      "ref: 1a2b3c4d5e6f",
+    );
+  });
+
+  it("redacts exactly 20 hex characters (boundary)", () => {
+    expect(sanitizeErrorMessage("val: 1a2b3c4d5e6f7a8b9c0d")).toBe(
+      "val: [redacted]",
+    );
+  });
+
+  // --- Base58 token redaction ---
+
+  it("redacts a Stellar public key (Base58, 56 chars)", () => {
+    const stellarKey =
+      "GBVHELLD2JE235Y2NGTDT3MWI3T65ON6SY4N6FBHYVDAQ5FZC2CP5QXH";
+    expect(sanitizeErrorMessage(`Invalid key: ${stellarKey}`)).toBe(
+      "Invalid key: [redacted]",
+    );
+  });
+
+  it("redacts a 32-character Base58 token", () => {
+    expect(
+      sanitizeErrorMessage("token: 3yMApqCuCjXDWPrbjfR5mjCPTHqFG3u"),
+    ).toBe("token: [redacted]");
+  });
+
+  it("does NOT redact a Base58 string shorter than 20 chars", () => {
+    expect(sanitizeErrorMessage("ref: 3yMApqCuCjXDWPrb")).toBe(
+      "ref: 3yMApqCuCjXDWPrb",
+    );
+  });
+
+  // --- combined scenarios ---
+
+  it("strips query params AND redacts hex token in one message", () => {
+    const key = "deadbeefcafebabedeadbeef";
+    expect(
+      sanitizeErrorMessage(
+        `Failed ?source_asset=USDC&dest_asset=EURC secret: ${key}`,
+      ),
+    ).toBe("Failed secret: [redacted]");
+  });
+
+  it("strips query params containing sensitive asset codes", () => {
+    expect(
+      sanitizeErrorMessage(
+        "Quote error: ?source_asset=USDC&dest_asset=EURC&amount=5000000",
+      ),
+    ).toBe("Quote error:");
+  });
+
+  it("handles a message that is entirely a query string", () => {
+    expect(sanitizeErrorMessage("?foo=bar&baz=qux")).toBe("");
+  });
+
+  it("collapses extra spaces left after stripping", () => {
+    expect(
+      sanitizeErrorMessage("error  ?a=b  extra"),
+    ).toBe("error extra");
+  });
+
+  it("does not corrupt a requestId that looks like a normal short string", () => {
+    // requestIds are short alphanumeric strings — should not be redacted
+    expect(sanitizeErrorMessage("Bad request [req-abc123]")).toBe(
+      "Bad request [req-abc123]",
+    );
+  });
+
+  it("preserves a message with a question mark that is not a query string", () => {
+    // Plain question mark without key=value format should not be stripped
+    expect(sanitizeErrorMessage("Are you authenticated?")).toBe(
+      "Are you authenticated?",
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// apiFetch — integration tests (error messages are sanitized at throw site)
+// ---------------------------------------------------------------------------
 
 describe("apiFetch", () => {
   it("returns parsed JSON on success", async () => {
@@ -52,7 +205,79 @@ describe("apiFetch", () => {
     expect(err).toBeInstanceOf(Error);
     expect(err.status).toBe(400);
   });
+
+  // --- sensitive data is sanitized in the thrown error message ---
+
+  it("strips query params that the server echoes back in its error message", async () => {
+    mockResponse(
+      400,
+      JSON.stringify({
+        error: "invalid_params",
+        message: "Bad request: ?source_asset=USDC&dest_asset=EURC&amount=1000000",
+      }),
+    );
+    const err = await apiFetch("/api/v1/quote?source_asset=USDC&dest_asset=EURC&amount=1000000")
+      .catch((e: unknown) => e) as Error;
+    expect(err.message).toBe("Bad request:");
+    expect(err.message).not.toContain("USDC");
+    expect(err.message).not.toContain("EURC");
+    expect(err.message).not.toContain("1000000");
+  });
+
+  it("redacts a hex API key that the server includes in its error message", async () => {
+    const hexKey = "deadbeefcafebabedeadbeefcafebabe";
+    mockResponse(
+      401,
+      JSON.stringify({
+        error: "unauthorized",
+        message: `Invalid API key: ${hexKey}`,
+      }),
+    );
+    const unregister = registerAuthErrorHandler(jest.fn());
+    const err = await apiFetch("/secure").catch((e: unknown) => e) as Error;
+    expect(err.message).toBe("Invalid API key: [redacted]");
+    expect(err.message).not.toContain(hexKey);
+    unregister();
+  });
+
+  it("redacts a Stellar wallet address echoed in an error message", async () => {
+    const walletAddress = "GBVHELLD2JE235Y2NGTDT3MWI3T65ON6SY4N6FBHYVDAQ5FZC2CP5QXH";
+    mockResponse(
+      400,
+      JSON.stringify({
+        error: "invalid_address",
+        message: `Unknown destination: ${walletAddress}`,
+      }),
+    );
+    const err = await apiFetch("/api/v1/quote").catch((e: unknown) => e) as Error;
+    expect(err.message).toBe("Unknown destination: [redacted]");
+    expect(err.message).not.toContain(walletAddress);
+  });
+
+  it("preserves requestId on the error object even after sanitizing the message", async () => {
+    mockResponse(
+      400,
+      JSON.stringify({
+        error: "invalid_params",
+        message: "Bad request: ?amount=1000000",
+        requestId: "req-abc-123",
+      }),
+    );
+    const err = await apiFetch("/test").catch((e: unknown) => e) as Error & { requestId?: string };
+    expect(err.message).toBe("Bad request:");
+    expect(err.requestId).toBe("req-abc-123");
+  });
+
+  it("plain error messages without sensitive data pass through unchanged", async () => {
+    mockResponse(422, JSON.stringify({ error: "unprocessable", message: "Amount must be positive" }));
+    const err = await apiFetch("/test").catch((e: unknown) => e) as Error;
+    expect(err.message).toBe("Amount must be positive");
+  });
 });
+
+// ---------------------------------------------------------------------------
+// registerAuthErrorHandler
+// ---------------------------------------------------------------------------
 
 describe("registerAuthErrorHandler", () => {
   it("calls the handler with 401 when the server returns 401", async () => {
