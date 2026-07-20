@@ -229,9 +229,18 @@ Ensure these pass locally before pushing.
 
 ## Contributing
 
-1. Fork the repo and create a branch from `main`.
-2. Add tests for new UI/behavior; keep `npm run build` and `npm test` passing.
-3. Open a PR; CI must be green.
+We welcome contributions! Here's how to get started:
+
+1. **Choose or report an issue** — Browse [open issues](https://github.com/StableRoute-Org/Stableroute-frontend/issues) or use our templates to file a [bug report](.github/ISSUE_TEMPLATE/bug_report.md) or [feature request](.github/ISSUE_TEMPLATE/feature_request.md).
+2. **Fork the repo and create a branch** — Use the `type/area-slug` convention (e.g. `feat/quote-89-swap-direction`, `fix/api-keys-validation`).
+3. **Implement & test** — Add tests for new UI/behavior and verify locally:
+   ```bash
+   npm run lint
+   npm test
+   npm run build
+   ```
+4. **Open a PR** — Follow the [pull request template](.github/PULL_REQUEST_TEMPLATE.md) checklist. CI must be green. Reference the issue with `Closes #123`.
+5. **Join the community** — Questions? Need a review? Chat with us on [Discord](https://discord.gg/37aCpusvx).
 
 ## License
 

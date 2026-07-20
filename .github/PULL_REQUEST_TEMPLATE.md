@@ -32,3 +32,7 @@
 ## Notes For Reviewers
 
 <!-- Include screenshots, rendered template previews, or follow-up notes if useful. -->
+
+---
+
+💬 Join the [StableRoute Discord](https://discord.gg/37aCpusvx) for questions, reviews, and faster merges.
