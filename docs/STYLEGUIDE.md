@@ -78,6 +78,54 @@ The base shape is `inline-flex items-center rounded-full px-2 py-0.5 text-xs
 font-medium` and is applied automatically. Do not wrap a `Badge` inside a
 `Button` — they are semantically distinct.
 
+## Combobox Pattern (Command Palette)
+
+`CommandPalette` (`src/components/CommandPalette.tsx`) is a search-driven
+navigation component that follows the ARIA combobox pattern for full keyboard
+and screen reader support.
+
+### Structure
+
+The component uses three layers of ARIA semantics:
+
+1. **Dialog wrapper** (`role="dialog"`, `aria-modal="true"`) — the modal container
+2. **Input** (`role="combobox"`, `aria-expanded`, `aria-controls`, `aria-activedescendant`) — the search field
+3. **Results** (`role="listbox"` with `role="option"` children) — the filterable list
+
+### Keyboard Navigation
+
+| Key | Behavior |
+|---|---|
+| `Ctrl+K` or `Cmd+K` | Toggle palette open/closed |
+| `Escape` | Close palette and clear state |
+| `ArrowDown` | Move to next option; focus if none selected |
+| `ArrowUp` | Move to previous option; deselect if at first |
+| `Enter` | Navigate to selected route |
+
+### ARIA Attributes
+
+- **Input**: `role="combobox"` signals to screen readers that the input controls a listbox
+- **Input**: `aria-expanded={hasMatches}` announces whether results are available
+- **Input**: `aria-controls="command-palette-listbox"` links the input to its results list
+- **Input**: `aria-activedescendant={activeOptionId}` announces the currently focused option
+- **Listbox**: `role="listbox"` and `id="command-palette-listbox"` define the results container
+- **Options**: `role="option"` and `aria-selected={isActive}` mark each result as selectable
+
+### Visual Feedback
+
+Selected options highlight with `bg-blue-500 text-white` to provide visual
+confirmation alongside screen reader announcements. Unselected options show
+`hover:bg-neutral-100 dark:hover:bg-neutral-800` for hover feedback.
+
+### Implementation Notes
+
+- Use `useRef` to manage input focus on open
+- Track `activeIndex` state separately from query to support navigation without selection
+- Generate unique `id` for each option using the route's `href` to support `aria-activedescendant`
+- Reset active index when the query changes to avoid orphaned selections
+- Mouse hover sets active index (`onMouseEnter`) for integrated keyboard + mouse support
+- State clears on close or navigation to ensure clean reopens
+
 ## Reduced motion
 
 `src/app/globals.css` honours `prefers-reduced-motion` by collapsing
