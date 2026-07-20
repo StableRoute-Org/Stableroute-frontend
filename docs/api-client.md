@@ -36,6 +36,29 @@ handler shows a toast and the request still rejects so callers can react.
 | `apiPatch` | PATCH | JSON body |
 | `apiDelete` | DELETE | 204 → `undefined` |
 
+## `useList` hook
+
+The `useList` hook (`src/lib/useList.ts`) provides a reusable load/reload pattern for
+dashboard CRUD pages that fetch lists of items.
+
+```ts
+function useList<T>(loader: () => Promise<T[]>): {
+  items: T[] | null;
+  error: string | null;
+  loading: boolean;
+  reload: () => Promise<void>;
+};
+```
+
+| Field     | Description                                         |
+|-----------|-----------------------------------------------------|
+| `items`   | The fetched list, or `null` before the first load.  |
+| `error`   | Non-null when the last load failed. Cleared by `reload`. |
+| `loading` | `true` during the initial load and every `reload`.  |
+| `reload`  | Re-runs `loader`, clears errors, and updates state. |
+
+State updates are suppressed after the component unmounts (via a cancellation ref).
+
 ## Timeouts
 
 Default timeout is 15s (`timeoutMs` option). Abort errors surface as
