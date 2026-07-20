@@ -30,8 +30,8 @@ export function ThemeToggle() {
           type="button"
           onClick={() => set(t)}
           aria-pressed={theme === t}
-          className={`rounded-full px-3 py-1 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 ${
-            theme === t ? "bg-neutral-200 dark:bg-neutral-800" : ""
+          className={`rounded-full px-3 py-1 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[var(--focus-ring-offset)] focus-visible:outline-[color:var(--focus-ring-color)] ${
+            theme === t ? "bg-black text-white dark:bg-white dark:text-black" : ""
           }`}
         >
           {t}

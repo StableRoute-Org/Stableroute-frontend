@@ -76,9 +76,12 @@ describe("docs/STYLEGUIDE.md", () => {
   it("documents the focus-ring convention used in Button", () => {
     const doc = readDoc();
     const source = readFileSync(BUTTON_SOURCE, "utf8");
+    const globals = readFileSync(GLOBALS_CSS, "utf8");
 
-    expect(source).toContain("focus-visible:outline-blue-500");
-    expect(doc).toContain("focus-visible:outline-blue-500");
+    expect(source).toContain("focus-visible:outline-[color:var(--focus-ring-color)]");
+    expect(doc).toContain("focus-visible:outline-[color:var(--focus-ring-color)]");
+    expect(globals).toContain("--focus-ring-color");
+    expect(globals).toContain("--focus-ring-offset");
   });
 
   it("the focus ring renders into the DOM on a Button", () => {
@@ -86,7 +89,7 @@ describe("docs/STYLEGUIDE.md", () => {
     // the rendered <button> element, not just present in the source.
     render(<Button>go</Button>);
     const btn = screen.getByRole("button", { name: /go/ });
-    expect(btn.className).toMatch(/focus-visible:outline-blue-500/);
+    expect(btn.className).toMatch(/focus-visible:outline-\[color:var\(--focus-ring-color\)\]/);
   });
 
   it("the danger Badge variant renders a rose-toned class", () => {

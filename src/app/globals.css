@@ -8,6 +8,10 @@
   --muted: #525252;
   --border: #e5e5e5;
   --card: #ffffff;
+  /* blue-600: ~5.2:1 against --background/--card, well past the 3:1 WCAG
+     2.1 non-text contrast minimum for a focus indicator on light surfaces. */
+  --focus-ring-color: #2563eb;
+  --focus-ring-offset: 2px;
   color-scheme: light;
 }
 
@@ -17,6 +21,9 @@
   --muted: #a3a3a3;
   --border: #262626;
   --card: #171717;
+  /* blue-400: blue-600 drops to ~2.1:1 on the dark surfaces, so the dark
+     theme uses a lighter shade instead (~7.8:1 against --background). */
+  --focus-ring-color: #60a5fa;
   color-scheme: dark;
 }
 

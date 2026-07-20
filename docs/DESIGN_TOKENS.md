@@ -11,6 +11,33 @@ StableRoute frontend uses Tailwind with CSS variables defined in `src/app/global
 | `--muted` | `#525252` | `#a3a3a3` |
 | `--border` | `#e5e5e5` | `#262626` |
 | `--card` | `#ffffff` | `#171717` |
+| `--focus-ring-color` | `#2563eb` (blue-600) | `#60a5fa` (blue-400) |
+| `--focus-ring-offset` | `2px` | `2px` |
+
+`--focus-ring-color` switches shade between themes because a single blue
+holds acceptable contrast against only one of the two `--background` values:
+blue-600 measures ~5.2:1 on the light background/card but drops to ~2.1:1 on
+the dark ones, so the dark theme swaps to the lighter blue-400 (~7.8:1
+against dark `--background`) to stay above the WCAG 2.1 non-text contrast
+minimum of 3:1. `--focus-ring-offset` is shared across themes since offset
+doesn't affect contrast.
+
+Applied via Tailwind arbitrary values on every interactive element that
+previously hardcoded `focus-visible:outline-blue-500` — `Button`,
+`IconButton`, `TextField`, `ThemeToggle`, the `Header` nav/skip links, and
+several one-off buttons/links across `Footer`, `ShortcutsHelp`,
+`ToastProvider`, and the app-level pages (`layout`, `error`, `not-found`,
+`page`, `pairs/new`, `settings`):
+
+```tsx
+focus-visible:outline focus-visible:outline-2
+focus-visible:outline-offset-[var(--focus-ring-offset)]
+focus-visible:outline-[color:var(--focus-ring-color)]
+```
+
+"System" theme resolves to either `:root` or `.dark` at runtime (see
+[`docs/theme-storage.md`](./theme-storage.md)), so it always gets one of the
+two token values above — there is no separate "system" CSS state to handle.
 
 ## Badge variants
 
@@ -22,98 +49,3 @@ StableRoute frontend uses Tailwind with CSS variables defined in `src/app/global
 | `danger` | Destructive actions |
 
 See `src/components/Badge.tsx` for class mappings.
-
----
-
-## Forced-colors (Windows High Contrast) support
-
-Windows High Contrast mode (and the CSS `forced-colors` media feature) overrides
-author-defined colours with a small system palette.  This means:
-
-- **Coloured backgrounds are replaced** by `Canvas`.
-- **Box-shadows disappear** — they cannot be used as the sole border signal.
-- **Status colours alone are insufficient** — a `danger` badge and an `ok` badge
-  look identical unless a non-colour cue (icon, text) is also present.
-
-### Authoring pattern
-
-Follow these three steps when building a new component:
-
-#### 1 — Add a `data-*` hook to the component
-
-Give the root element (and any sub-regions with their own border) a `data-*`
-attribute that globals.css can target:
-
-```tsx
-// Card example
-<section data-card className="border border-neutral-200 …">
-  …
-  <footer data-card-footer className="border-t …">…</footer>
-</section>
-```
-
-#### 2 — Add `@media (forced-colors: active)` rules in `globals.css`
-
-Use `ButtonText` for borders, `Canvas`/`CanvasText` for backgrounds/text, and
-`Highlight` for focus rings.  **Never use hex values inside this block** — they
-will be overridden anyway and may cause contrast failures on non-Windows
-implementations.
-
-```css
-@media (forced-colors: active) {
-  [data-card] {
-    border: 1px solid ButtonText;
-    outline: none;
-  }
-
-  [data-card-footer] {
-    border-top: 1px solid ButtonText;
-  }
-}
-```
-
-#### 3 — Replace colour-only status cues with an accompanying icon or text
-
-For components like `Badge` that use colour to signal status, render a
-visually-present symbol alongside the label:
-
-```tsx
-// Badge — status icons surfaced in forced-colors mode
-const forcedColorsIcons = {
-  neutral: "",
-  ok:      "✓ ",
-  warning: "⚠ ",
-  danger:  "✕ ",
-};
-
-<span
-  aria-hidden="true"
-  className="mr-0.5 hidden [forced-colors:active]:inline"
->
-  {icon}
-</span>
-```
-
-The `aria-hidden="true"` attribute keeps screen readers silent (the badge label
-text already communicates the status).  The Tailwind variant
-`[forced-colors:active]:inline` makes the icon visible only when forced-colors
-is active.
-
-### `forced-color-adjust: none`
-
-Use **sparingly** — only on small, fully self-contained elements (e.g. custom
-checkboxes, radio buttons) where the UA stylesheet would render them unusable.
-Never apply it to entire cards or page regions.
-
-### System colour keywords reference
-
-| Keyword | Meaning |
-|---------|---------|
-| `Canvas` | Page / widget background |
-| `CanvasText` | Text on `Canvas` |
-| `ButtonText` | Text and borders on interactive controls |
-| `Highlight` | Selected text background / focus indicator |
-| `HighlightText` | Text on `Highlight` background |
-| `LinkText` | Unvisited hyperlink colour |
-
-Full spec: <https://www.w3.org/TR/css-color-4/#css-system-colors>
