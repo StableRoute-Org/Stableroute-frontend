@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { TextField } from "@/components/TextField";
 import { apiGet, type ApiError } from "@/lib/apiClient";
 import { formatQuoteAmountDisplay, formatQuoteRateDisplay } from "@/lib/format";
+import { useLocalStorage } from "@/lib/useLocalStorage";
 
 type Quote = {
   source_asset: string;
@@ -41,22 +42,14 @@ function isValidAmount(value: string): boolean {
   return /^[1-9]\d*$/.test(value.trim());
 }
 
-function readInputs(): QuoteInputs | null {
-  try {
-    const raw = localStorage.getItem(INPUTS_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as QuoteInputs;
-    if (
-      typeof parsed.source === "string" &&
-      typeof parsed.dest === "string" &&
-      typeof parsed.amount === "string"
-    ) {
-      return parsed;
-    }
-  } catch {
-    return null;
-  }
-  return null;
+function isQuoteInputs(value: unknown): value is QuoteInputs {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    typeof (value as QuoteInputs).source === "string" &&
+    typeof (value as QuoteInputs).dest === "string" &&
+    typeof (value as QuoteInputs).amount === "string"
+  );
 }
 
 function readHistory(): HistoryEntry[] {
@@ -85,6 +78,11 @@ function pushHistory(entry: QuoteInputs) {
 }
 
 export default function QuoteClient() {
+  const [savedInputs, setSavedInputs] = useLocalStorage<QuoteInputs | null>(
+    INPUTS_KEY,
+    null,
+    isQuoteInputs,
+  );
   const [sourceAsset, setSourceAsset] = useState("");
   const [destAsset, setDestAsset] = useState("");
   const [amount, setAmount] = useState("");
@@ -95,13 +93,18 @@ export default function QuoteClient() {
   const [requestId, setRequestId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  // Prefill once storage has synced client-side (see useLocalStorage's SSR
+  // handling). Re-running only when the stored value actually changes avoids
+  // clobbering in-progress edits.
   useEffect(() => {
-    const saved = readInputs();
-    if (saved) {
-      setSourceAsset(saved.source);
-      setDestAsset(saved.dest);
-      setAmount(saved.amount);
+    if (savedInputs) {
+      setSourceAsset(savedInputs.source);
+      setDestAsset(savedInputs.dest);
+      setAmount(savedInputs.amount);
     }
+  }, [savedInputs]);
+
+  useEffect(() => {
     setHistory(readHistory());
   }, []);
 
@@ -155,7 +158,7 @@ export default function QuoteClient() {
       dest: destAsset,
       amount: amount.trim(),
     };
-    localStorage.setItem(INPUTS_KEY, JSON.stringify(inputs));
+    setSavedInputs(inputs);
 
     setLoading(true);
     try {

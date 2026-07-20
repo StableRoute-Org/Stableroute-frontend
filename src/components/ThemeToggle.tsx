@@ -1,22 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { readTheme, writeTheme, effectiveTheme, type Theme } from "@/lib/theme";
+import { useEffect } from "react";
+import { rawStringSerializer, useLocalStorage } from "@/lib/useLocalStorage";
+import { effectiveTheme, isTheme, THEME_KEY, type Theme } from "@/lib/theme";
 
 export function ThemeToggle() {
-  const [theme, setTheme] = useState<Theme>("system");
+  const [theme, setTheme] = useLocalStorage<Theme>(
+    THEME_KEY,
+    "system",
+    isTheme,
+    rawStringSerializer,
+  );
 
   useEffect(() => {
-    const t = readTheme();
-    setTheme(t);
-    document.documentElement.classList.toggle("dark", effectiveTheme(t) === "dark");
-  }, []);
-
-  const set = (next: Theme) => {
-    setTheme(next);
-    writeTheme(next);
-    document.documentElement.classList.toggle("dark", effectiveTheme(next) === "dark");
-  };
+    document.documentElement.classList.toggle("dark", effectiveTheme(theme) === "dark");
+  }, [theme]);
 
   return (
     <div
@@ -28,7 +26,7 @@ export function ThemeToggle() {
         <button
           key={t}
           type="button"
-          onClick={() => set(t)}
+          onClick={() => setTheme(t)}
           aria-pressed={theme === t}
           className={`rounded-full px-3 py-1 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 ${
             theme === t ? "bg-neutral-200 dark:bg-neutral-800" : ""
