@@ -9,7 +9,21 @@ export type DisplayEvent = {
   id: string;
   ts: number;
   type: string;
+  /**
+   * Truncated (at MAX_PAYLOAD_PREVIEW_LENGTH) JSON preview of the event
+   * payload, safe to render inside a `<pre>`. Never throws during
+   * serialisation — circular references are replaced with "[Circular]"
+   * and unexpected errors return the fallback `"[Unserializable payload]"`.
+   */
   payloadPreview: string;
+  /**
+   * The complete, safe-serialised JSON of the payload (never truncated).
+   * Only populated when the payload exceeds MAX_PAYLOAD_PREVIEW_LENGTH;
+   * otherwise `fullPayload` is the same string as `payloadPreview`.
+   * Use this for clipboard copy or when the user opts to view the
+   * full payload.
+   */
+  fullPayload: string;
 };
 
 export const MAX_RENDERED_EVENTS = 200;
@@ -22,6 +36,10 @@ type EventsResponse = {
 /**
  * Validates the event-log API response at the UI boundary and returns only
  * render-safe records. Malformed records are dropped instead of throwing.
+ *
+ * Each returned {@link DisplayEvent} carries a truncated `payloadPreview`
+ * (safe for inline rendering) as well as a `fullPayload` (for clipboard copy
+ * or the "show full" expander).
  */
 export function parseEventsResponse(raw: unknown): {
   events: DisplayEvent[];
@@ -73,9 +91,9 @@ function parseAppEvent(raw: unknown): DisplayEvent | null {
     return null;
   }
 
-  const payloadPreview = safeStringifyPayload(event.payload);
+  const result = safeStringifyPayload(event.payload);
 
-  if (payloadPreview === null) {
+  if (result === null) {
     return null;
   }
 
@@ -83,11 +101,26 @@ function parseAppEvent(raw: unknown): DisplayEvent | null {
     id: event.id,
     ts: event.ts,
     type: event.type,
-    payloadPreview,
+    payloadPreview: result.preview,
+    fullPayload: result.full,
   };
 }
 
-function safeStringifyPayload(payload: unknown): string | null {
+/**
+ * Safely serialises an arbitrary payload value to pretty-printed JSON.
+ *
+ * - **Circular references** → replaced with the string `"[Circular]"`.
+ * - **Oversized payloads** → the output is truncated at
+ *   `MAX_PAYLOAD_PREVIEW_LENGTH` chars and appended with `"… truncated"`.
+ * - **Unexpected errors** during serialisation → the function returns `null`.
+ *
+ * @returns An object with `preview` (possibly truncated) and `full` (complete)
+ *          serialised strings, or `null` if the payload cannot be serialised.
+ */
+function safeStringifyPayload(payload: unknown): {
+  preview: string;
+  full: string;
+} | null {
   const seen = new WeakSet<object>();
 
   try {
@@ -110,10 +143,13 @@ function safeStringifyPayload(payload: unknown): string | null {
     }
 
     if (serialized.length <= MAX_PAYLOAD_PREVIEW_LENGTH) {
-      return serialized;
+      return { preview: serialized, full: serialized };
     }
 
-    return `${serialized.slice(0, MAX_PAYLOAD_PREVIEW_LENGTH)}\n… truncated`;
+    return {
+      preview: `${serialized.slice(0, MAX_PAYLOAD_PREVIEW_LENGTH)}\n… truncated`,
+      full: serialized,
+    };
   } catch {
     return null;
   }

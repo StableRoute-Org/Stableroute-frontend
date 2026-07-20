@@ -14,13 +14,6 @@ const COLLAPSE_THRESHOLD = 400;
 type ClipboardLike = Pick<Clipboard, "writeText">;
 
 /**
- * Returns the payload JSON string used for both rendering and copy actions.
- */
-function getPayloadJson(payloadPreview: string) {
-  return payloadPreview;
-}
-
-/**
  * Determines whether a payload should start collapsed based on the serialized
  * payload length.
  */
@@ -50,6 +43,7 @@ export default function EventsClient() {
   );
   const [typeFilter, setTypeFilter] = useState("");
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [showFull, setShowFull] = useState<Record<string, boolean>>({});
 
   const filteredItems = useMemo(() => {
     if (!items) return null;
@@ -110,13 +104,16 @@ export default function EventsClient() {
       : `${items.length} events`;
   }, [items, capped, totalValid]);
 
-  const handleCopyPayload = useCallback(async (payloadJson: string) => {
-    try {
-      await copyJsonToClipboard(payloadJson);
-    } catch {
-      // Clipboard access is best-effort and must never break the row UI.
-    }
-  }, []);
+  const handleCopyPayload = useCallback(
+    async (event: DisplayEvent) => {
+      try {
+        await copyJsonToClipboard(event.fullPayload);
+      } catch {
+        // Clipboard access is best-effort and must never break the row UI.
+      }
+    },
+    [],
+  );
 
   return (
     <main
@@ -180,8 +177,11 @@ export default function EventsClient() {
             <p className="text-sm text-neutral-600 dark:text-neutral-400">{resultLabel}</p>
             <ol className="flex flex-col gap-2">
               {filteredItems.map((event) => {
-                const payloadJson = getPayloadJson(event.payloadPreview);
-                const defaultOpen = !shouldStartCollapsed(payloadJson);
+                const isPayloadTruncated = event.payloadPreview !== event.fullPayload;
+                const payloadJson = isPayloadTruncated && showFull[event.id]
+                  ? event.fullPayload
+                  : event.payloadPreview;
+                const defaultOpen = !shouldStartCollapsed(event.payloadPreview);
                 const isOpen = expanded[event.id] ?? defaultOpen;
                 const controlsId = `event-payload-${event.id}`;
                 return (
@@ -209,10 +209,25 @@ export default function EventsClient() {
                       >
                         {isOpen ? "Collapse" : "Expand"}
                       </Button>
+                      {isPayloadTruncated && (
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          onClick={() =>
+                            setShowFull((current) => ({
+                              ...current,
+                              [event.id]: !current[event.id],
+                            }))
+                          }
+                          className="px-3 py-1 text-[11px]"
+                        >
+                          {showFull[event.id] ? "Show truncated" : "Show full"}
+                        </Button>
+                      )}
                       <Button
                         type="button"
                         variant="secondary"
-                        onClick={() => void handleCopyPayload(payloadJson)}
+                        onClick={() => void handleCopyPayload(event)}
                         className="px-3 py-1 text-[11px]"
                       >
                         Copy JSON

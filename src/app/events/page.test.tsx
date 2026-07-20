@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import EventsPage from "./page";
-import { MAX_RENDERED_EVENTS } from "@/lib/events";
+import { MAX_RENDERED_EVENTS, MAX_PAYLOAD_PREVIEW_LENGTH } from "@/lib/events";
 
 const okEventsResponse = (items: unknown[]) =>
   ({
@@ -8,11 +8,11 @@ const okEventsResponse = (items: unknown[]) =>
     text: async () => JSON.stringify({ items }),
   }) as unknown as Response;
 
-const eventRecord = (id: string, type = `event.${id}`) => ({
+const eventRecord = (id: string, type = `event.${id}`, payload: unknown = { id }) => ({
   id,
   ts: 1_782_460_000_000,
   type,
-  payload: { id },
+  payload,
 });
 
 function setDocumentVisibility(state: DocumentVisibilityState, dispatch = true) {
@@ -151,13 +151,13 @@ describe("EventsPage", () => {
 
     render(<EventsPage />);
 
-    expect(await screen.findByText(`200 of ${MAX_RENDERED_EVENTS + 3} events`)).toBeInTheDocument();
+    expect(await screen.findByText(/200 of 203 events/)).toBeInTheDocument();
     expect(screen.getByText("event.0")).toBeInTheDocument();
     expect(screen.getByText(`event.${MAX_RENDERED_EVENTS - 1}`)).toBeInTheDocument();
     expect(screen.queryByText(`event.${MAX_RENDERED_EVENTS}`)).not.toBeInTheDocument();
   });
 
-  it("truncates oversized payload previews", async () => {
+  it("truncates oversized payload previews and shows truncated indicator", async () => {
     global.fetch = jest.fn().mockResolvedValueOnce({
       ok: true,
       text: async () =>
@@ -177,6 +177,105 @@ describe("EventsPage", () => {
 
     expect(await screen.findByText("payload.large")).toBeInTheDocument();
     expect(screen.getByText(/truncated/)).toBeInTheDocument();
+  });
+
+  it("renders a show-full button for truncated payloads", async () => {
+    const largeString = "x".repeat(MAX_PAYLOAD_PREVIEW_LENGTH + 100);
+    global.fetch = jest.fn().mockResolvedValueOnce({
+      ok: true,
+      text: async () =>
+        JSON.stringify({
+          items: [
+            {
+              id: "evt-large",
+              ts: 1_782_460_000_000,
+              type: "payload.large",
+              payload: { body: largeString },
+            },
+          ],
+        }),
+    } as unknown as Response);
+
+    render(<EventsPage />);
+
+    // Click Expand to reveal the payload
+    const expandButton = await screen.findByRole("button", { name: /expand/i });
+    fireEvent.click(expandButton);
+
+    const showFullButton = await screen.findByRole("button", { name: /^show full$/i });
+    expect(showFullButton).toBeInTheDocument();
+
+    fireEvent.click(showFullButton);
+
+    // The full payload should be visible and the button should change
+    expect(screen.getByRole("button", { name: /^show truncated$/i })).toBeInTheDocument();
+    // The truncated indicator should no longer appear in the <pre> content
+    // (the button says "Show truncated" but the payload text itself should be clean)
+    const preElements = document.querySelectorAll("pre");
+    const hasTruncatedText = Array.from(preElements).some((pre) =>
+      pre.textContent?.includes("truncated"),
+    );
+    expect(hasTruncatedText).toBe(false);
+  });
+
+  it("shows full payload when show-full is clicked and toggles back", async () => {
+    const largeString = "x".repeat(MAX_PAYLOAD_PREVIEW_LENGTH + 100);
+    global.fetch = jest.fn().mockResolvedValueOnce({
+      ok: true,
+      text: async () =>
+        JSON.stringify({
+          items: [
+            {
+              id: "evt-large",
+              ts: 1_782_460_000_000,
+              type: "payload.large",
+              payload: { body: largeString },
+            },
+          ],
+        }),
+    } as unknown as Response);
+
+    render(<EventsPage />);
+
+    // Click Expand to reveal the payload
+    const expandButton = await screen.findByRole("button", { name: /expand/i });
+    fireEvent.click(expandButton);
+
+    // First click: Show full
+    const showFullButton = await screen.findByRole("button", { name: /^show full$/i });
+    fireEvent.click(showFullButton);
+
+    const showTruncatedButton = await screen.findByRole("button", { name: /^show truncated$/i });
+    expect(showTruncatedButton).toBeInTheDocument();
+
+    // Second click: Back to truncated
+    fireEvent.click(showTruncatedButton);
+    expect(await screen.findByRole("button", { name: /^show full$/i })).toBeInTheDocument();
+    // The truncated indicator should be back in the <pre>
+    expect(screen.getByText(/truncated/)).toBeInTheDocument();
+  });
+
+  it("does not show show-full button for small payloads", async () => {
+    global.fetch = jest.fn().mockResolvedValueOnce({
+      ok: true,
+      text: async () =>
+        JSON.stringify({
+          items: [
+            {
+              id: "evt-small",
+              ts: 1_782_460_000_000,
+              type: "payload.small",
+              payload: { note: "small" },
+            },
+          ],
+        }),
+    } as unknown as Response);
+
+    render(<EventsPage />);
+
+    await screen.findByText("payload.small");
+    expect(screen.queryByRole("button", { name: /^show full$/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^show truncated$/i })).not.toBeInTheDocument();
   });
 
   it("renders one list item per event keyed by id with type and payload preview", async () => {
@@ -206,7 +305,7 @@ describe("EventsPage", () => {
     expect(await screen.findByText("pair.registered")).toBeInTheDocument();
     expect(screen.getByText("pair.updated")).toBeInTheDocument();
     expect(screen.getByText(/USDC\/EURC/)).toBeInTheDocument();
-    expect(screen.getByText(/"feeBps": 25/)).toBeInTheDocument();
+    expect(screen.getByText(/\"feeBps\": 25/)).toBeInTheDocument();
 
     const items = screen.getAllByRole("listitem");
     expect(items).toHaveLength(2);
@@ -214,7 +313,7 @@ describe("EventsPage", () => {
     expect(items[1]).toHaveTextContent("pair.updated");
   });
 
-  it("copies the pretty-printed payload when clipboard support is available", async () => {
+  it("copies the full pretty-printed payload when clipboard support is available", async () => {
     const writeText = jest.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "clipboard", {
       configurable: true,
@@ -242,6 +341,41 @@ describe("EventsPage", () => {
 
     await waitFor(() => {
       expect(writeText).toHaveBeenCalledWith('{\n  "pairId": "USDC/EURC"\n}');
+    });
+  });
+
+  it("copies the full payload even when the preview is truncated", async () => {
+    const writeText = jest.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      configurable: true,
+      value: { writeText },
+    });
+
+    const largeString = "x".repeat(MAX_PAYLOAD_PREVIEW_LENGTH + 100);
+    global.fetch = jest.fn().mockResolvedValueOnce({
+      ok: true,
+      text: async () =>
+        JSON.stringify({
+          items: [
+            {
+              id: "evt-large-copy",
+              ts: 1_782_460_000_000,
+              type: "payload.large",
+              payload: { body: largeString },
+            },
+          ],
+        }),
+    } as unknown as Response);
+
+    render(<EventsPage />);
+
+    fireEvent.click(await screen.findByRole("button", { name: /copy json/i }));
+
+    await waitFor(() => {
+      // The copied text should include the full body string, not be truncated
+      const callArg = writeText.mock.calls[0][0] as string;
+      expect(callArg).toContain(largeString);
+      expect(callArg.length).toBeGreaterThan(MAX_PAYLOAD_PREVIEW_LENGTH);
     });
   });
 
@@ -294,7 +428,7 @@ describe("EventsPage", () => {
     fireEvent.click(toggle);
 
     expect(toggle).toHaveAttribute("aria-expanded", "true");
-    expect(screen.getByText(/"body": "x/)).toBeInTheDocument();
+    expect(screen.getByText(/\"body\": \"x/)).toBeInTheDocument();
   });
 
   it("keeps small payloads expanded by default", async () => {
@@ -317,7 +451,7 @@ describe("EventsPage", () => {
 
     const toggle = await screen.findByRole("button", { name: /collapse/i });
     expect(toggle).toHaveAttribute("aria-expanded", "true");
-    expect(screen.getByText(/"note": "small"/)).toBeInTheDocument();
+    expect(screen.getByText(/\"note\": \"small\"/)).toBeInTheDocument();
   });
 
   it("preserves chronological order returned by the API", async () => {
@@ -523,4 +657,100 @@ describe("EventsPage", () => {
     removeEventListenerSpy.mockRestore();
   });
 
+  describe("payload safety", () => {
+    it("handles deeply nested payloads without crashing", async () => {
+      let deep: Record<string, unknown> = {};
+      let current = deep;
+      for (let i = 0; i < 100; i++) {
+        current[`level${i}`] = {};
+        current = current[`level${i}`] as Record<string, unknown>;
+      }
+      current.value = "bottom";
+
+      global.fetch = jest.fn().mockResolvedValueOnce({
+        ok: true,
+        text: async () =>
+          JSON.stringify({
+            items: [
+              {
+                id: "evt-deep",
+                ts: 1_782_460_000_000,
+                type: "payload.deep",
+                payload: deep,
+              },
+            ],
+          }),
+      } as unknown as Response);
+
+      render(<EventsPage />);
+      expect(await screen.findByText("payload.deep")).toBeInTheDocument();
+      expect(screen.getByText(/level0/)).toBeInTheDocument();
+    });
+
+    it("renders empty payloads as {} without error", async () => {
+      global.fetch = jest.fn().mockResolvedValueOnce({
+        ok: true,
+        text: async () =>
+          JSON.stringify({
+            items: [
+              {
+                id: "evt-empty",
+                ts: 1_782_460_000_000,
+                type: "payload.empty",
+                payload: {},
+              },
+            ],
+          }),
+      } as unknown as Response);
+
+      render(<EventsPage />);
+      expect(await screen.findByText("payload.empty")).toBeInTheDocument();
+      expect(screen.getByText(/\{\s*\}/)).toBeInTheDocument();
+    });
+
+    it("renders primitive-only payloads correctly", async () => {
+      global.fetch = jest.fn().mockResolvedValueOnce({
+        ok: true,
+        text: async () =>
+          JSON.stringify({
+            items: [
+              {
+                id: "evt-primitive",
+                ts: 1_782_460_000_000,
+                type: "payload.primitive",
+                payload: { str: "hello", num: 42, bool: true, nil: null },
+              },
+            ],
+          }),
+      } as unknown as Response);
+
+      render(<EventsPage />);
+      expect(await screen.findByText("payload.primitive")).toBeInTheDocument();
+      expect(screen.getByText(/"hello"/)).toBeInTheDocument();
+      expect(screen.getByText(/42/)).toBeInTheDocument();
+      expect(screen.getByText(/true/)).toBeInTheDocument();
+      expect(screen.getByText(/null/)).toBeInTheDocument();
+    });
+
+    it("renders array payloads without crashing", async () => {
+      global.fetch = jest.fn().mockResolvedValueOnce({
+        ok: true,
+        text: async () =>
+          JSON.stringify({
+            items: [
+              {
+                id: "evt-array",
+                ts: 1_782_460_000_000,
+                type: "payload.array",
+                payload: { items: [1, 2, 3, { nested: true }] },
+              },
+            ],
+          }),
+      } as unknown as Response);
+
+      render(<EventsPage />);
+      expect(await screen.findByText("payload.array")).toBeInTheDocument();
+      expect(screen.getByText(/nested/)).toBeInTheDocument();
+    });
+  });
 });
