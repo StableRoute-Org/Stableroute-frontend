@@ -29,21 +29,21 @@ Each route is defined under `src/app` and connects to its respective UI page:
 
 Reusable building blocks live under `src/components` and are imported by route pages:
 
-| Component | Purpose |
-|-----------|---------|
-| [`TextField`](src/components/TextField.tsx) | Accessible labeled inputs with `aria-describedby` error wiring |
-| [`Button`](src/components/Button.tsx) | Primary actions; supports `asChild` for link-style buttons |
-| [`IconButton`](src/components/IconButton.tsx) | Icon-only controls with required `aria-label` |
-| [`PageHeading`](src/components/PageHeading.tsx) | Consistent page title + optional description |
-| [`ConfirmDialog`](src/components/ConfirmDialog.tsx) | Modal confirmation with focus trap and Escape to dismiss |
-| [`EmptyState`](src/components/EmptyState.tsx) | Placeholder when a list has no rows |
-| [`StatTile`](src/components/StatTile.tsx) | Metric card used on `/stats` |
-| [`TimeAgo`](src/components/TimeAgo.tsx) | Relative timestamps with `aria-label` |
-| [`Badge`](src/components/Badge.tsx) | Status badge with configurable variants (neutral, ok, warning, danger) |
-| [`ThemeToggle`](src/components/ThemeToggle.tsx) | Light/dark appearance switch persisted in `localStorage` |
-| [`ToastProvider`](src/components/ToastProvider.tsx) | App-wide toast notifications |
-| [`KeyboardShortcutsHelp`](src/components/KeyboardShortcutsHelp.tsx) | `?` overlay listing keyboard shortcuts |
-| [`CommandPalette`](src/components/CommandPalette.tsx) | `Cmd/Ctrl+K` route jump palette |
+| Component                                                           | Purpose                                                                |
+| ------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| [`TextField`](src/components/TextField.tsx)                         | Accessible labeled inputs with `aria-describedby` error wiring         |
+| [`Button`](src/components/Button.tsx)                               | Primary actions; supports `asChild` for link-style buttons             |
+| [`IconButton`](src/components/IconButton.tsx)                       | Icon-only controls with required `aria-label`                          |
+| [`PageHeading`](src/components/PageHeading.tsx)                     | Consistent page title + optional description                           |
+| [`ConfirmDialog`](src/components/ConfirmDialog.tsx)                 | Modal confirmation with focus trap and Escape to dismiss               |
+| [`EmptyState`](src/components/EmptyState.tsx)                       | Placeholder when a list has no rows                                    |
+| [`StatTile`](src/components/StatTile.tsx)                           | Metric card used on `/stats`                                           |
+| [`TimeAgo`](src/components/TimeAgo.tsx)                             | Relative timestamps with `aria-label`                                  |
+| [`Badge`](src/components/Badge.tsx)                                 | Status badge with configurable variants (neutral, ok, warning, danger) |
+| [`ThemeToggle`](src/components/ThemeToggle.tsx)                     | Light/dark appearance switch persisted in `localStorage`               |
+| [`ToastProvider`](src/components/ToastProvider.tsx)                 | App-wide toast notifications                                           |
+| [`KeyboardShortcutsHelp`](src/components/KeyboardShortcutsHelp.tsx) | `?` overlay listing keyboard shortcuts                                 |
+| [`CommandPalette`](src/components/CommandPalette.tsx)               | `Cmd/Ctrl+K` route jump palette                                        |
 
 Data fetching helpers (`apiClient`, `useApi`, `useList`) live in `src/lib`.
 
@@ -144,22 +144,22 @@ The client reads this value in [`src/lib/apiClient.ts`](src/lib/apiClient.ts). R
 
 ### Troubleshooting
 
-| Symptom | Fix |
-|---------|-----|
-| API calls fail with `ECONNREFUSED` | Start the StableRoute backend or set `NEXT_PUBLIC_STABLEROUTE_API_BASE` |
-| Jest OOM on Windows | Run with `NODE_OPTIONS=--max-old-space-size=4096 npx jest …` |
-| Fork PR CI shows **action required** | A maintainer must approve GitHub Actions for fork PRs |
+| Symptom                              | Fix                                                                     |
+| ------------------------------------ | ----------------------------------------------------------------------- |
+| API calls fail with `ECONNREFUSED`   | Start the StableRoute backend or set `NEXT_PUBLIC_STABLEROUTE_API_BASE` |
+| Jest OOM on Windows                  | Run with `NODE_OPTIONS=--max-old-space-size=4096 npx jest …`            |
+| Fork PR CI shows **action required** | A maintainer must approve GitHub Actions for fork PRs                   |
 
 ## Scripts
 
-| Script | Description |
-|--------|-------------|
-| `npm run dev` | Start dev server (Next.js) |
-| `npm run build` | Production build |
-| `npm run start` | Run production server |
-| `npm test` | Run Jest tests |
-| `npm run test:watch` | Run Jest in watch mode |
-| `npm run lint` | Next.js ESLint |
+| Script               | Description                |
+| -------------------- | -------------------------- |
+| `npm run dev`        | Start dev server (Next.js) |
+| `npm run build`      | Production build           |
+| `npm run start`      | Run production server      |
+| `npm test`           | Run Jest tests             |
+| `npm run test:watch` | Run Jest in watch mode     |
+| `npm run lint`       | Next.js ESLint             |
 
 ## Accessibility
 
@@ -178,6 +178,11 @@ On every push/PR to `main`, GitHub Actions runs:
 - `npm test`
 
 Ensure these pass locally before pushing.
+
+## Security
+
+Please report security issues via a GitHub issue titled `SECURITY:` or by emailing `security@stableroute.org`.
+For coordinated disclosure, avoid public disclosure until a fix is available and give maintainers time to investigate.
 
 ## Contributing
 
