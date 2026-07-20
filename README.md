@@ -55,6 +55,21 @@ The shared footer keeps the StableRoute tagline visible on every page, renders t
 
 The frontend communicates with the StableRoute API backend.
 
+### API Client Error Contract
+
+The shared API client (`src/lib/apiClient.ts`) exposes `apiFetch`, `apiGet`, `apiPost`, `apiPatch`, and `apiDelete`. All calls return a promise that resolves to the parsed JSON body (or `undefined` on `204`) and rejects with an `Error` on failure.
+
+Rejected errors are guaranteed to carry a `status` property (`number`) and, when the server returns a parseable JSON error body matching the `ApiError` shape, the `error` and `requestId` properties from the response. When the response is non-OK and the body is empty or not valid JSON, the client synthesises an `ApiError`-shaped error:
+
+| Property | Value |
+|----------|-------|
+| `message` | `"Request failed (<status>)"` |
+| `error` | `"http_<status>"` |
+| `status` | `<status>` (the HTTP status code) |
+
+This ensures that callers never receive a raw `SyntaxError` from a gateway HTML page, an empty `502` body, or any other non-JSON response. A `200` with a non-JSON body throws `"Invalid JSON response"`.
+
+
 ### Environment Variables
 
 - **`NEXT_PUBLIC_STABLEROUTE_API_BASE`**: Specifies the base URL of the StableRoute API backend (defaults to `http://localhost:3001` if unset).
