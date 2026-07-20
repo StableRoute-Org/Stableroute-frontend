@@ -158,6 +158,27 @@ describe("sanitizeErrorMessage", () => {
       "Are you authenticated?",
     );
   });
+
+  // --- prefixed secret key redaction ---
+
+  it("redacts a sk_live_ prefixed key", () => {
+    expect(
+      sanitizeErrorMessage("Invalid key: sk_live_abcdef1234567890abcdef"),
+    ).toBe("Invalid key: [redacted]");
+  });
+
+  it("redacts a pk_test_ prefixed key", () => {
+    expect(
+      sanitizeErrorMessage("Rejected: pk_test_ZxYwVuTsRqPoNmLk1234"),
+    ).toBe("Rejected: [redacted]");
+  });
+
+  it("does not redact a short prefixed value (under 16 alphanum suffix chars)", () => {
+    // "sk_test_shortval" — suffix "shortval" is only 8 chars, should NOT be redacted
+    expect(sanitizeErrorMessage("ref: sk_test_shortval")).toBe(
+      "ref: sk_test_shortval",
+    );
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -372,5 +393,304 @@ describe("registerAuthErrorHandler", () => {
       apiFetch("/retry-me", { method: "POST", body: "{}" }, { retry: { maxAttempts: 3 } }),
     ).rejects.toThrow("HTTP 503");
     expect(global.fetch).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Network and timeout errors
+// ---------------------------------------------------------------------------
+
+describe("network and timeout errors", () => {
+  it("throws 'Request timed out' when fetch is aborted via timeout", async () => {
+    jest.useFakeTimers();
+    global.fetch = jest.fn().mockImplementation(
+      (_url: string, init: RequestInit) =>
+        new Promise((_resolve, reject) => {
+          (init.signal as AbortSignal).addEventListener("abort", () => {
+            reject(new DOMException("The operation was aborted.", "AbortError"));
+          });
+        }),
+    );
+    const errorPromise = apiFetch("/slow", {}, { timeoutMs: 100 }).catch((e: unknown) => e);
+    // Advance past timeout so AbortController fires, then flush microtasks
+    jest.advanceTimersByTime(200);
+    const err = await errorPromise as Error;
+    expect(err).toBeInstanceOf(Error);
+    expect(err.message).toBe("Request timed out");
+    jest.useRealTimers();
+  });
+
+  it("throws 'Network request failed' on a generic fetch rejection", async () => {
+    global.fetch = jest.fn().mockRejectedValue(new TypeError("Failed to fetch"));
+    await expect(apiFetch("/test")).rejects.toThrow("Network request failed");
+  });
+
+  it("retries network errors on GET requests and succeeds on second attempt", async () => {
+    jest.useFakeTimers();
+    const fetchMock = jest
+      .fn()
+      .mockRejectedValueOnce(new TypeError("Failed to fetch"))
+      .mockResolvedValueOnce({
+        status: 200,
+        ok: true,
+        text: () => Promise.resolve(JSON.stringify({ ok: true })),
+      } as unknown as Response);
+    global.fetch = fetchMock as unknown as typeof global.fetch;
+
+    const promise = apiFetch("/retry-net", {}, { retry: { maxAttempts: 2, baseDelayMs: 50 } });
+    await jest.advanceTimersByTimeAsync(50);
+    await expect(promise).resolves.toEqual({ ok: true });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    jest.useRealTimers();
+  });
+
+  it("throws after exhausting all retry attempts on network error", async () => {
+    jest.useFakeTimers();
+    global.fetch = jest.fn().mockRejectedValue(new TypeError("Failed to fetch"));
+    // Attach .catch immediately so the rejection is always handled
+    const settled = apiFetch("/fail", {}, { retry: { maxAttempts: 2, baseDelayMs: 10 } })
+      .then(() => ({ ok: true as const }))
+      .catch((e: unknown) => ({ ok: false as const, err: e as Error }));
+    await jest.advanceTimersByTimeAsync(10);
+    const result = await settled;
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.err.message).toBe("Network request failed");
+    jest.useRealTimers();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Helper functions: apiGet, apiPost, apiPatch, apiDelete
+// ---------------------------------------------------------------------------
+
+describe("helper functions", () => {
+  it("apiGet calls apiFetch with GET method", async () => {
+    mockResponse(200, JSON.stringify({ items: [] }));
+    const { apiGet } = await import("../apiClient");
+    await expect(apiGet("/api/v1/pairs")).resolves.toEqual({ items: [] });
+    expect((global.fetch as jest.Mock).mock.calls[0][1]).toMatchObject({});
+  });
+
+  it("apiPost calls apiFetch with POST method and JSON body", async () => {
+    mockResponse(200, JSON.stringify({ id: 1 }));
+    const { apiPost } = await import("../apiClient");
+    await expect(apiPost("/api/v1/pairs", { source: "USDC", destination: "EURC" })).resolves.toEqual({ id: 1 });
+    expect((global.fetch as jest.Mock).mock.calls[0][1]).toMatchObject({ method: "POST" });
+  });
+
+  it("apiPatch calls apiFetch with PATCH method and JSON body", async () => {
+    mockResponse(200, JSON.stringify({ updated: true }));
+    const { apiPatch } = await import("../apiClient");
+    await expect(apiPatch("/api/v1/pairs/1", { active: false })).resolves.toEqual({ updated: true });
+    expect((global.fetch as jest.Mock).mock.calls[0][1]).toMatchObject({ method: "PATCH" });
+  });
+
+  it("apiDelete calls apiFetch with DELETE method and returns undefined on 204", async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      status: 204,
+      ok: true,
+      text: () => Promise.resolve(""),
+    } as unknown as Response);
+    const { apiDelete } = await import("../apiClient");
+    await expect(apiDelete("/api/v1/pairs/1")).resolves.toBeUndefined();
+    expect((global.fetch as jest.Mock).mock.calls[0][1]).toMatchObject({ method: "DELETE" });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Branch coverage: error body without `error` or `requestId` fields
+// ---------------------------------------------------------------------------
+
+describe("error body field coverage", () => {
+  it("does not attach error field when the body omits it", async () => {
+    // Body has only `message`, no `error` code
+    mockResponse(400, JSON.stringify({ message: "Something went wrong" }));
+    const err = await apiFetch("/test").catch((e: unknown) => e) as Error & { error?: string };
+    expect(err).toBeInstanceOf(Error);
+    expect(err.message).toBe("Something went wrong");
+    expect(err.error).toBeUndefined();
+  });
+
+  it("does not attach requestId when the body omits it", async () => {
+    mockResponse(400, JSON.stringify({ error: "bad_request", message: "Missing field" }));
+    const err = await apiFetch("/test").catch((e: unknown) => e) as Error & { requestId?: string };
+    expect(err.requestId).toBeUndefined();
+  });
+
+  it("attaches both error code and requestId when both are present", async () => {
+    mockResponse(
+      422,
+      JSON.stringify({ error: "validation_error", message: "Invalid amount", requestId: "req-xyz-999" }),
+    );
+    const err = await apiFetch("/test").catch((e: unknown) => e) as Error & {
+      error?: string;
+      requestId?: string;
+      status: number;
+    };
+    expect(err.message).toBe("Invalid amount");
+    expect(err.error).toBe("validation_error");
+    expect(err.requestId).toBe("req-xyz-999");
+    expect(err.status).toBe(422);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Sensitive URL parameters — comprehensive redaction scenarios
+// ---------------------------------------------------------------------------
+
+describe("sensitive URL parameter redaction", () => {
+  it("does not expose source_asset in the toast-visible error message", async () => {
+    mockResponse(
+      400,
+      JSON.stringify({
+        error: "invalid_params",
+        message: "Invalid request: ?source_asset=USDC&dest_asset=EURC&amount=5000000",
+      }),
+    );
+    const err = await apiFetch(
+      "/api/v1/quote?source_asset=USDC&dest_asset=EURC&amount=5000000",
+    ).catch((e: unknown) => e) as Error;
+    expect(err.message).not.toMatch(/source_asset/);
+    expect(err.message).not.toMatch(/dest_asset/);
+    expect(err.message).not.toMatch(/amount/);
+    expect(err.message).not.toMatch(/USDC/);
+    expect(err.message).not.toMatch(/EURC/);
+    expect(err.message).not.toMatch(/5000000/);
+    expect(err.message).toBe("Invalid request:");
+  });
+
+  it("does not expose a raw hex API key echoed in a 401 message", async () => {
+    // Pure hex keys (no prefix/underscores) are matched by the sanitizer.
+    // Keys like deadbeefcafe... that appear as word-boundary tokens get redacted.
+    const apiKey = "deadbeefcafebabedeadbeef12345678";
+    mockResponse(
+      401,
+      JSON.stringify({
+        error: "unauthorized",
+        message: `Unrecognized API key: ${apiKey}`,
+      }),
+    );
+    const unregister = registerAuthErrorHandler(jest.fn());
+    const err = await apiFetch("/api/v1/pairs").catch((e: unknown) => e) as Error;
+    expect(err.message).not.toContain(apiKey);
+    expect(err.message).toContain("[redacted]");
+    expect(err.message).toBe("Unrecognized API key: [redacted]");
+    unregister();
+  });
+
+  it("does not expose a prefixed API key (sk_live_ format) echoed in a 401 message", async () => {
+    // Prefixed keys like sk_live_xxx, pk_test_xxx are also redacted
+    const apiKey = "sk_live_abcdef1234567890abcdef";
+    mockResponse(
+      401,
+      JSON.stringify({
+        error: "unauthorized",
+        message: `Unrecognized API key: ${apiKey}`,
+      }),
+    );
+    const unregister = registerAuthErrorHandler(jest.fn());
+    const err = await apiFetch("/api/v1/pairs").catch((e: unknown) => e) as Error;
+    expect(err.message).not.toContain(apiKey);
+    expect(err.message).toContain("[redacted]");
+    unregister();
+  });
+
+  it("does not expose a Stellar G-address echoed in a 400 message", async () => {
+    const gAddress = "GCKFBEIYTKP6RZNFKBEUYYTNWPMJCXMJFKTHKOBKNZ6SBPBVZWT73KMX";
+    mockResponse(
+      400,
+      JSON.stringify({
+        error: "invalid_address",
+        message: `Destination not found: ${gAddress}`,
+      }),
+    );
+    const err = await apiFetch("/api/v1/quote").catch((e: unknown) => e) as Error;
+    expect(err.message).not.toContain(gAddress);
+    expect(err.message).toContain("[redacted]");
+  });
+
+  it("sanitizes a message containing both a query param and a secret token", async () => {
+    const secret = "aabbccddeeff00112233445566778899";
+    mockResponse(
+      400,
+      JSON.stringify({
+        error: "invalid_request",
+        message: `Failed ?dest_asset=EURC token=${secret}`,
+      }),
+    );
+    const err = await apiFetch("/api/v1/quote?dest_asset=EURC").catch((e: unknown) => e) as Error;
+    expect(err.message).not.toContain("EURC");
+    expect(err.message).not.toContain(secret);
+    expect(err.message).toBe("Failed token=[redacted]");
+  });
+
+  it("preserves requestId for support correlation even when message is fully sanitized", async () => {
+    mockResponse(
+      400,
+      JSON.stringify({
+        error: "invalid_params",
+        message: "?source_asset=USDC&dest_asset=EURC",
+        requestId: "support-ref-42",
+      }),
+    );
+    const err = await apiFetch("/api/v1/quote?source_asset=USDC").catch(
+      (e: unknown) => e,
+    ) as Error & { requestId?: string };
+    expect(err.message).toBe("");
+    expect(err.requestId).toBe("support-ref-42");
+  });
+
+  it("strips a webhook secret URL parameter from an error message", async () => {
+    mockResponse(
+      400,
+      JSON.stringify({
+        error: "invalid_webhook",
+        message: "Webhook validation failed: ?secret=mysecretvalue123",
+      }),
+    );
+    const err = await apiFetch("/api/v1/webhooks").catch((e: unknown) => e) as Error;
+    expect(err.message).toBe("Webhook validation failed:");
+    expect(err.message).not.toContain("secret");
+    expect(err.message).not.toContain("mysecretvalue123");
+  });
+
+  it("does not redact short human-readable values (requestId-like strings)", async () => {
+    mockResponse(
+      404,
+      JSON.stringify({
+        error: "not_found",
+        message: "Pair abc123 not found",
+        requestId: "req-7f3a",
+      }),
+    );
+    const err = await apiFetch("/api/v1/pairs/abc123").catch((e: unknown) => e) as Error & {
+      requestId?: string;
+    };
+    // "abc123" is only 6 chars — should NOT be redacted
+    expect(err.message).toBe("Pair abc123 not found");
+    expect(err.requestId).toBe("req-7f3a");
+  });
+
+  it("handles a HEAD request timeout without leaking URL params", async () => {
+    jest.useFakeTimers();
+    global.fetch = jest.fn().mockImplementation(
+      (_url: string, init: RequestInit) =>
+        new Promise((_resolve, reject) => {
+          (init.signal as AbortSignal).addEventListener("abort", () => {
+            reject(new DOMException("The operation was aborted.", "AbortError"));
+          });
+        }),
+    );
+    const errorPromise = apiFetch(
+      "/api/v1/stats?api_key=supersecretkey1234567890",
+      { method: "HEAD" },
+      { timeoutMs: 50 },
+    ).catch((e: unknown) => e);
+    jest.advanceTimersByTime(100);
+    const err = await errorPromise as Error;
+    expect(err.message).toBe("Request timed out");
+    expect(err.message).not.toContain("api_key");
+    expect(err.message).not.toContain("supersecretkey");
+    jest.useRealTimers();
   });
 });

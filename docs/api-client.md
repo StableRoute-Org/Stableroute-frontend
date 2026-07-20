@@ -43,12 +43,19 @@ Contiguous runs of 20 or more characters that match the hex (`0-9a-fA-F`) or
 Base58 (`1-9A-HJ-NP-Za-km-z`) alphabets are replaced with `[redacted]`. This
 covers API keys, Stellar wallet addresses, and other long opaque secrets.
 
+Prefixed key formats — two underscore-separated label segments followed by 16 or
+more alphanumeric characters (e.g. `sk_live_…`, `pk_test_…`, `api_key_…`) — are
+also redacted regardless of the character set used in the suffix.
+
 ```
 Input:  "Invalid API key: deadbeefcafebabedeadbeef"
 Output: "Invalid API key: [redacted]"
 
 Input:  "Unknown destination: GBVHELLD2JE235Y2NGTDT3MWI3T65ON6SY4N6FBHYVDAQ5FZC2CP5QXH"
 Output: "Unknown destination: [redacted]"
+
+Input:  "Unauthorized: sk_live_abcdef1234567890abcdef"
+Output: "Unauthorized: [redacted]"
 ```
 
 ### requestId is preserved

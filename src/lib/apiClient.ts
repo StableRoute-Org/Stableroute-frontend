@@ -43,7 +43,9 @@ export function registerAuthErrorHandler(handler: AuthErrorHandler): () => void 
  *
  * 2. **Key-like tokens** – contiguous runs of 20+ hex or Base58 characters that
  *    resemble API keys, wallet addresses, or secrets are replaced with
- *    `[redacted]`.
+ *    `[redacted]`. Prefixed key formats such as `sk_live_…`, `pk_test_…`, and
+ *    `api_key_…` (two underscore-separated label segments followed by 16+ alphanumeric
+ *    characters) are also redacted.
  *
  * The `requestId` field is preserved on the thrown error *object* (not in the
  * message string) so support can still correlate failures.
@@ -64,6 +66,10 @@ export function sanitizeErrorMessage(message: string): string {
   // Stellar / base32 addresses: 20+ consecutive uppercase letters and digits
   // (covers G-addresses and other uppercase-only opaque identifiers)
   sanitized = sanitized.replace(/\b[A-Z0-9]{20,}\b/g, "[redacted]");
+
+  // Prefixed secret tokens: patterns like sk_live_<16+chars>, pk_test_<16+chars>,
+  // api_key_<16+chars> — common formats for API keys, Stripe keys, and similar secrets
+  sanitized = sanitized.replace(/\b\w+_\w+_[A-Za-z0-9]{16,}\b/g, "[redacted]");
 
   // Collapse any double-spaces left by the removals and trim
   return sanitized.replace(/\s{2,}/g, " ").trim();
