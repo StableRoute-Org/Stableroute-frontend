@@ -68,5 +68,10 @@ describe("next.config security headers", () => {
   it("has reactStrictMode enabled", () => {
     expect(nextConfig.reactStrictMode).toBe(true);
   });
+
+  it("exports a valid Next.js configuration object", () => {
+    expect(nextConfig).toBeDefined();
+    expect(typeof nextConfig).toBe("object");
+  });
 });
 

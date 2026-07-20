@@ -1,11 +1,20 @@
 ## Summary
 
-Fixes #<!-- issue -->
+Describe the change and why it was made.
 
 ## Test plan
 
 - [ ] `npm test`
 - [ ] `npm run lint`
+- [ ] `npm run build` (if applicable)
+
+## Related issues
+
+- Fixes #<!-- issue -->
+
+## Notes
+
+Include any review notes, limitations, or deployment considerations.
 
 ## GrantFox
 

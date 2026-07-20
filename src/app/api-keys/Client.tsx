@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { IconButton } from "@/components/IconButton";
+import { ResourceList } from "@/components/ResourceList";
 import { TextField } from "@/components/TextField";
 import { TimeAgo } from "@/components/TimeAgo";
 import { Badge } from "@/components/Badge";
@@ -23,7 +23,6 @@ export default function ApiKeysClient() {
   /** The prefix of the most recently created API key, used to mark its row with a "New" badge. Persists until page reload or navigation. */
   const [recentPrefix, setRecentPrefix] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [pendingRevoke, setPendingRevoke] = useState<string | null>(null);
 
   const onCreate = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -92,46 +91,36 @@ export default function ApiKeysClient() {
         </div>
       )}
       {error && <p role="alert" className="text-sm text-rose-600">{error}</p>}
-      <div aria-live="polite" aria-atomic="true">
-        {loading && !items && <p>Loading…</p>}
-        {items && items.length === 0 && <p className="text-sm text-neutral-600">No API keys yet.</p>}
-        {items && items.length > 0 && (
-          <ul className="divide-y divide-neutral-200 dark:divide-neutral-800">
-            {items.map((key) => (
-              <li key={key.prefix} className="flex items-center justify-between py-3">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm font-medium">{key.label}</p>
-                    {key.prefix === recentPrefix && <Badge variant="ok">New</Badge>}
-                  </div>
-                  <p className="font-mono text-xs text-neutral-500">{key.prefix}…</p>
-                  <p className="text-xs text-neutral-500">
-                    Created <TimeAgo ts={key.createdAt} />
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setPendingRevoke(key.prefix)}
-                  className="rounded border border-neutral-300 px-3 py-1 text-xs dark:border-neutral-700"
-                >
-                  Revoke
-                </button>
-              </li>
-            ))}
-          </ul>
+      <ResourceList
+        items={items}
+        loading={loading}
+        emptyMessage="No API keys yet."
+        getKey={(key) => key.prefix}
+        rowClassName="flex items-center justify-between py-3"
+        removeDialogTitle="Revoke API key?"
+        removeDialogConfirmLabel="Revoke"
+        onRemove={(key) => void apiDelete(`/api/v1/api-keys/${key.prefix}`).then(() => reload())}
+        renderRow={(key, { requestRemove }) => (
+          <>
+            <div>
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-medium">{key.label}</p>
+                {key.prefix === recentPrefix && <Badge variant="ok">New</Badge>}
+              </div>
+              <p className="font-mono text-xs text-neutral-500">{key.prefix}…</p>
+              <p className="text-xs text-neutral-500">
+                Created <TimeAgo ts={key.createdAt} />
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={requestRemove}
+              className="rounded border border-neutral-300 px-3 py-1 text-xs dark:border-neutral-700"
+            >
+              Revoke
+            </button>
+          </>
         )}
-      </div>
-      <ConfirmDialog
-        open={pendingRevoke !== null}
-        tone="danger"
-        title="Revoke API key?"
-        confirmLabel="Revoke"
-        onConfirm={() => {
-          const prefix = pendingRevoke;
-          setPendingRevoke(null);
-          if (prefix) void apiDelete(`/api/v1/api-keys/${prefix}`).then(() => reload());
-        }}
-        onCancel={() => setPendingRevoke(null)}
       />
     </main>
   );

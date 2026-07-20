@@ -67,7 +67,7 @@ describe("StatsPage", () => {
     render(<StatsPage />);
     await waitFor(() => {
       const alert = screen.getByRole("alert");
-      expect(alert).toHaveTextContent(/network error/i);
+      expect(alert).toHaveTextContent(/network request failed/i);
     });
   });
 

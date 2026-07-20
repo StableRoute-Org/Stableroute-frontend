@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { TextField } from "@/components/TextField";
-import { apiGet, type ApiError } from "@/lib/apiClient";
+import { apiFetch, type ApiError } from "@/lib/apiClient";
 import { formatQuoteAmountDisplay, formatQuoteRateDisplay } from "@/lib/format";
+import { useLocalStorage } from "@/lib/useLocalStorage";
 
 type Quote = {
   source_asset: string;
@@ -31,6 +32,7 @@ const INPUTS_KEY = "stableroute.quote.inputs";
 const HISTORY_KEY = "stableroute.quote.history";
 const MAX_HISTORY = 5;
 const ASSET_CODE_PATTERN = /^[A-Za-z0-9]{1,12}$/;
+const MIN_SUBMIT_INTERVAL_MS = 1_000;
 
 function normalizeAssetCode(value: string): string | null {
   const trimmed = value.trim();
@@ -41,22 +43,14 @@ function isValidAmount(value: string): boolean {
   return /^[1-9]\d*$/.test(value.trim());
 }
 
-function readInputs(): QuoteInputs | null {
-  try {
-    const raw = localStorage.getItem(INPUTS_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as QuoteInputs;
-    if (
-      typeof parsed.source === "string" &&
-      typeof parsed.dest === "string" &&
-      typeof parsed.amount === "string"
-    ) {
-      return parsed;
-    }
-  } catch {
-    return null;
-  }
-  return null;
+function isQuoteInputs(value: unknown): value is QuoteInputs {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    typeof (value as QuoteInputs).source === "string" &&
+    typeof (value as QuoteInputs).dest === "string" &&
+    typeof (value as QuoteInputs).amount === "string"
+  );
 }
 
 function readHistory(): HistoryEntry[] {
@@ -85,6 +79,11 @@ function pushHistory(entry: QuoteInputs) {
 }
 
 export default function QuoteClient() {
+  const [savedInputs, setSavedInputs] = useLocalStorage<QuoteInputs | null>(
+    INPUTS_KEY,
+    null,
+    isQuoteInputs,
+  );
   const [sourceAsset, setSourceAsset] = useState("");
   const [destAsset, setDestAsset] = useState("");
   const [amount, setAmount] = useState("");
@@ -94,14 +93,22 @@ export default function QuoteClient() {
   const [formError, setFormError] = useState<string | null>(null);
   const [requestId, setRequestId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const activeRequestRef = useRef(0);
+  const requestControllerRef = useRef<AbortController | null>(null);
+  const lastSubmitAtRef = useRef<number | null>(null);
+
+  // Prefill once storage has synced client-side (see useLocalStorage's SSR
+  // handling). Re-running only when the stored value actually changes avoids
+  // clobbering in-progress edits.
+  useEffect(() => {
+    if (savedInputs) {
+      setSourceAsset(savedInputs.source);
+      setDestAsset(savedInputs.dest);
+      setAmount(savedInputs.amount);
+    }
+  }, [savedInputs]);
 
   useEffect(() => {
-    const saved = readInputs();
-    if (saved) {
-      setSourceAsset(saved.source);
-      setDestAsset(saved.dest);
-      setAmount(saved.amount);
-    }
     setHistory(readHistory());
   }, []);
 
@@ -126,6 +133,14 @@ export default function QuoteClient() {
 
   const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const now = Date.now();
+    const lastSubmitAt = lastSubmitAtRef.current;
+    const isCoolingDown = lastSubmitAt !== null && now - lastSubmitAt < MIN_SUBMIT_INTERVAL_MS;
+
+    if (isCoolingDown) {
+      return;
+    }
+
     setFieldErrors({});
     setFormError(null);
     setRequestId(null);
@@ -155,7 +170,17 @@ export default function QuoteClient() {
       dest: destAsset,
       amount: amount.trim(),
     };
-    localStorage.setItem(INPUTS_KEY, JSON.stringify(inputs));
+    setSavedInputs(inputs);
+
+    lastSubmitAtRef.current = now;
+    if (requestControllerRef.current) {
+      requestControllerRef.current.abort();
+    }
+
+    const controller = new AbortController();
+    requestControllerRef.current = controller;
+    const requestId = activeRequestRef.current + 1;
+    activeRequestRef.current = requestId;
 
     setLoading(true);
     try {
@@ -163,15 +188,23 @@ export default function QuoteClient() {
         `/api/v1/quote?source_asset=${encodeURIComponent(normalizedSource)}` +
         `&dest_asset=${encodeURIComponent(normalizedDest)}` +
         `&amount=${encodeURIComponent(inputs.amount)}`;
-      const body = await apiGet<Quote>(path);
+      const body = await apiFetch<Quote>(path, { signal: controller.signal });
+      if (requestId !== activeRequestRef.current) return;
       setQuote(body);
       setHistory(pushHistory(inputs));
     } catch (err) {
+      if (requestId !== activeRequestRef.current) return;
+      if (controller.signal.aborted) return;
       const apiError = err as ApiError & { requestId?: string };
       setFormError(apiError.message ?? "quote request failed");
       setRequestId(apiError.requestId ?? null);
     } finally {
-      setLoading(false);
+      if (requestId === activeRequestRef.current) {
+        setLoading(false);
+        if (requestControllerRef.current === controller) {
+          requestControllerRef.current = null;
+        }
+      }
     }
   };
 
@@ -224,7 +257,7 @@ export default function QuoteClient() {
           type="button"
           onClick={swapAssets}
           aria-label="Swap source and destination assets"
-          className="self-center rounded-full border border-neutral-300 px-3 py-1 text-xs dark:border-neutral-700"
+          className="self-center rounded-full border border-neutral-300 px-3 py-1 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[var(--focus-ring-offset)] focus-visible:outline-[color:var(--focus-ring-color)] dark:border-neutral-700"
         >
           Swap ⇄
         </button>
@@ -251,7 +284,7 @@ export default function QuoteClient() {
         <button
           type="submit"
           disabled={loading}
-          className="self-start rounded-full bg-black px-5 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+          className="self-start rounded-full bg-black px-5 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[var(--focus-ring-offset)] focus-visible:outline-[color:var(--focus-ring-color)]"
         >
           {loading ? "Quoting…" : "Get quote"}
         </button>

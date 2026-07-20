@@ -4,6 +4,7 @@ import { useCallback, useState } from "react";
 import { Badge } from "@/components/Badge";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { IconButton } from "@/components/IconButton";
+import { ResourceList } from "@/components/ResourceList";
 import { TextField } from "@/components/TextField";
 import { TimeAgo } from "@/components/TimeAgo";
 import { apiDelete, apiGet, apiPost } from "@/lib/apiClient";
@@ -30,7 +31,6 @@ export default function WebhooksClient() {
   const [selectedEvents, setSelectedEvents] = useState<string[]>(["pair.registered"]);
   const [submitting, setSubmitting] = useState(false);
   const [confirmRegister, setConfirmRegister] = useState(false);
-  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [localError, setLocalError] = useState<string | null>(null);
 
   const displayError = localError ?? error;
@@ -99,32 +99,34 @@ export default function WebhooksClient() {
         </button>
         {displayError && <p role="alert" className="text-sm text-rose-600">{displayError}</p>}
       </form>
-      <div aria-live="polite" aria-atomic="true">
-        {loading && !items && <p>Loading…</p>}
-        {items && items.length === 0 && <p className="text-sm text-neutral-600">No webhooks registered.</p>}
-        {items && items.length > 0 && (
-          <ul className="divide-y divide-neutral-200 dark:divide-neutral-800">
-            {items.map((hook) => (
-              <li key={hook.id} className="flex items-center justify-between gap-3 py-3">
-                <div>
-                  <p className="break-all text-sm font-medium">{hook.url}</p>
-                  <p className="text-xs text-neutral-500">
-                    Registered <TimeAgo ts={hook.createdAt} />
-                  </p>
-                  <div className="mt-1 flex flex-wrap gap-1">
-                    {hook.events.map((event) => (
-                      <Badge key={event}>{event}</Badge>
-                    ))}
-                  </div>
-                </div>
-                <IconButton label="Remove webhook" onClick={() => setPendingDeleteId(hook.id)}>
-                  ×
-                </IconButton>
-              </li>
-            ))}
-          </ul>
+      <ResourceList
+        items={items}
+        loading={loading}
+        emptyMessage="No webhooks registered."
+        getKey={(hook) => hook.id}
+        rowClassName="flex items-center justify-between gap-3 py-3"
+        removeDialogTitle="Remove webhook?"
+        removeDialogConfirmLabel="Remove"
+        onRemove={(hook) => void apiDelete(`/api/v1/webhooks/${hook.id}`).then(() => reload())}
+        renderRow={(hook, { requestRemove }) => (
+          <>
+            <div>
+              <p className="break-all text-sm font-medium">{hook.url}</p>
+              <p className="text-xs text-neutral-500">
+                Registered <TimeAgo ts={hook.createdAt} />
+              </p>
+              <div className="mt-1 flex flex-wrap gap-1">
+                {hook.events.map((event) => (
+                  <Badge key={event}>{event}</Badge>
+                ))}
+              </div>
+            </div>
+            <IconButton label="Remove webhook" onClick={requestRemove}>
+              ×
+            </IconButton>
+          </>
         )}
-      </div>
+      />
       <ConfirmDialog
         open={confirmRegister}
         tone="default"
@@ -134,18 +136,6 @@ export default function WebhooksClient() {
           void registerWebhook();
         }}
         onCancel={() => setConfirmRegister(false)}
-      />
-      <ConfirmDialog
-        open={pendingDeleteId !== null}
-        tone="danger"
-        title="Remove webhook?"
-        confirmLabel="Remove"
-        onConfirm={() => {
-          const id = pendingDeleteId;
-          setPendingDeleteId(null);
-          if (id) void apiDelete(`/api/v1/webhooks/${id}`).then(() => reload());
-        }}
-        onCancel={() => setPendingDeleteId(null)}
       />
     </main>
   );

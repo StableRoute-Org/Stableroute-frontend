@@ -76,6 +76,7 @@ describe("AdminPage semantics", () => {
     render(<AdminPage />);
     const toggle = await screen.findByRole("button", { name: /^pause$/i });
     fireEvent.click(toggle);
+    fireEvent.click(screen.getByRole("button", { name: /pause router/i }));
 
     await waitFor(() => {
       expect(toggle).toHaveAttribute("aria-busy", "true");
@@ -108,6 +109,7 @@ describe("AdminPage semantics", () => {
     render(<AdminPage />);
     const toggle = await screen.findByRole("button", { name: /^pause$/i });
     fireEvent.click(toggle);
+    fireEvent.click(screen.getByRole("button", { name: /pause router/i }));
 
     await screen.findByText(/Pause failed/i);
     expect(toggle).toHaveAttribute("aria-busy", "false");

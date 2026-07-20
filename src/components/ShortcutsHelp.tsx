@@ -102,7 +102,7 @@ export function ShortcutsHelp() {
             type="button"
             onClick={() => setOpen(false)}
             aria-label="Close keyboard shortcuts"
-            className="rounded-full border border-neutral-300 px-3 py-1 text-sm font-medium hover:border-neutral-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 dark:border-neutral-700 dark:hover:border-neutral-500"
+            className="rounded-full border border-neutral-300 px-3 py-1 text-sm font-medium hover:border-neutral-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[var(--focus-ring-offset)] focus-visible:outline-[color:var(--focus-ring-color)] dark:border-neutral-700 dark:hover:border-neutral-500"
           >
             Close
           </button>
