@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { EmptyState } from "@/components/EmptyState";
+import { Button } from "@/components/Button";
 import { TimeAgo } from "@/components/TimeAgo";
 import { apiGet } from "@/lib/apiClient";
 import { parseEventsResponse, type DisplayEvent } from "@/lib/events";
@@ -231,3 +232,4 @@ export default function EventsClient() {
     </main>
   );
 }
+
