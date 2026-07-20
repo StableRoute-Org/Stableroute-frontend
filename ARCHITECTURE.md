@@ -7,6 +7,7 @@
 - `src/lib/apiClient.ts` — shared fetch wrapper with auth-error hook and optional retry/timeout.
 - `src/lib/config.ts` — API base resolution and validation.
 - `src/lib/useApi.ts` / `src/lib/useList.ts` — client data-loading helpers.
+- `src/lib/clipboard.ts` — secure-context/permission-guarded clipboard writes (see `docs/clipboard.md`).
 
 ## Data flow
 

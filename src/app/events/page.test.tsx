@@ -1,5 +1,6 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import EventsPage from "./page";
+import { ToastProvider } from "@/components/ToastProvider";
 import { MAX_RENDERED_EVENTS } from "@/lib/events";
 
 const okEventsResponse = (items: unknown[]) =>
@@ -24,25 +25,52 @@ function setDocumentVisibility(state: DocumentVisibilityState, dispatch = true) 
   document.dispatchEvent(new Event("visibilitychange"));
 }
 
+function setSecureContext(value: boolean) {
+  Object.defineProperty(window, "isSecureContext", {
+    configurable: true,
+    value,
+  });
+}
+
+function setClipboard(value: unknown) {
+  Object.defineProperty(navigator, "clipboard", {
+    configurable: true,
+    value,
+  });
+}
+
+function renderPage() {
+  return render(
+    <ToastProvider>
+      <EventsPage />
+    </ToastProvider>,
+  );
+}
+
 describe("EventsPage", () => {
   let originalFetch: typeof global.fetch;
   let originalVisibilityState: DocumentVisibilityState;
+  const originalSecureContext = window.isSecureContext;
+  const originalClipboard = navigator.clipboard;
 
   beforeEach(() => {
     originalFetch = global.fetch;
     originalVisibilityState = document.visibilityState;
     setDocumentVisibility("visible", false);
+    setSecureContext(true);
   });
 
   afterEach(() => {
     global.fetch = originalFetch;
     jest.useRealTimers();
     setDocumentVisibility(originalVisibilityState, false);
+    setSecureContext(originalSecureContext);
+    setClipboard(originalClipboard);
   });
 
   it("shows loading before data arrives", () => {
     global.fetch = jest.fn(() => new Promise(() => {})) as unknown as typeof global.fetch;
-    render(<EventsPage />);
+    renderPage();
     expect(screen.getByText("Loading…")).toBeInTheDocument();
   });
 
@@ -55,7 +83,7 @@ describe("EventsPage", () => {
         }),
     } as unknown as Response);
 
-    render(<EventsPage />);
+    renderPage();
     await waitFor(() => {
       expect(screen.getByText("pair.registered")).toBeInTheDocument();
     });
@@ -70,7 +98,7 @@ describe("EventsPage", () => {
       text: async () => JSON.stringify({ items: [] }),
     } as unknown as Response);
 
-    render(<EventsPage />);
+    renderPage();
     await waitFor(() => {
       expect(screen.getByText(/No events/i)).toBeInTheDocument();
     });
@@ -79,7 +107,7 @@ describe("EventsPage", () => {
   it("surfaces errors with role=alert", async () => {
     global.fetch = jest.fn().mockRejectedValueOnce(new Error("Failed to load"));
 
-    render(<EventsPage />);
+    renderPage();
     await waitFor(() => {
       expect(screen.getByRole("alert")).toHaveTextContent(/Network request failed/i);
     });
@@ -91,7 +119,7 @@ describe("EventsPage", () => {
       text: async () => JSON.stringify({ items: [] }),
     } as unknown as Response);
 
-    render(<EventsPage />);
+    renderPage();
     await waitFor(() => {
       expect(screen.getByText(/No events/i)).toBeInTheDocument();
     });
@@ -104,7 +132,7 @@ describe("EventsPage", () => {
       text: async () => JSON.stringify({ items: [] }),
     } as unknown as Response);
 
-    render(<EventsPage />);
+    renderPage();
     await waitFor(() => {
       expect(
         screen.getByRole("region", { name: /event log entries/i }),
@@ -128,7 +156,7 @@ describe("EventsPage", () => {
         }),
     } as unknown as Response);
 
-    render(<EventsPage />);
+    renderPage();
 
     expect(await screen.findByText("pair.registered")).toBeInTheDocument();
     expect(screen.queryByText("missing.id")).not.toBeInTheDocument();
@@ -149,7 +177,7 @@ describe("EventsPage", () => {
       text: async () => JSON.stringify({ items: events }),
     } as unknown as Response);
 
-    render(<EventsPage />);
+    renderPage();
 
     expect(await screen.findByText(`200 of ${MAX_RENDERED_EVENTS + 3} events`)).toBeInTheDocument();
     expect(screen.getByText("event.0")).toBeInTheDocument();
@@ -173,7 +201,7 @@ describe("EventsPage", () => {
         }),
     } as unknown as Response);
 
-    render(<EventsPage />);
+    renderPage();
 
     expect(await screen.findByText("payload.large")).toBeInTheDocument();
     expect(screen.getByText(/truncated/)).toBeInTheDocument();
@@ -201,7 +229,7 @@ describe("EventsPage", () => {
         }),
     } as unknown as Response);
 
-    render(<EventsPage />);
+    renderPage();
 
     expect(await screen.findByText("pair.registered")).toBeInTheDocument();
     expect(screen.getByText("pair.updated")).toBeInTheDocument();
@@ -236,7 +264,7 @@ describe("EventsPage", () => {
         }),
     } as unknown as Response);
 
-    render(<EventsPage />);
+    renderPage();
 
     fireEvent.click(await screen.findByRole("button", { name: /copy json/i }));
 
@@ -261,10 +289,77 @@ describe("EventsPage", () => {
         }),
     } as unknown as Response);
 
-    render(<EventsPage />);
+    renderPage();
 
     const copyButton = await screen.findByRole("button", { name: /copy json/i });
     expect(() => fireEvent.click(copyButton)).not.toThrow();
+  });
+
+  it("shows a toast and reveals the payload when the clipboard write is rejected", async () => {
+    const writeText = jest.fn().mockRejectedValue(new DOMException("Denied", "NotAllowedError"));
+    setClipboard({ writeText });
+
+    global.fetch = jest.fn().mockResolvedValueOnce({
+      ok: true,
+      text: async () =>
+        JSON.stringify({
+          items: [
+            {
+              id: "evt-denied",
+              ts: 1_782_460_000_000,
+              type: "payload.large",
+              payload: { body: "x".repeat(5000) },
+            },
+          ],
+        }),
+    } as unknown as Response);
+
+    renderPage();
+
+    const toggle = await screen.findByRole("button", { name: /expand/i });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+
+    fireEvent.click(screen.getByRole("button", { name: /copy json/i }));
+
+    expect(
+      await screen.findByText("Couldn't copy automatically. Select the payload below to copy it."),
+    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: /collapse/i })).toHaveAttribute(
+        "aria-expanded",
+        "true",
+      );
+    });
+  });
+
+  it("does not attempt a clipboard write outside a secure context", async () => {
+    const writeText = jest.fn().mockResolvedValue(undefined);
+    setClipboard({ writeText });
+    setSecureContext(false);
+
+    global.fetch = jest.fn().mockResolvedValueOnce({
+      ok: true,
+      text: async () =>
+        JSON.stringify({
+          items: [
+            {
+              id: "evt-insecure",
+              ts: 1_782_460_000_000,
+              type: "pair.registered",
+              payload: { pairId: "USDC/EURC" },
+            },
+          ],
+        }),
+    } as unknown as Response);
+
+    renderPage();
+
+    fireEvent.click(await screen.findByRole("button", { name: /copy json/i }));
+
+    expect(
+      await screen.findByText("Couldn't copy automatically. Select the payload below to copy it."),
+    ).toBeInTheDocument();
+    expect(writeText).not.toHaveBeenCalled();
   });
 
   it("defaults large payloads to collapsed and toggles aria-expanded", async () => {
@@ -283,7 +378,7 @@ describe("EventsPage", () => {
         }),
     } as unknown as Response);
 
-    render(<EventsPage />);
+    renderPage();
 
     const toggle = await screen.findByRole("button", { name: /expand/i });
     expect(toggle).toHaveAttribute("aria-expanded", "false");
@@ -313,7 +408,7 @@ describe("EventsPage", () => {
         }),
     } as unknown as Response);
 
-    render(<EventsPage />);
+    renderPage();
 
     const toggle = await screen.findByRole("button", { name: /collapse/i });
     expect(toggle).toHaveAttribute("aria-expanded", "true");
@@ -348,7 +443,7 @@ describe("EventsPage", () => {
         }),
     } as unknown as Response);
 
-    render(<EventsPage />);
+    renderPage();
 
     expect(await screen.findByText("event.first")).toBeInTheDocument();
     const types = screen.getAllByRole("listitem").map((item) => item.textContent ?? "");
@@ -361,7 +456,7 @@ describe("EventsPage", () => {
     jest.useFakeTimers();
     global.fetch = jest.fn().mockResolvedValue(okEventsResponse([eventRecord("initial")]));
 
-    render(<EventsPage />);
+    renderPage();
 
     expect(await screen.findByText("event.initial")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Live off" })).toHaveAttribute(
@@ -384,7 +479,7 @@ describe("EventsPage", () => {
       .mockResolvedValueOnce(okEventsResponse([eventRecord("live")]))
       .mockResolvedValueOnce(okEventsResponse([eventRecord("tick")]));
 
-    render(<EventsPage />);
+    renderPage();
 
     expect(await screen.findByText("event.initial")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Live off" }));
@@ -410,7 +505,7 @@ describe("EventsPage", () => {
       .mockResolvedValueOnce(okEventsResponse([eventRecord("initial")]))
       .mockResolvedValueOnce(okEventsResponse([eventRecord("live")]));
 
-    render(<EventsPage />);
+    renderPage();
 
     expect(await screen.findByText("event.initial")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Live off" }));
@@ -437,7 +532,7 @@ describe("EventsPage", () => {
       .mockResolvedValueOnce(okEventsResponse([eventRecord("visible")]))
       .mockResolvedValueOnce(okEventsResponse([eventRecord("tick")]));
 
-    render(<EventsPage />);
+    renderPage();
 
     expect(await screen.findByText("event.initial")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Live off" }));
@@ -472,7 +567,7 @@ describe("EventsPage", () => {
       .mockResolvedValueOnce(okEventsResponse([eventRecord("live")]))
       .mockRejectedValueOnce(new Error("refresh failed"));
 
-    render(<EventsPage />);
+    renderPage();
 
     expect(await screen.findByText("event.initial")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Live off" }));
@@ -491,7 +586,7 @@ describe("EventsPage", () => {
     jest.setSystemTime(new Date("2026-07-16T10:00:00.000Z"));
     global.fetch = jest.fn().mockResolvedValue(okEventsResponse([eventRecord("initial")]));
 
-    render(<EventsPage />);
+    renderPage();
 
     expect(await screen.findByText("event.initial")).toBeInTheDocument();
     expect(screen.getByText(/Last updated/i)).toBeInTheDocument();
@@ -503,7 +598,7 @@ describe("EventsPage", () => {
     const removeEventListenerSpy = jest.spyOn(document, "removeEventListener");
     global.fetch = jest.fn().mockResolvedValue(okEventsResponse([eventRecord("initial")]));
 
-    const { unmount } = render(<EventsPage />);
+    const { unmount } = renderPage();
 
     expect(await screen.findByText("event.initial")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Live off" }));

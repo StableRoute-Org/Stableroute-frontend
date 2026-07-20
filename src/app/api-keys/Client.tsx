@@ -6,8 +6,10 @@ import { IconButton } from "@/components/IconButton";
 import { TextField } from "@/components/TextField";
 import { TimeAgo } from "@/components/TimeAgo";
 import { Badge } from "@/components/Badge";
+import { useToast } from "@/components/ToastProvider";
 import { apiDelete, apiGet, apiPost } from "@/lib/apiClient";
 import { useList } from "@/lib/useList";
+import { writeToClipboard } from "@/lib/clipboard";
 
 type Item = { prefix: string; label: string; createdAt: number };
 
@@ -17,9 +19,12 @@ export default function ApiKeysClient() {
     [],
   );
   const { items, error, loading, reload } = useList(loadItems);
+  const { push } = useToast();
   const [label, setLabel] = useState("");
   /** The full API key secret, shown once immediately after creation. Cleared after copy or when reloading. */
   const [created, setCreated] = useState<string | null>(null);
+  /** True once an automatic copy attempt has failed, so we show a selectable fallback field. */
+  const [copyFailed, setCopyFailed] = useState(false);
   /** The prefix of the most recently created API key, used to mark its row with a "New" badge. Persists until page reload or navigation. */
   const [recentPrefix, setRecentPrefix] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -31,6 +36,7 @@ export default function ApiKeysClient() {
     try {
       const response = await apiPost<{ key: string; prefix?: string }>("/api/v1/api-keys", { label });
       setCreated(response.key);
+      setCopyFailed(false);
       setRecentPrefix(response.prefix ?? response.key.slice(0, 8));
       setLabel("");
       await reload();
@@ -43,12 +49,14 @@ export default function ApiKeysClient() {
 
   const copySecret = async () => {
     if (!created) return;
-    try {
-      await navigator.clipboard.writeText(created);
+    const result = await writeToClipboard(created);
+    if (result.ok) {
       setCreated(null);
-    } catch {
-      /* ignore in jsdom */
+      setCopyFailed(false);
+      return;
     }
+    setCopyFailed(true);
+    push("Couldn't copy automatically. Select and copy the key below.", "error");
   };
 
   const secretVisible = created && typeof window !== "undefined" && window.isSecureContext;
@@ -82,9 +90,18 @@ export default function ApiKeysClient() {
       )}
       {secretVisible && (
         <div role="status" className="flex items-start justify-between gap-3 rounded border border-emerald-300 bg-emerald-50 p-3 text-sm dark:border-emerald-900 dark:bg-emerald-950">
-          <div>
+          <div className="flex-1">
             <p className="font-medium">Copy now — shown only once:</p>
             <code className="break-all">{created}</code>
+            {copyFailed && (
+              <TextField
+                label="API key secret"
+                readOnly
+                value={created}
+                onFocus={(e) => e.currentTarget.select()}
+                className="mt-2"
+              />
+            )}
           </div>
           <IconButton label="Copy API key secret" onClick={() => void copySecret()}>
             ⧉
