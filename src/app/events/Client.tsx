@@ -5,6 +5,7 @@ import { EmptyState } from "@/components/EmptyState";
 import { TimeAgo } from "@/components/TimeAgo";
 import { apiGet } from "@/lib/apiClient";
 import { parseEventsResponse, type DisplayEvent } from "@/lib/events";
+import { Button } from "@/components/Button";
 
 const REFRESH_MS = 10_000;
 const COLLAPSE_THRESHOLD = 400;

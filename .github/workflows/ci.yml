@@ -22,7 +22,12 @@ jobs:
         run: npm ci
 
       - name: Build
-        run: npm run build
+        run: npm run build > build-log.txt 2>&1
+        env:
+          CI: true
+
+      - name: Check bundle size budget
+        run: node scripts/check-bundle-size.js
 
       - name: Run tests
         run: npm test

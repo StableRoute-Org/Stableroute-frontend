@@ -15,4 +15,9 @@ describe("next.config security headers", () => {
       "Permissions-Policy": "camera=(), microphone=(), geolocation=()",
     });
   });
+
+  it("exports a valid Next.js configuration object", () => {
+    expect(nextConfig).toBeDefined();
+    expect(typeof nextConfig).toBe("object");
+  });
 });

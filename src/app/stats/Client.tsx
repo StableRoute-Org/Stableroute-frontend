@@ -9,7 +9,10 @@ import { StatTile } from "@/components/StatTile";
 type Stats = { totalPairs: number; paused: boolean };
 
 export default function StatsClient() {
-  const { status, data, error } = useApi<Stats>("/api/v1/stats");
+  const result = useApi<Stats>("/api/v1/stats");
+  const status = result.status;
+  const error = status === "error" ? result.error : null;
+  const data = status === "ok" ? result.data : null;
 
   return (
     <main

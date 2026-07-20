@@ -1,0 +1,10 @@
+{
+  "maxFirstLoadJsKb": 150,
+  "routes": {
+    "/": 150,
+    "/events": 150,
+    "/pairs": 150,
+    "/stats": 150,
+    "/quote": 150
+  }
+}
