@@ -12,11 +12,11 @@ import { useApi } from "@/lib/useApi";
 type Pair = { source: string; destination: string };
 
 export default function PairsClient() {
-  const { status, data, error, refetch } = useApi<{ pairs: Pair[] }>("/api/v1/pairs");
+  const api = useApi<{ pairs: Pair[] }>("/api/v1/pairs");
   const [query, setQuery] = useState("");
   const [pendingDelete, setPendingDelete] = useState<Pair | null>(null);
 
-  const pairs = status === "ok" ? data.pairs : null;
+  const pairs = api.status === "ok" ? api.data.pairs : null;
   const filtered = useMemo(() => {
     if (!pairs) return null;
     const needle = query.trim().toLowerCase();
@@ -48,13 +48,13 @@ export default function PairsClient() {
           className="rounded-md border border-neutral-300 px-3 py-2 dark:border-neutral-700 dark:bg-neutral-900"
         />
       </label>
-      {status === "error" && (
+      {api.status === "error" && (
         <p role="alert" className="text-sm text-rose-600">
-          {error}
+          {api.error}
         </p>
       )}
-      <section aria-live="polite" aria-busy={status === "loading"} className="contents">
-        {status === "loading" && (
+      <section aria-live="polite" aria-busy={api.status === "loading"} className="contents">
+        {api.status === "loading" && (
           <div className="flex items-center gap-2 text-sm text-neutral-600">
             <Spinner label="Loading pairs" />
             Loading…
@@ -97,7 +97,7 @@ export default function PairsClient() {
           setPendingDelete(null);
           void apiDelete(
             `/api/v1/pairs/${encodeURIComponent(target.source)}/${encodeURIComponent(target.destination)}`,
-          ).then(() => refetch());
+          ).then(() => api.refetch());
         }}
         onCancel={() => setPendingDelete(null)}
       />
