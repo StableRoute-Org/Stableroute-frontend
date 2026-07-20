@@ -25,6 +25,29 @@ body {
   background: var(--background);
 }
 
+/*
+ * Reduced-motion support (Issue #309)
+ *
+ * When the user has enabled "Reduce Motion" in their OS or browser
+ * accessibility settings, we collapse all animations and transitions to
+ * near-zero durations.  This covers every Tailwind animation utility used in
+ * this project (animate-spin on <Spinner>, animate-pulse on skeleton
+ * placeholders) as well as any future CSS transitions.
+ *
+ * The visual elements and their accessibility markup are preserved:
+ *   - Spinner keeps role="status" and its sr-only label so screen readers
+ *     continue to announce loading state regardless of whether the SVG spins.
+ *   - Skeleton placeholders remain visible as static placeholder shapes.
+ *   - Toast notifications remain visible; only their entrance/exit transitions
+ *     are affected.
+ *
+ * To test locally:
+ *   - macOS:    System Settings → Accessibility → Display → Reduce Motion
+ *   - Windows:  Settings → Ease of Access → Display → Show animations
+ *   - Linux:    GNOME: Settings → Accessibility → Seeing → Reduced Animation
+ *   - Browser:  Chrome/Edge DevTools → Rendering panel → Emulate CSS media
+ *               feature prefers-reduced-motion → reduce
+ */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

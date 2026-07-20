@@ -12,12 +12,12 @@ import { useApi } from "@/lib/useApi";
 type Pair = { source: string; destination: string };
 
 export default function PairsClient() {
-  const apiState = useApi<{ pairs: Pair[] }>("/api/v1/pairs");
-  const { status, refetch } = apiState;
+  const result = useApi<{ pairs: Pair[] }>("/api/v1/pairs");
+  const { status, refetch } = result;
   const [query, setQuery] = useState("");
   const [pendingDelete, setPendingDelete] = useState<Pair | null>(null);
 
-  const pairs = status === "ok" ? apiState.data.pairs : null;
+  const pairs = result.status === "ok" ? result.data.pairs : null;
   const filtered = useMemo(() => {
     if (!pairs) return null;
     const needle = query.trim().toLowerCase();
@@ -51,7 +51,7 @@ export default function PairsClient() {
       </label>
       {status === "error" && (
         <p role="alert" className="text-sm text-rose-600">
-          {apiState.error}
+          {result.status === "error" ? result.error : null}
         </p>
       )}
       <section aria-live="polite" aria-busy={status === "loading"} className="contents">

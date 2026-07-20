@@ -178,6 +178,29 @@ The client reads this value in [`src/lib/apiClient.ts`](src/lib/apiClient.ts). R
 
 ## Accessibility
 
+### Reduced Motion (Issue #309)
+
+Users who enable "Reduce Motion" in their OS or browser accessibility settings are automatically served a version of the UI with all animations and transitions collapsed to a near-zero duration. This is handled by a single `@media (prefers-reduced-motion: reduce)` rule in [`src/app/globals.css`](src/app/globals.css) that overrides every CSS animation and transition across the application.
+
+Animations affected:
+
+| Component | Tailwind class | Behaviour under reduced motion |
+|-----------|---------------|-------------------------------|
+| `<Spinner>` (`src/components/Spinner.tsx`) | `animate-spin` | SVG stops spinning; `role="status"` and `sr-only` label are **preserved** so screen readers still announce loading state |
+| Loading skeleton (`src/app/loading.tsx`) | `animate-pulse` | Skeleton shapes remain visible as static placeholders |
+| Any future transition | `transition-*` | Collapsed to `0.01 ms` |
+
+The component APIs and visual design for users without reduced-motion enabled are **unchanged**.
+
+#### How to test
+
+| Platform | Steps |
+|----------|-------|
+| macOS | System Settings → Accessibility → Display → enable **Reduce Motion** |
+| Windows | Settings → Ease of Access → Display → turn off **Show animations** |
+| Linux (GNOME) | Settings → Accessibility → Seeing → enable **Reduced Animation** |
+| Any browser | Open DevTools → **Rendering** panel → set **Emulate CSS media feature `prefers-reduced-motion`** to `reduce` |
+
 ### ARIA Live Regions
 
 Dynamic list updates (loading → loaded / loading → empty) on the pairs, events, api-keys, and webhooks pages are wrapped in `aria-live="polite"` regions so screen-reader users are notified when content arrives. Error messages continue to use `role="alert"` for assertive announcements. A single polite region per page prevents double announcements.
