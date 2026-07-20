@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { EmptyState } from "@/components/EmptyState";
 import { TimeAgo } from "@/components/TimeAgo";
+import { Button } from "@/components/Button";
 import { apiGet } from "@/lib/apiClient";
 import { parseEventsResponse, type DisplayEvent } from "@/lib/events";
 
