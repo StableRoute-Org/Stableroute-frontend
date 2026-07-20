@@ -28,7 +28,7 @@ export function TextField({
         id={inputId}
         aria-describedby={[descId, errId].filter(Boolean).join(" ") || undefined}
         aria-invalid={error ? true : undefined}
-        className="rounded-md border border-neutral-300 px-3 py-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[var(--focus-ring-offset)] focus-visible:outline-[color:var(--focus-ring-color)] dark:border-neutral-700 dark:bg-neutral-900"
+        className="rounded-md border border-neutral-300 bg-[var(--background)] px-3 py-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[var(--focus-ring-offset)] focus-visible:outline-[color:var(--focus-ring-color)] dark:border-neutral-700"
         {...rest}
       />
       {description && (

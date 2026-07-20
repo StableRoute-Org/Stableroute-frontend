@@ -224,7 +224,7 @@ export default function QuoteClient() {
           type="button"
           onClick={swapAssets}
           aria-label="Swap source and destination assets"
-          className="self-center rounded-full border border-neutral-300 px-3 py-1 text-xs dark:border-neutral-700"
+          className="self-center rounded-full border border-neutral-300 px-3 py-1 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[var(--focus-ring-offset)] focus-visible:outline-[color:var(--focus-ring-color)] dark:border-neutral-700"
         >
           Swap ⇄
         </button>
@@ -251,7 +251,7 @@ export default function QuoteClient() {
         <button
           type="submit"
           disabled={loading}
-          className="self-start rounded-full bg-black px-5 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+          className="self-start rounded-full bg-black px-5 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[var(--focus-ring-offset)] focus-visible:outline-[color:var(--focus-ring-color)]"
         >
           {loading ? "Quoting…" : "Get quote"}
         </button>
