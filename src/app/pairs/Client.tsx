@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { Badge } from "@/components/Badge";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { EmptyState } from "@/components/EmptyState";
 import { PageHeading } from "@/components/PageHeading";
@@ -10,6 +11,32 @@ import { apiDelete } from "@/lib/apiClient";
 import { useApi } from "@/lib/useApi";
 
 type Pair = { source: string; destination: string };
+
+/**
+ * Groups an array of pairs by their source asset.
+ *
+ * Returns a deterministically-sorted array of tuples, each pairing a source
+ * with its sorted destination list. The original `pairs` array is never
+ * mutated and iteration order across sources is stable.
+ *
+ * @param pairs - The raw pairs array returned by the API.
+ * @returns An array of `[source, destinations[]]` tuples sorted
+ *          alphabetically by source, with destinations also sorted.
+ */
+function groupBySource(pairs: Pair[]): [string, string[]][] {
+  const map = new Map<string, string[]>();
+  for (const { source, destination } of pairs) {
+    const entry = map.get(source);
+    if (entry) {
+      entry.push(destination);
+    } else {
+      map.set(source, [destination]);
+    }
+  }
+  return [...map.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([source, destinations]) => [source, destinations.sort((a, b) => a.localeCompare(b))]);
+}
 
 export default function PairsClient() {
   const api = useApi<{ pairs: Pair[] }>("/api/v1/pairs");
@@ -31,7 +58,14 @@ export default function PairsClient() {
   return (
     <main id="main-content" tabIndex={-1} className="mx-auto flex min-h-[60vh] max-w-3xl flex-col gap-6 p-8">
       <PageHeading
-        title="Pairs"
+        title={
+          <span className="flex items-center gap-2">
+            Pairs
+            {pairs !== null && (
+              <Badge variant="neutral">{pairs.length} pair{pairs.length !== 1 ? "s" : ""}</Badge>
+            )}
+          </span>
+        }
         description="Registered routing pairs for the StableRoute router."
         action={
           <Link href="/pairs/new" className="rounded-full bg-black px-4 py-2 text-sm font-medium text-white">
@@ -60,30 +94,42 @@ export default function PairsClient() {
             Loading…
           </div>
         )}
-        {filtered && filtered.length === 0 && (
+        {filtered && filtered.length === 0 && pairs && pairs.length === 0 && (
+          <EmptyState title="No pairs registered yet" description="Create your first source→destination routing pair." />
+        )}
+        {filtered && filtered.length === 0 && pairs && pairs.length > 0 && (
           <EmptyState title="No pairs found" description="Try a different filter or register a new pair." />
         )}
         {filtered && filtered.length > 0 && (
-          <ul className="divide-y divide-neutral-200 dark:divide-neutral-800">
-            {filtered.map((pair) => (
-              <li key={`${pair.source}::${pair.destination}`} className="flex items-center justify-between gap-3 py-3">
-                <span className="font-mono text-sm">
-                  {pair.source} → {pair.destination}
-                </span>
-                <div className="flex gap-2">
-                  <Link
-                    href={`/quote?source=${encodeURIComponent(pair.source)}&dest=${encodeURIComponent(pair.destination)}`}
-                    className="rounded border px-3 py-1 text-xs dark:border-neutral-700"
-                  >
-                    Quote
-                  </Link>
-                  <button type="button" onClick={() => setPendingDelete(pair)} className="rounded border px-3 py-1 text-xs">
-                    Delete
-                  </button>
-                </div>
-              </li>
+          <div className="flex flex-col gap-6">
+            {groupBySource(filtered).map(([source, destinations]) => (
+              <section key={source}>
+                <h2 className="mb-2 text-lg font-semibold tracking-tight">{source}</h2>
+                <ul className="divide-y divide-neutral-200 rounded-lg border border-neutral-200 dark:divide-neutral-800 dark:border-neutral-800">
+                  {destinations.map((dest) => (
+                    <li key={`${source}::${dest}`} className="flex items-center justify-between gap-3 px-4 py-3">
+                      <span className="font-mono text-sm">{dest}</span>
+                      <div className="flex gap-2">
+                        <Link
+                          href={`/quote?source=${encodeURIComponent(source)}&dest=${encodeURIComponent(dest)}`}
+                          className="rounded border px-3 py-1 text-xs dark:border-neutral-700"
+                        >
+                          Quote
+                        </Link>
+                        <button
+                          type="button"
+                          onClick={() => setPendingDelete({ source, destination: dest })}
+                          className="rounded border px-3 py-1 text-xs"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </section>
             ))}
-          </ul>
+          </div>
         )}
       </section>
       <ConfirmDialog
