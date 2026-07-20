@@ -19,6 +19,12 @@ export type ApiFetchOptions = {
 type AuthErrorHandler = (status: 401 | 403) => void;
 let _authErrorHandler: AuthErrorHandler | null = null;
 
+export type ConnectionHandler = {
+  onError: () => void;
+  onSuccess: () => void;
+};
+let _connectionHandler: ConnectionHandler | null = null;
+
 const DEFAULT_TIMEOUT_MS = 15_000;
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -28,6 +34,14 @@ export function registerAuthErrorHandler(handler: AuthErrorHandler): () => void 
   _authErrorHandler = handler;
   return () => {
     if (_authErrorHandler === handler) _authErrorHandler = null;
+  };
+}
+
+/** Called once by <ConnectionBanner> when it mounts inside the app shell. */
+export function registerConnectionHandler(handler: ConnectionHandler): () => void {
+  _connectionHandler = handler;
+  return () => {
+    if (_connectionHandler === handler) _connectionHandler = null;
   };
 }
 
@@ -80,7 +94,13 @@ export async function apiFetch<T>(
         await sleep(baseDelayMs * 2 ** (attempt - 1));
         continue;
       }
-      return await parseResponse<T>(res);
+      const data = await parseResponse<T>(res);
+      try {
+        _connectionHandler?.onSuccess();
+      } catch {
+        /* callback errors must not interfere with request flow */
+      }
+      return data;
     } catch (err) {
       if (
         err instanceof Error &&
@@ -99,6 +119,7 @@ export async function apiFetch<T>(
         await sleep(baseDelayMs * 2 ** (attempt - 1));
         continue;
       }
+      _connectionHandler?.onError();
       throw new Error(message);
     } finally {
       clearTimeout(timer);

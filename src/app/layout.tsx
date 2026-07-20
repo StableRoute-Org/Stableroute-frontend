@@ -6,6 +6,7 @@ import { Footer } from "@/components/Footer";
 import { ToastProvider } from "@/components/ToastProvider";
 import { ApiAuthGuard } from "@/components/ApiAuthGuard";
 import { AppShellExtras } from "@/components/AppShellExtras";
+import { ConnectionBanner } from "@/components/ConnectionBanner";
 
 export const metadata: Metadata = {
   title: {
@@ -46,6 +47,7 @@ export default function RootLayout({
         <ToastProvider>
           <ApiAuthGuard />
           <AppShellExtras />
+          <ConnectionBanner />
           <Header />
           {children}
           <Footer />
