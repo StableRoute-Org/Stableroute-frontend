@@ -39,11 +39,14 @@ function groupBySource(pairs: Pair[]): [string, string[]][] {
 }
 
 export default function PairsClient() {
-  const api = useApi<{ pairs: Pair[] }>("/api/v1/pairs");
+  const result = useApi<{ pairs: Pair[] }>("/api/v1/pairs");
+  const { status, refetch } = result;
+  const data = result.status === "ok" ? result.data : null;
+  const error = result.status === "error" ? result.error : null;
   const [query, setQuery] = useState("");
   const [pendingDelete, setPendingDelete] = useState<Pair | null>(null);
 
-  const pairs = api.status === "ok" ? api.data.pairs : null;
+  const pairs = status === "ok" && data ? data.pairs : null;
   const filtered = useMemo(() => {
     if (!pairs) return null;
     const needle = query.trim().toLowerCase();

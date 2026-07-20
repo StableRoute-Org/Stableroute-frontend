@@ -13,7 +13,10 @@ type Stats = { totalPairs: number; paused: boolean };
 const POLL_MS = 5_000;
 
 export default function StatsClient() {
-  const api = useApi<Stats>("/api/v1/stats");
+  const result = useApi<Stats>("/api/v1/stats");
+  const status = result.status;
+  const error = status === "error" ? result.error : null;
+  const data = status === "ok" ? result.data : null;
 
   return (
     <main

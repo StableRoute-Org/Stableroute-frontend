@@ -17,4 +17,9 @@ describe("next.config security headers", () => {
         "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' http://localhost:3001 https:; font-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
     });
   });
+
+  it("exports a valid Next.js configuration object", () => {
+    expect(nextConfig).toBeDefined();
+    expect(typeof nextConfig).toBe("object");
+  });
 });
