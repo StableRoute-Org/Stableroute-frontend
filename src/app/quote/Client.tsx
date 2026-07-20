@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { TextField } from "@/components/TextField";
-import { apiGet, type ApiError } from "@/lib/apiClient";
+import { apiFetch, type ApiError } from "@/lib/apiClient";
 import { formatQuoteAmountDisplay, formatQuoteRateDisplay } from "@/lib/format";
 
 type Quote = {
@@ -31,6 +31,7 @@ const INPUTS_KEY = "stableroute.quote.inputs";
 const HISTORY_KEY = "stableroute.quote.history";
 const MAX_HISTORY = 5;
 const ASSET_CODE_PATTERN = /^[A-Za-z0-9]{1,12}$/;
+const MIN_SUBMIT_INTERVAL_MS = 1_000;
 
 function normalizeAssetCode(value: string): string | null {
   const trimmed = value.trim();
@@ -94,6 +95,9 @@ export default function QuoteClient() {
   const [formError, setFormError] = useState<string | null>(null);
   const [requestId, setRequestId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const activeRequestRef = useRef(0);
+  const requestControllerRef = useRef<AbortController | null>(null);
+  const lastSubmitAtRef = useRef<number | null>(null);
 
   useEffect(() => {
     const saved = readInputs();
@@ -126,6 +130,14 @@ export default function QuoteClient() {
 
   const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const now = Date.now();
+    const lastSubmitAt = lastSubmitAtRef.current;
+    const isCoolingDown = lastSubmitAt !== null && now - lastSubmitAt < MIN_SUBMIT_INTERVAL_MS;
+
+    if (isCoolingDown) {
+      return;
+    }
+
     setFieldErrors({});
     setFormError(null);
     setRequestId(null);
@@ -157,21 +169,39 @@ export default function QuoteClient() {
     };
     localStorage.setItem(INPUTS_KEY, JSON.stringify(inputs));
 
+    lastSubmitAtRef.current = now;
+    if (requestControllerRef.current) {
+      requestControllerRef.current.abort();
+    }
+
+    const controller = new AbortController();
+    requestControllerRef.current = controller;
+    const requestId = activeRequestRef.current + 1;
+    activeRequestRef.current = requestId;
+
     setLoading(true);
     try {
       const path =
         `/api/v1/quote?source_asset=${encodeURIComponent(normalizedSource)}` +
         `&dest_asset=${encodeURIComponent(normalizedDest)}` +
         `&amount=${encodeURIComponent(inputs.amount)}`;
-      const body = await apiGet<Quote>(path);
+      const body = await apiFetch<Quote>(path, { signal: controller.signal });
+      if (requestId !== activeRequestRef.current) return;
       setQuote(body);
       setHistory(pushHistory(inputs));
     } catch (err) {
+      if (requestId !== activeRequestRef.current) return;
+      if (controller.signal.aborted) return;
       const apiError = err as ApiError & { requestId?: string };
       setFormError(apiError.message ?? "quote request failed");
       setRequestId(apiError.requestId ?? null);
     } finally {
-      setLoading(false);
+      if (requestId === activeRequestRef.current) {
+        setLoading(false);
+        if (requestControllerRef.current === controller) {
+          requestControllerRef.current = null;
+        }
+      }
     }
   };
 
@@ -251,6 +281,7 @@ export default function QuoteClient() {
         <button
           type="submit"
           disabled={loading}
+          aria-busy={loading}
           className="self-start rounded-full bg-black px-5 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
         >
           {loading ? "Quoting…" : "Get quote"}
