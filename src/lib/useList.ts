@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type UseListResult<T> = {
   items: T[] | null;
@@ -14,22 +14,27 @@ export function useList<T>(loader: () => Promise<T[]>): UseListResult<T> {
   const [items, setItems] = useState<T[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const cancelledRef = useRef(false);
 
   const reload = useCallback(async () => {
+    cancelledRef.current = false;
     setLoading(true);
     setError(null);
     try {
       const next = await loader();
-      setItems(next);
+      if (!cancelledRef.current) setItems(next);
     } catch (err) {
-      setError((err as Error).message);
+      if (!cancelledRef.current) setError((err as Error).message);
     } finally {
-      setLoading(false);
+      if (!cancelledRef.current) setLoading(false);
     }
   }, [loader]);
 
   useEffect(() => {
     void reload();
+    return () => {
+      cancelledRef.current = true;
+    };
   }, [reload]);
 
   return { items, error, loading, reload };
