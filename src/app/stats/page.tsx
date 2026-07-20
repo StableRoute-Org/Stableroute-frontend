@@ -1,27 +1,27 @@
-"use client";
-
-import { useEffect, useState } from "react";
-import { apiGet } from "@/lib/apiClient";
+import { StatsClient } from "./Client";
 
 type Stats = { totalPairs: number; paused: boolean };
 
-export default function StatsPage() {
-  const [stats, setStats] = useState<Stats | null>(null);
-  const [error, setError] = useState<string | null>(null);
+async function getStats(): Promise<Stats> {
+  const base =
+    process.env.NEXT_PUBLIC_STABLEROUTE_API_BASE ?? "http://localhost:3001";
+  const res = await fetch(`${base}/api/v1/stats`, {
+    next: { revalidate: 5 },
+  });
+  if (!res.ok) {
+    throw new Error(`HTTP ${res.status}`);
+  }
+  return res.json();
+}
 
-  useEffect(() => {
-    let cancelled = false;
-    const tick = () =>
-      apiGet<Stats>("/api/v1/stats")
-        .then((s) => !cancelled && setStats(s))
-        .catch((e) => !cancelled && setError(e.message));
-    tick();
-    const t = setInterval(tick, 5000);
-    return () => {
-      cancelled = true;
-      clearInterval(t);
-    };
-  }, []);
+export default async function StatsPage() {
+  let initial: Stats | null = null;
+  let error: string | null = null;
+  try {
+    initial = await getStats();
+  } catch (e) {
+    error = e instanceof Error ? e.message : String(e);
+  }
 
   return (
     <main
@@ -31,20 +31,7 @@ export default function StatsPage() {
     >
       <h1 className="text-3xl font-semibold tracking-tight">Stats</h1>
       {error && <p role="alert" className="text-sm text-rose-600">{error}</p>}
-      {stats && (
-        <dl className="grid grid-cols-2 gap-4">
-          <div className="rounded-lg border border-neutral-200 p-4 text-center dark:border-neutral-800">
-            <dt className="text-xs uppercase text-neutral-500">Pairs</dt>
-            <dd className="mt-1 text-2xl font-semibold">{stats.totalPairs}</dd>
-          </div>
-          <div className="rounded-lg border border-neutral-200 p-4 text-center dark:border-neutral-800">
-            <dt className="text-xs uppercase text-neutral-500">Status</dt>
-            <dd className="mt-1 text-2xl font-semibold">
-              {stats.paused ? "Paused" : "Live"}
-            </dd>
-          </div>
-        </dl>
-      )}
+      <StatsClient initial={initial} error={error} />
     </main>
   );
 }
