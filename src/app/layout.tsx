@@ -3,6 +3,7 @@ import Script from "next/script";
 import "./globals.css";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
+import { RouteAnnouncer } from "@/components/RouteAnnouncer";
 import { ToastProvider } from "@/components/ToastProvider";
 import { ApiAuthGuard } from "@/components/ApiAuthGuard";
 import { AppShellExtras } from "@/components/AppShellExtras";
@@ -44,6 +45,7 @@ export default function RootLayout({
           Skip to main content
         </a>
         <ToastProvider>
+          <RouteAnnouncer />
           <ApiAuthGuard />
           <AppShellExtras />
           <Header />
