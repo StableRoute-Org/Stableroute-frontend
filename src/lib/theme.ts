@@ -2,15 +2,29 @@ export type Theme = "light" | "dark" | "system";
 
 const KEY = "stableroute.theme";
 
+function isTheme(value: string | null): value is Theme {
+  return value === "light" || value === "dark" || value === "system";
+}
+
 export function readTheme(): Theme {
   if (typeof window === "undefined") return "system";
-  const v = window.localStorage.getItem(KEY);
-  return v === "light" || v === "dark" || v === "system" ? v : "system";
+
+  try {
+    const v = window.localStorage.getItem(KEY);
+    return isTheme(v) ? v : "system";
+  } catch {
+    return "system";
+  }
 }
 
 export function writeTheme(theme: Theme) {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(KEY, theme);
+
+  try {
+    window.localStorage.setItem(KEY, theme);
+  } catch {
+    // Storage can throw in privacy modes; theme writes are best-effort only.
+  }
 }
 
 export function effectiveTheme(theme: Theme): "light" | "dark" {
