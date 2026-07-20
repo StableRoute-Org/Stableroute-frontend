@@ -1,4 +1,4 @@
-import { effectiveTheme, readTheme, writeTheme } from "../theme";
+import { effectiveTheme, isTheme, readTheme, writeTheme } from "../theme";
 
 const originalLocalStorage = window.localStorage;
 const originalMatchMedia = window.matchMedia;
@@ -56,6 +56,21 @@ describe("theme storage helpers", () => {
   });
 });
 
+describe("isTheme", () => {
+  it("accepts each valid theme value", () => {
+    expect(isTheme("light")).toBe(true);
+    expect(isTheme("dark")).toBe(true);
+    expect(isTheme("system")).toBe(true);
+  });
+
+  it("rejects anything else", () => {
+    expect(isTheme("midnight")).toBe(false);
+    expect(isTheme(null)).toBe(false);
+    expect(isTheme(undefined)).toBe(false);
+    expect(isTheme(42)).toBe(false);
+  });
+});
+
 describe("effectiveTheme", () => {
   it("returns explicit light or dark themes without media queries", () => {
     expect(effectiveTheme("light")).toBe("light");
@@ -69,5 +84,22 @@ describe("effectiveTheme", () => {
     expect(window.matchMedia).toHaveBeenCalledWith(
       "(prefers-color-scheme: dark)",
     );
+  });
+
+  it("resolves system to light when the OS does not prefer dark", () => {
+    window.matchMedia = jest.fn().mockReturnValue({ matches: false });
+
+    expect(effectiveTheme("system")).toBe("light");
+  });
+
+  it("defaults system to light when running without a window (SSR)", () => {
+    const win = global.window;
+    // @ts-expect-error -- simulating a server environment for this call
+    delete global.window;
+    try {
+      expect(effectiveTheme("system")).toBe("light");
+    } finally {
+      global.window = win;
+    }
   });
 });
