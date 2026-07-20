@@ -19,6 +19,12 @@ export type ApiFetchOptions = {
 type AuthErrorHandler = (status: 401 | 403) => void;
 let _authErrorHandler: AuthErrorHandler | null = null;
 
+export type ConnectionHandler = {
+  onError: () => void;
+  onSuccess: () => void;
+};
+let _connectionHandler: ConnectionHandler | null = null;
+
 const DEFAULT_TIMEOUT_MS = 15_000;
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -31,18 +37,14 @@ export function registerAuthErrorHandler(handler: AuthErrorHandler): () => void 
   };
 }
 
-/**
- * Parse the response body defensively.
- *
- * - Uses `res.text()` then `JSON.parse` so non-JSON or empty bodies never
- *   produce a raw `SyntaxError`.
- * - For a non-OK response with an unparseable body, synthesises an
- *   `ApiError`-shaped error with properties `error` and `status` derived
- *   from the HTTP status code.
- * - For `204`, returns `undefined` without reading the body.
- * - For an OK response with an unparseable body, throws with a clear message
- *   ("Invalid JSON response") so callers are not exposed to parser internals.
- */
+/** Called once by <ConnectionBanner> when it mounts inside the app shell. */
+export function registerConnectionHandler(handler: ConnectionHandler): () => void {
+  _connectionHandler = handler;
+  return () => {
+    if (_connectionHandler === handler) _connectionHandler = null;
+  };
+}
+
 async function parseResponse<T>(res: Response): Promise<T> {
   if (res.status === 204) return undefined as T;
   let body: T | ApiError | undefined;
@@ -99,7 +101,13 @@ export async function apiFetch<T>(
         await sleep(baseDelayMs * 2 ** (attempt - 1));
         continue;
       }
-      return await parseResponse<T>(res);
+      const data = await parseResponse<T>(res);
+      try {
+        _connectionHandler?.onSuccess();
+      } catch {
+        /* callback errors must not interfere with request flow */
+      }
+      return data;
     } catch (err) {
       /* Errors that already carry structured payloads (status, error, etc.)
          are re-thrown immediately — they should not be retried or wrapped. */
@@ -118,7 +126,8 @@ export async function apiFetch<T>(
         await sleep(baseDelayMs * 2 ** (attempt - 1));
         continue;
       }
-      throw Object.assign(new Error(message), { status: 0 });
+      _connectionHandler?.onError();
+      throw new Error(message);
     } finally {
       clearTimeout(timer);
     }
