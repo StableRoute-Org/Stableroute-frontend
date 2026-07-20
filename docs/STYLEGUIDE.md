@@ -85,53 +85,57 @@ The base shape is `inline-flex items-center rounded-full px-2 py-0.5 text-xs
 font-medium` and is applied automatically. Do not wrap a `Badge` inside a
 `Button` — they are semantically distinct.
 
-## Combobox Pattern (Command Palette)
+## `ResourceList` (shared CRUD list shell)
 
-`CommandPalette` (`src/components/CommandPalette.tsx`) is a search-driven
-navigation component that follows the ARIA combobox pattern for full keyboard
-and screen reader support.
+`ResourceList` (`src/components/ResourceList.tsx`) is the shared list shell for
+the dashboard's CRUD pages — `api-keys` and `webhooks` both render it. It owns
+the repetitive, previously copy-pasted structure so individual pages only wire
+up their create form and the per-row content.
 
-### Structure
+It is responsible for, and standardises:
 
-The component uses three layers of ARIA semantics:
+- The single polite live region: `<div aria-live="polite" aria-atomic="true">`.
+  **Every CRUD list must render exactly one of these** so screen readers
+  announce loads, empty states, and removals.
+- The `Loading…` message while `loading && !items`. Override with
+  `loadingMessage`.
+- The empty state, rendered as
+  `<p className="text-sm text-neutral-600">{emptyMessage}</p>`. Pass the page's
+  copy via `emptyMessage`.
+- The list markup: `<ul className="divide-y divide-neutral-200 dark:divide-neutral-800">`
+  with one `<li>` per item, keyed by `getKey(item)`.
+- The remove-confirmation dialog and its open/cancel state machine. A row opens
+  it by calling the `requestRemove` action handed to `renderRow`; confirming
+  invokes `onRemove(item)`.
 
-1. **Dialog wrapper** (`role="dialog"`, `aria-modal="true"`) — the modal container
-2. **Input** (`role="combobox"`, `aria-expanded`, `aria-controls`, `aria-activedescendant`) — the search field
-3. **Results** (`role="listbox"` with `role="option"` children) — the filterable list
+### Required props
 
-### Keyboard Navigation
-
-| Key | Behavior |
+| Prop | Purpose |
 |---|---|
-| `Ctrl+K` or `Cmd+K` | Toggle palette open/closed |
-| `Escape` | Close palette and clear state |
-| `ArrowDown` | Move to next option; focus if none selected |
-| `ArrowUp` | Move to previous option; deselect if at first |
-| `Enter` | Navigate to selected route |
+| `items` | Loaded items, or `null` before the first load. |
+| `loading` | Whether a (re)load is in flight. |
+| `emptyMessage` | Copy shown when the list is empty. |
+| `getKey` | Stable key for each item (used as the `<li>` React key). |
+| `renderRow` | `(item, { requestRemove }) => ReactNode` — the inner content of a row. |
+| `onRemove` | `(item) => void \| Promise<void>` — run when removal is confirmed. |
+| `removeDialogTitle` | Title of the remove-confirmation dialog. |
+| `removeDialogConfirmLabel` | Label of the dialog's confirm button. |
 
-### ARIA Attributes
+Optional: `rowClassName` (defaults to the shared
+`flex items-center justify-between gap-3 py-3` layout), `removeDialogTone`
+(`danger` by default), and `loadingMessage` (`Loading…` by default).
 
-- **Input**: `role="combobox"` signals to screen readers that the input controls a listbox
-- **Input**: `aria-expanded={hasMatches}` announces whether results are available
-- **Input**: `aria-controls="command-palette-listbox"` links the input to its results list
-- **Input**: `aria-activedescendant={activeOptionId}` announces the currently focused option
-- **Listbox**: `role="listbox"` and `id="command-palette-listbox"` define the results container
-- **Options**: `role="option"` and `aria-selected={isActive}` mark each result as selectable
+### Rules
 
-### Visual Feedback
-
-Selected options highlight with `bg-blue-500 text-white` to provide visual
-confirmation alongside screen reader announcements. Unselected options show
-`hover:bg-neutral-100 dark:hover:bg-neutral-800` for hover feedback.
-
-### Implementation Notes
-
-- Use `useRef` to manage input focus on open
-- Track `activeIndex` state separately from query to support navigation without selection
-- Generate unique `id` for each option using the route's `href` to support `aria-activedescendant`
-- Reset active index when the query changes to avoid orphaned selections
-- Mouse hover sets active index (`onMouseEnter`) for integrated keyboard + mouse support
-- State clears on close or navigation to ensure clean reopens
+- Do **not** add a second `aria-live` region, a second loading/empty `<p>`, or
+  a second remove `ConfirmDialog` in a page that uses `ResourceList` — those are
+  already provided.
+- Keep the create form (fields, validation, pre-submit confirmation) inside the
+  page client. `ResourceList` only standardises the list + remove shell; the
+  two pages' create flows differ in fields and confirmation, so they are
+  intentionally left in the pages.
+- Pass the row's remove control the `requestRemove` action rather than managing
+  a separate pending-remove state in the page.
 
 ## Reduced motion
 
