@@ -8,10 +8,6 @@
   --muted: #525252;
   --border: #e5e5e5;
   --card: #ffffff;
-  /* blue-600: ~5.2:1 against --background/--card, well past the 3:1 WCAG
-     2.1 non-text contrast minimum for a focus indicator on light surfaces. */
-  --focus-ring-color: #2563eb;
-  --focus-ring-offset: 2px;
   color-scheme: light;
 }
 
@@ -21,9 +17,6 @@
   --muted: #a3a3a3;
   --border: #262626;
   --card: #171717;
-  /* blue-400: blue-600 drops to ~2.1:1 on the dark surfaces, so the dark
-     theme uses a lighter shade instead (~7.8:1 against --background). */
-  --focus-ring-color: #60a5fa;
   color-scheme: dark;
 }
 
@@ -32,29 +25,6 @@ body {
   background: var(--background);
 }
 
-/*
- * Reduced-motion support (Issue #309)
- *
- * When the user has enabled "Reduce Motion" in their OS or browser
- * accessibility settings, we collapse all animations and transitions to
- * near-zero durations.  This covers every Tailwind animation utility used in
- * this project (animate-spin on <Spinner>, animate-pulse on skeleton
- * placeholders) as well as any future CSS transitions.
- *
- * The visual elements and their accessibility markup are preserved:
- *   - Spinner keeps role="status" and its sr-only label so screen readers
- *     continue to announce loading state regardless of whether the SVG spins.
- *   - Skeleton placeholders remain visible as static placeholder shapes.
- *   - Toast notifications remain visible; only their entrance/exit transitions
- *     are affected.
- *
- * To test locally:
- *   - macOS:    System Settings → Accessibility → Display → Reduce Motion
- *   - Windows:  Settings → Ease of Access → Display → Show animations
- *   - Linux:    GNOME: Settings → Accessibility → Seeing → Reduced Animation
- *   - Browser:  Chrome/Edge DevTools → Rendering panel → Emulate CSS media
- *               feature prefers-reduced-motion → reduce
- */
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -62,60 +32,5 @@ body {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
-  }
-}
-
-/*
- * Forced-colors (Windows High Contrast) support
- *
- * In forced-colors mode the browser replaces author colours with system
- * palette values. Backgrounds and box-shadows that carry semantic meaning
- * (borders, status indicators) become invisible. The rules below restore
- * those boundaries using ButtonText / CanvasText / Highlight system keywords
- * so shapes and states remain perceivable without relying on colour alone.
- *
- * Pattern for new components:
- *   1. Re-assert borders with `border: 1px solid ButtonText`.
- *   2. Replace colour-only status cues with a visible text prefix or icon.
- *   3. Use `forced-color-adjust: none` only on small self-contained elements.
- *
- * See docs/DESIGN_TOKENS.md for the full authoring guide.
- */
-@media (forced-colors: active) {
-  /* ── Card ──────────────────────────────────────────────────────────────── */
-  [data-card] {
-    border: 1px solid ButtonText;
-    outline: none;
-  }
-
-  [data-card-footer] {
-    border-top: 1px solid ButtonText;
-  }
-
-  /* ── Badge ─────────────────────────────────────────────────────────────── */
-  [data-badge] {
-    border: 1px solid ButtonText;
-    forced-color-adjust: none;
-    background-color: Canvas;
-    color: CanvasText;
-    outline: none;
-  }
-
-  /* ── StatTile ──────────────────────────────────────────────────────────── */
-  [data-stattile] {
-    border: 1px solid ButtonText;
-    outline: none;
-  }
-
-  /* ── Focus rings ───────────────────────────────────────────────────────── */
-  :focus-visible {
-    outline: 2px solid Highlight;
-    outline-offset: 2px;
-  }
-
-  /* ── Buttons ───────────────────────────────────────────────────────────── */
-  button,
-  [role="button"] {
-    border: 1px solid ButtonText;
   }
 }

@@ -2,13 +2,6 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import RootLayout from "./layout";
 import { useToast } from "@/components/ToastProvider";
 
-// RootLayout mounts CommandPalette (via AppShellExtras), which calls
-// useRouter; there is no app router in jsdom, so stub the navigation hooks.
-jest.mock("next/navigation", () => ({
-  useRouter: () => ({ push: jest.fn(), replace: jest.fn(), prefetch: jest.fn() }),
-  usePathname: () => "/",
-}));
-
 function ToastHarness() {
   const { push } = useToast();
   return (
@@ -22,16 +15,6 @@ function ToastHarness() {
 }
 
 describe("RootLayout", () => {
-  beforeEach(() => {
-    // jsdom does not implement matchMedia; Header renders ThemeToggle which
-    // resolves the effective theme through it on mount.
-    Object.defineProperty(window, "matchMedia", {
-      configurable: true,
-      writable: true,
-      value: jest.fn().mockReturnValue({ matches: false }),
-    });
-  });
-
   it("renders the skip link targeting the main content landmark", () => {
     render(
       <RootLayout>
