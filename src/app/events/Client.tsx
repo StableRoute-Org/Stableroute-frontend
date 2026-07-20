@@ -4,14 +4,13 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/Button";
 import { EmptyState } from "@/components/EmptyState";
 import { TimeAgo } from "@/components/TimeAgo";
-import { Button } from "@/components/Button";
+import { useToast } from "@/components/ToastProvider";
 import { apiGet } from "@/lib/apiClient";
+import { writeToClipboard } from "@/lib/clipboard";
 import { parseEventsResponse, type DisplayEvent } from "@/lib/events";
 
 const REFRESH_MS = 10_000;
 const COLLAPSE_THRESHOLD = 400;
-
-type ClipboardLike = Pick<Clipboard, "writeText">;
 
 /**
  * Determines whether a payload should start collapsed based on the serialized
@@ -21,17 +20,8 @@ function shouldStartCollapsed(payloadJson: string) {
   return payloadJson.length > COLLAPSE_THRESHOLD;
 }
 
-/**
- * Writes JSON to the clipboard when the Clipboard API is available.
- * Falls back to a no-op in environments that do not expose it.
- */
-async function copyJsonToClipboard(payloadJson: string) {
-  const clipboard = globalThis.navigator?.clipboard as ClipboardLike | undefined;
-  if (!clipboard?.writeText) return;
-  await clipboard.writeText(payloadJson);
-}
-
 export default function EventsClient() {
+  const { push } = useToast();
   const [items, setItems] = useState<DisplayEvent[] | null>(null);
   const [totalValid, setTotalValid] = useState(0);
   const [capped, setCapped] = useState(false);
@@ -105,14 +95,14 @@ export default function EventsClient() {
   }, [items, capped, totalValid]);
 
   const handleCopyPayload = useCallback(
-    async (event: DisplayEvent) => {
-      try {
-        await copyJsonToClipboard(event.fullPayload);
-      } catch {
-        // Clipboard access is best-effort and must never break the row UI.
-      }
+    async (eventId: string, payloadJson: string) => {
+      const result = await writeToClipboard(payloadJson);
+      if (result.ok) return;
+      // Reveal the payload so the user can select and copy it manually.
+      setExpanded((current) => ({ ...current, [eventId]: true }));
+      push("Couldn't copy automatically. Select the payload below to copy it.", "error");
     },
-    [],
+    [push],
   );
 
   return (
@@ -227,7 +217,7 @@ export default function EventsClient() {
                       <Button
                         type="button"
                         variant="secondary"
-                        onClick={() => void handleCopyPayload(event)}
+                        onClick={() => void handleCopyPayload(event.id, payloadJson)}
                         className="px-3 py-1 text-[11px]"
                       >
                         Copy JSON
