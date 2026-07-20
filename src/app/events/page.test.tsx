@@ -181,9 +181,7 @@ describe("EventsPage", () => {
 
     renderPage();
 
-    expect(
-      await screen.findByText(`200 of ${MAX_RENDERED_EVENTS + 3} events`, {}, { timeout: 3000 }),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(`200 of ${MAX_RENDERED_EVENTS + 3} events`)).toBeInTheDocument();
     expect(screen.getByText("event.0")).toBeInTheDocument();
     expect(screen.getByText(`event.${MAX_RENDERED_EVENTS - 1}`)).toBeInTheDocument();
     expect(screen.queryByText(`event.${MAX_RENDERED_EVENTS}`)).not.toBeInTheDocument();
