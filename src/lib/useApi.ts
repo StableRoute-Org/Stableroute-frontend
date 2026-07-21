@@ -1,17 +1,30 @@
-"use client";
+'use client';
 
-import { useCallback, useEffect, useState } from "react";
-import { apiGet } from "./apiClient";
+import { useCallback, useEffect, useState } from 'react';
+import { apiGet } from './apiClient';
 
-type State<T> =
-  | { status: "loading" }
-  | { status: "error"; error: string }
-  | { status: "ok"; data: T };
+type FetchSnapshot<T> =
+  | { status: 'idle' }
+  | { status: 'loading' }
+  | { status: 'error'; error: string }
+  | { status: 'success'; data: T };
 
-export type UseApiResult<T> = State<T> & { refetch: () => void };
+type Refetch = () => void | Promise<void>;
+
+/** A fetch lifecycle whose status determines which values are available. */
+export type FetchState<
+  T,
+  TRefetch extends Refetch = () => void,
+> = FetchSnapshot<T> & {
+  refetch: TRefetch;
+};
+
+export type UseApiResult<T> = FetchState<T>;
 
 export function useApi<T>(path: string | null): UseApiResult<T> {
-  const [state, setState] = useState<State<T>>({ status: "loading" });
+  const [state, setState] = useState<FetchSnapshot<T>>(
+    path === null ? { status: 'idle' } : { status: 'loading' }
+  );
   const [reloadKey, setReloadKey] = useState(0);
 
   const refetch = useCallback(() => {
@@ -19,18 +32,21 @@ export function useApi<T>(path: string | null): UseApiResult<T> {
   }, []);
 
   useEffect(() => {
-    if (path === null) return;
+    if (path === null) {
+      setState({ status: 'idle' });
+      return;
+    }
     let cancelled = false;
-    setState({ status: "loading" });
+    setState({ status: 'loading' });
     apiGet<T>(path)
-      .then((data) => !cancelled && setState({ status: "ok", data }))
+      .then((data) => !cancelled && setState({ status: 'success', data }))
       .catch(
         (e) =>
           !cancelled &&
           setState({
-            status: "error",
-            error: (e as Error).message ?? "failed to load",
-          }),
+            status: 'error',
+            error: (e as Error).message ?? 'failed to load',
+          })
       );
     return () => {
       cancelled = true;

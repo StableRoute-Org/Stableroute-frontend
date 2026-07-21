@@ -1,21 +1,21 @@
-"use client";
+'use client';
 
-import { useCallback, useState } from "react";
-import { Badge } from "@/components/Badge";
-import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { IconButton } from "@/components/IconButton";
-import { ResourceList } from "@/components/ResourceList";
-import { TextField } from "@/components/TextField";
-import { TimeAgo } from "@/components/TimeAgo";
-import { apiDelete, apiGet, apiPost } from "@/lib/apiClient";
-import { useList } from "@/lib/useList";
-import { WEBHOOK_EVENT_OPTIONS } from "@/lib/webhookEvents";
+import { useCallback, useState } from 'react';
+import { Badge } from '@/components/Badge';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { IconButton } from '@/components/IconButton';
+import { ResourceList } from '@/components/ResourceList';
+import { TextField } from '@/components/TextField';
+import { TimeAgo } from '@/components/TimeAgo';
+import { apiDelete, apiGet, apiPost } from '@/lib/apiClient';
+import { useList } from '@/lib/useList';
+import { WEBHOOK_EVENT_OPTIONS } from '@/lib/webhookEvents';
 
 type Hook = { id: string; url: string; events: string[]; createdAt: number };
 
 function isHttpsUrl(value: string): boolean {
   try {
-    return new URL(value).protocol === "https:";
+    return new URL(value).protocol === 'https:';
   } catch {
     return false;
   }
@@ -23,39 +23,47 @@ function isHttpsUrl(value: string): boolean {
 
 export default function WebhooksClient() {
   const loadHooks = useCallback(
-    () => apiGet<{ items: Hook[] }>("/api/v1/webhooks").then((body) => body.items),
-    [],
+    () =>
+      apiGet<{ items: Hook[] }>('/api/v1/webhooks').then((body) => body.items),
+    []
   );
-  const { items, error, loading, reload } = useList(loadHooks);
-  const [url, setUrl] = useState("");
-  const [selectedEvents, setSelectedEvents] = useState<string[]>(["pair.registered"]);
+  const hooks = useList(loadHooks);
+  const [url, setUrl] = useState('');
+  const [selectedEvents, setSelectedEvents] = useState<string[]>([
+    'pair.registered',
+  ]);
   const [submitting, setSubmitting] = useState(false);
   const [confirmRegister, setConfirmRegister] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
 
-  const displayError = localError ?? error;
+  const items = hooks.status === 'success' ? hooks.data : null;
+  const loading = hooks.status === 'idle' || hooks.status === 'loading';
+  const displayError =
+    localError ?? (hooks.status === 'error' ? hooks.error : null);
 
   const toggleEvent = (event: string) => {
     setSelectedEvents((current) =>
-      current.includes(event) ? current.filter((entry) => entry !== event) : [...current, event],
+      current.includes(event)
+        ? current.filter((entry) => entry !== event)
+        : [...current, event]
     );
   };
 
   const registerWebhook = async () => {
     if (!isHttpsUrl(url)) {
-      setLocalError("Webhook URL must use HTTPS.");
+      setLocalError('Webhook URL must use HTTPS.');
       return;
     }
     if (selectedEvents.length === 0) {
-      setLocalError("Select at least one event.");
+      setLocalError('Select at least one event.');
       return;
     }
     setLocalError(null);
     setSubmitting(true);
     try {
-      await apiPost("/api/v1/webhooks", { url, events: selectedEvents });
-      setUrl("");
-      await reload();
+      await apiPost('/api/v1/webhooks', { url, events: selectedEvents });
+      setUrl('');
+      await hooks.refetch();
     } catch (err) {
       setLocalError((err as Error).message);
     } finally {
@@ -64,7 +72,11 @@ export default function WebhooksClient() {
   };
 
   return (
-    <main id="main-content" tabIndex={-1} className="mx-auto flex min-h-[60vh] max-w-3xl flex-col gap-6 p-8">
+    <main
+      id="main-content"
+      tabIndex={-1}
+      className="mx-auto flex min-h-[60vh] max-w-3xl flex-col gap-6 p-8"
+    >
       <h1 className="text-3xl font-semibold tracking-tight">Webhooks</h1>
       <form
         onSubmit={(event) => {
@@ -73,7 +85,13 @@ export default function WebhooksClient() {
         }}
         className="flex flex-col gap-3"
       >
-        <TextField label="URL" type="url" required value={url} onChange={(e) => setUrl(e.target.value)} />
+        <TextField
+          label="URL"
+          type="url"
+          required
+          value={url}
+          onChange={(e) => setUrl(e.target.value)}
+        />
         <fieldset>
           <legend className="text-sm font-medium">Events</legend>
           <div className="mt-2 flex flex-wrap gap-2">
@@ -95,9 +113,13 @@ export default function WebhooksClient() {
           aria-busy={submitting}
           className="self-start rounded-full bg-black px-5 py-2 text-sm text-white disabled:opacity-50"
         >
-          {submitting ? "Registering…" : "Register"}
+          {submitting ? 'Registering…' : 'Register'}
         </button>
-        {displayError && <p role="alert" className="text-sm text-rose-600">{displayError}</p>}
+        {displayError && (
+          <p role="alert" className="text-sm text-rose-600">
+            {displayError}
+          </p>
+        )}
       </form>
       <ResourceList
         items={items}
@@ -107,7 +129,11 @@ export default function WebhooksClient() {
         rowClassName="flex items-center justify-between gap-3 py-3"
         removeDialogTitle="Remove webhook?"
         removeDialogConfirmLabel="Remove"
-        onRemove={(hook) => void apiDelete(`/api/v1/webhooks/${hook.id}`).then(() => reload())}
+        onRemove={(hook) =>
+          void apiDelete(`/api/v1/webhooks/${hook.id}`).then(() =>
+            hooks.refetch()
+          )
+        }
         renderRow={(hook, { requestRemove }) => (
           <>
             <div>
