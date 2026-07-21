@@ -1,13 +1,13 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Button } from '@/components/Button';
-import { EmptyState } from '@/components/EmptyState';
-import { TimeAgo } from '@/components/TimeAgo';
-import { useToast } from '@/components/ToastProvider';
-import { writeToClipboard } from '@/lib/clipboard';
-import { parseEventsResponse, type DisplayEvent } from '@/lib/events';
-import { useApi } from '@/lib/useApi';
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Button } from "@/components/Button";
+import { EmptyState } from "@/components/EmptyState";
+import { TimeAgo } from "@/components/TimeAgo";
+import { useToast } from "@/components/ToastProvider";
+import { apiGet } from "@/lib/apiClient";
+import { writeToClipboard } from "@/lib/clipboard";
+import { parseEventsResponse, type DisplayEvent } from "@/lib/events";
 
 const REFRESH_MS = 10_000;
 const COLLAPSE_THRESHOLD = 400;
