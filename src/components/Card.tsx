@@ -1,6 +1,8 @@
 import { type HTMLAttributes, type ReactNode } from "react";
 
-type CardProps = HTMLAttributes<HTMLDivElement> & {
+// Omit the DOM `title` (a string tooltip attribute) so our richer ReactNode
+// title isn't narrowed to string by the intersection.
+type CardProps = Omit<HTMLAttributes<HTMLDivElement>, "title"> & {
   title?: ReactNode;
   footer?: ReactNode;
 };

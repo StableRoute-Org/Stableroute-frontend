@@ -2,9 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ROUTES } from "@/lib/routes";
+import { getRoutesByGroup } from "@/lib/routes";
 
-const allRoutes = Object.values(ROUTES);
+const routeGroups = getRoutesByGroup();
 
 /**
  * Registers a global keydown listener that opens/closes the command palette
@@ -19,28 +19,27 @@ export function CommandPalette() {
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
 
-  const matches = allRoutes.filter((route) =>
-    route.title.toLowerCase().includes(query.toLowerCase()),
-  );
+  const matchGroups = routeGroups
+    .map(({ group, routes }) => ({
+      group,
+      routes: routes.filter((route) =>
+        route.title.toLowerCase().includes(query.toLowerCase()),
+      ),
+    }))
+    .filter(({ routes }) => routes.length > 0);
+
+  // Flattened in group/declaration order so arrow-key navigation moves
+  // through one continuous sequence even though options render nested
+  // under group headings.
+  const matches = matchGroups.flatMap(({ routes }) => routes);
 
   const activeOptionId =
     activeIndex >= 0 && activeIndex < matches.length
       ? `command-palette-option-${matches[activeIndex].href}`
       : undefined;
 
-  const close = () => {
-    setOpen(false);
-    setQuery("");
-    setActiveIndex(-1);
-  };
-
   // Open/close via keyboard shortcut
   useEffect(() => {
-    /**
-     * Handles the global keydown for the command palette:
-     * - ⌘/Ctrl+K opens the palette or closes it if already open.
-     * - Escape closes the palette (only when open).
-     */
     const onKeyDown = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
@@ -59,20 +58,18 @@ export function CommandPalette() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
-  // Move focus to the input when the palette opens
+  // Focus the input whenever the palette opens.
   useEffect(() => {
-    if (open) {
-      inputRef.current?.focus();
-    }
+    if (!open) return;
+    inputRef.current?.focus();
   }, [open]);
 
-  // Keep the active option scrolled into view as the selection moves
+  // Keep the active option scrolled into view as it changes.
   useEffect(() => {
-    if (!open || activeIndex < 0) return;
-    const items =
-      listRef.current?.querySelectorAll<HTMLElement>("[role=option]");
+    if (!open || matches.length === 0) return;
+    const items = listRef.current?.querySelectorAll<HTMLElement>("[role=option]");
     items?.[activeIndex]?.scrollIntoView({ block: "nearest" });
-  }, [open, activeIndex]);
+  }, [open, matches.length, activeIndex]);
 
   const handleInputKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     switch (event.key) {
@@ -88,7 +85,9 @@ export function CommandPalette() {
         event.preventDefault();
         if (activeIndex >= 0 && activeIndex < matches.length) {
           const selectedRoute = matches[activeIndex];
-          close();
+          setOpen(false);
+          setQuery("");
+          setActiveIndex(-1);
           router.push(selectedRoute.href);
         }
         break;
@@ -96,7 +95,9 @@ export function CommandPalette() {
   };
 
   const handleOptionClick = (href: string) => {
-    close();
+    setOpen(false);
+    setQuery("");
+    setActiveIndex(-1);
     router.push(href);
   };
 
@@ -108,7 +109,7 @@ export function CommandPalette() {
       aria-modal="true"
       aria-labelledby="command-palette-title"
       className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-8 pt-[20vh]"
-      onClick={close}
+      onClick={() => setOpen(false)}
     >
       <div
         className="w-full max-w-lg rounded-lg bg-white p-4 shadow-xl dark:bg-neutral-900"
@@ -134,29 +135,51 @@ export function CommandPalette() {
           className="w-full rounded-md border border-neutral-300 px-3 py-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 dark:border-neutral-700 dark:bg-neutral-950"
         />
         <ul
-          ref={listRef}
           id="command-palette-listbox"
           role="listbox"
+          ref={listRef}
           className="mt-2 max-h-64 overflow-auto"
         >
           {matches.length > 0 ? (
-            matches.map((route, index) => (
-              <li key={route.href} role="presentation">
-                <button
-                  id={`command-palette-option-${route.href}`}
-                  role="option"
-                  aria-selected={index === activeIndex}
-                  type="button"
-                  className={`w-full rounded px-2 py-2 text-left text-sm transition-colors ${
-                    index === activeIndex
-                      ? "bg-blue-500 text-white dark:bg-blue-600"
-                      : "hover:bg-neutral-100 dark:hover:bg-neutral-800"
-                  }`}
-                  onClick={() => handleOptionClick(route.href)}
-                  onMouseEnter={() => setActiveIndex(index)}
+            matchGroups.map(({ group, routes }, groupIndex) => (
+              <li
+                key={group}
+                className={
+                  groupIndex > 0
+                    ? "border-t border-neutral-200 dark:border-neutral-800"
+                    : undefined
+                }
+              >
+                <span
+                  role="presentation"
+                  className="block px-2 pt-2 text-xs font-medium uppercase tracking-wide text-neutral-500 dark:text-neutral-400"
                 >
-                  {route.title}
-                </button>
+                  {group}
+                </span>
+                <ul>
+                  {routes.map((route) => {
+                    const index = matches.indexOf(route);
+                    return (
+                      <li key={route.href} role="presentation">
+                        <button
+                          id={`command-palette-option-${route.href}`}
+                          role="option"
+                          aria-selected={index === activeIndex}
+                          type="button"
+                          className={`w-full rounded px-2 py-2 text-left text-sm transition-colors ${
+                            index === activeIndex
+                              ? "bg-blue-500 text-white dark:bg-blue-600"
+                              : "hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                          }`}
+                          onClick={() => handleOptionClick(route.href)}
+                          onMouseEnter={() => setActiveIndex(index)}
+                        >
+                          {route.title}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
               </li>
             ))
           ) : (

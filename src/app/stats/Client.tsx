@@ -18,6 +18,14 @@ export default function StatsClient() {
   const status = result.status;
   const error = status === "error" ? result.error : null;
   const data = status === "ok" ? result.data : null;
+  const { refetch } = result;
+
+  // Poll for fresh router metrics on a fixed cadence (see ARCHITECTURE.md,
+  // "Data flow").
+  useEffect(() => {
+    const timer = setInterval(refetch, POLL_MS);
+    return () => clearInterval(timer);
+  }, [refetch]);
 
   // Poll the router metrics on a fixed cadence; clear the interval on unmount.
   useEffect(() => {

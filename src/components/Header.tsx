@@ -4,20 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { ROUTES } from "@/lib/routes";
+import { getRoutesByGroup } from "@/lib/routes";
 
-const navLinks = [
-  ROUTES.home,
-  ROUTES.pairs,
-  ROUTES.quote,
-  ROUTES.stats,
-  ROUTES.admin,
-  ROUTES.events,
-  ROUTES.webhooks,
-  ROUTES.apiKeys,
-  ROUTES.settings,
-  ROUTES.docs,
-];
+const routeGroups = getRoutesByGroup();
 
 export function Header() {
   const pathname = usePathname();
@@ -50,23 +39,39 @@ export function Header() {
         aria-label="Main navigation"
         className={`mx-auto max-w-5xl px-4 pb-4 ${mobileOpen ? "block" : "hidden md:block"}`}
       >
-        <ul className="flex flex-col gap-1 md:flex-row md:flex-wrap md:gap-3 md:text-sm">
-          {navLinks.map((link) => {
-            const active = pathname === link.href;
-            return (
-              <li key={link.href}>
-                <Link
-                  href={link.href}
-                  aria-current={active ? "page" : undefined}
-                  className="block rounded px-2 py-1 hover:bg-neutral-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[var(--focus-ring-offset)] focus-visible:outline-[color:var(--focus-ring-color)] dark:hover:bg-neutral-800"
-                  onClick={() => setMobileOpen(false)}
-                >
-                  {link.title}
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
+        <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-start md:gap-6">
+          {routeGroups.map(({ group, routes }, index) => (
+            <div
+              key={group}
+              className={
+                index > 0
+                  ? "border-t border-neutral-200 pt-3 md:border-t-0 md:border-l md:pt-0 md:pl-4 dark:border-neutral-800"
+                  : undefined
+              }
+            >
+              <span className="block px-2 text-xs font-medium uppercase tracking-wide text-neutral-500 dark:text-neutral-400">
+                {group}
+              </span>
+              <ul className="flex flex-col gap-1 md:flex-row md:flex-wrap md:gap-3 md:text-sm">
+                {routes.map((link) => {
+                  const active = pathname === link.href;
+                  return (
+                    <li key={link.href}>
+                      <Link
+                        href={link.href}
+                        aria-current={active ? "page" : undefined}
+                        className="block rounded px-2 py-1 hover:bg-neutral-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[var(--focus-ring-offset)] focus-visible:outline-[color:var(--focus-ring-color)] dark:hover:bg-neutral-800"
+                        onClick={() => setMobileOpen(false)}
+                      >
+                        {link.title}
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ))}
+        </div>
       </nav>
     </header>
   );

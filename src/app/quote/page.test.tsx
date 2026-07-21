@@ -1,4 +1,4 @@
-import { act, cleanup, render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, cleanup, act } from "@testing-library/react";
 import { Component, type ReactNode } from "react";
 import QuotePage from "./page";
 import QuoteError from "./error";
@@ -115,8 +115,8 @@ describe("QuotePage", () => {
   it("aborts an earlier in-flight request before replacing it after the cooldown", async () => {
     jest.useFakeTimers();
 
-    let firstSignal: AbortSignal | undefined;
-    let secondSignal: AbortSignal | undefined;
+    let firstSignal: AbortSignal | null | undefined;
+    let secondSignal: AbortSignal | null | undefined;
 
     const mockFetch = jest
       .fn()
