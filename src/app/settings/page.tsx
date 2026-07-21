@@ -2,7 +2,7 @@ import SettingsClient from './Client';
 
 /** Server wrapper for the Settings client page. */
 export const metadata = {
-  title: 'Settings',
+  title: 'Settings | StableRoute',
   description:
     'Configure appearance and API base for the StableRoute dashboard.',
 };

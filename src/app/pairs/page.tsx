@@ -7,7 +7,7 @@ import PairsClient from './Client';
  * We keep interactive UI in a client component and export per-page metadata here.
  */
 export const metadata = {
-  title: 'Pairs',
+  title: 'Pairs | StableRoute',
   description:
     'Manage registered routing (source → destination) pairs for the StableRoute router.',
 };

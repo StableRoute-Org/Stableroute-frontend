@@ -1,9 +1,15 @@
-export const metadata = {
-  title: 'About — StableRoute',
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'About | StableRoute',
   description:
     'About StableRoute: a liquidity router for stablecoin and fiat-backed token pairs on Stellar.',
 };
 
+/**
+ * Server component for the About page.
+ * This component is static and server-rendered. It exports `metadata` for the page title and description.
+ */
 export default function AboutPage() {
   return (
     <main

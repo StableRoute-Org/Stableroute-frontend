@@ -1,7 +1,7 @@
 import { getApiBase } from '@/lib/config';
 
 export const metadata = {
-  title: 'Docs — StableRoute',
+  title: 'Docs | StableRoute',
   description: 'Short reference for the StableRoute HTTP API common endpoints.',
 };
 
