@@ -1,15 +1,18 @@
-"use client";
+'use client';
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Button } from "@/components/Button";
-import { EmptyState } from "@/components/EmptyState";
-import { Button } from "@/components/Button";
-import { TimeAgo } from "@/components/TimeAgo";
-import { useToast } from "@/components/ToastProvider";
-import { apiGet } from "@/lib/apiClient";
-import { writeToClipboard } from "@/lib/clipboard";
-import { parseEventsResponse, type DisplayEvent } from "@/lib/events";
-import { Button } from "@/components/Button";
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Button } from '@/components/Button';
+import { EmptyState } from '@/components/EmptyState';
+import { TimeAgo } from '@/components/TimeAgo';
+import { useToast } from '@/components/ToastProvider';
+import { apiGet } from '@/lib/apiClient';
+import { writeToClipboard } from '@/lib/clipboard';
+import {
+  buildEventsCsv,
+  downloadCsv,
+  parseEventsResponse,
+  type DisplayEvent,
+} from '@/lib/events';
 
 const REFRESH_MS = 10_000;
 const COLLAPSE_THRESHOLD = 400;
@@ -31,9 +34,10 @@ export default function EventsClient() {
   const [live, setLive] = useState(false);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null);
   const [isVisible, setIsVisible] = useState(
-    () => typeof document === "undefined" || document.visibilityState === "visible",
+    () =>
+      typeof document === 'undefined' || document.visibilityState === 'visible'
   );
-  const [typeFilter, setTypeFilter] = useState("");
+  const [typeFilter, setTypeFilter] = useState('');
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [showFull, setShowFull] = useState<Record<string, boolean>>({});
 
@@ -45,7 +49,7 @@ export default function EventsClient() {
   }, [items, typeFilter]);
 
   const load = useCallback(() => {
-    return apiGet<unknown>("/api/v1/events?limit=100")
+    return apiGet<unknown>('/api/v1/events?limit=100')
       .then((body) => {
         const parsed = parseEventsResponse(body);
         setItems(parsed.events);
@@ -63,12 +67,12 @@ export default function EventsClient() {
 
   useEffect(() => {
     const handleVisibilityChange = () => {
-      setIsVisible(document.visibilityState === "visible");
+      setIsVisible(document.visibilityState === 'visible');
     };
 
-    document.addEventListener("visibilitychange", handleVisibilityChange);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => {
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, []);
 
@@ -89,8 +93,8 @@ export default function EventsClient() {
   }, [isVisible, live, load]);
 
   const resultLabel = useMemo(() => {
-    if (!items) return "";
-    if (items.length === 0) return "0 events";
+    if (!items) return '';
+    if (items.length === 0) return '0 events';
     return capped
       ? `Showing ${items.length} of ${totalValid} events (capped).`
       : `${items.length} events`;
@@ -102,10 +106,20 @@ export default function EventsClient() {
       if (result.ok) return;
       // Reveal the payload so the user can select and copy it manually.
       setExpanded((current) => ({ ...current, [eventId]: true }));
-      push("Couldn't copy automatically. Select the payload below to copy it.", "error");
+      push(
+        "Couldn't copy automatically. Select the payload below to copy it.",
+        'error'
+      );
     },
-    [push],
+    [push]
   );
+
+  const handleExportCsv = useCallback(() => {
+    if (!filteredItems || filteredItems.length === 0) return;
+    const csv = buildEventsCsv(filteredItems);
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    downloadCsv(csv, `events-${timestamp}.csv`);
+  }, [filteredItems]);
 
   return (
     <main
@@ -129,7 +143,15 @@ export default function EventsClient() {
             onClick={() => setLive((value) => !value)}
             className="rounded-full border border-neutral-300 px-4 py-1.5 text-sm dark:border-neutral-700"
           >
-            {live ? "Live on" : "Live off"}
+            {live ? 'Live on' : 'Live off'}
+          </button>
+          <button
+            type="button"
+            onClick={handleExportCsv}
+            disabled={!filteredItems || filteredItems.length === 0}
+            className="rounded-full border border-neutral-300 px-4 py-1.5 text-sm disabled:opacity-40 dark:border-neutral-700"
+          >
+            Export CSV
           </button>
         </div>
       </div>
@@ -147,7 +169,11 @@ export default function EventsClient() {
           className="rounded-md border border-neutral-300 px-3 py-2 dark:border-neutral-700 dark:bg-neutral-900"
         />
       </label>
-      {error && <p role="alert" className="text-sm text-rose-600">{error}</p>}
+      {error && (
+        <p role="alert" className="text-sm text-rose-600">
+          {error}
+        </p>
+      )}
       <section
         aria-labelledby="events-log-heading"
         aria-live="polite"
@@ -166,13 +192,17 @@ export default function EventsClient() {
         )}
         {filteredItems && filteredItems.length > 0 && (
           <>
-            <p className="text-sm text-neutral-600 dark:text-neutral-400">{resultLabel}</p>
+            <p className="text-sm text-neutral-600 dark:text-neutral-400">
+              {resultLabel}
+            </p>
             <ol className="flex flex-col gap-2">
               {filteredItems.map((event) => {
-                const isPayloadTruncated = event.payloadPreview !== event.fullPayload;
-                const payloadJson = isPayloadTruncated && showFull[event.id]
-                  ? event.fullPayload
-                  : event.payloadPreview;
+                const isPayloadTruncated =
+                  event.payloadPreview !== event.fullPayload;
+                const payloadJson =
+                  isPayloadTruncated && showFull[event.id]
+                    ? event.fullPayload
+                    : event.payloadPreview;
                 const defaultOpen = !shouldStartCollapsed(event.payloadPreview);
                 const isOpen = expanded[event.id] ?? defaultOpen;
                 const controlsId = `event-payload-${event.id}`;
@@ -199,7 +229,7 @@ export default function EventsClient() {
                         }
                         className="px-3 py-1 text-[11px]"
                       >
-                        {isOpen ? "Collapse" : "Expand"}
+                        {isOpen ? 'Collapse' : 'Expand'}
                       </Button>
                       {isPayloadTruncated && (
                         <Button
@@ -213,13 +243,15 @@ export default function EventsClient() {
                           }
                           className="px-3 py-1 text-[11px]"
                         >
-                          {showFull[event.id] ? "Show truncated" : "Show full"}
+                          {showFull[event.id] ? 'Show truncated' : 'Show full'}
                         </Button>
                       )}
                       <Button
                         type="button"
                         variant="secondary"
-                        onClick={() => void handleCopyPayload(event.id, payloadJson)}
+                        onClick={() =>
+                          void handleCopyPayload(event.id, event.fullPayload)
+                        }
                         className="px-3 py-1 text-[11px]"
                       >
                         Copy JSON
@@ -240,4 +272,3 @@ export default function EventsClient() {
     </main>
   );
 }
-

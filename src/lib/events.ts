@@ -65,29 +65,29 @@ export function parseEventsResponse(raw: unknown): {
 
 function isEventsResponse(raw: unknown): raw is EventsResponse {
   return (
-    typeof raw === "object" &&
+    typeof raw === 'object' &&
     raw !== null &&
     Array.isArray((raw as { items?: unknown }).items)
   );
 }
 
 function parseAppEvent(raw: unknown): DisplayEvent | null {
-  if (typeof raw !== "object" || raw === null) {
+  if (typeof raw !== 'object' || raw === null) {
     return null;
   }
 
   const event = raw as Partial<AppEvent>;
 
   if (
-    typeof event.id !== "string" ||
-    typeof event.ts !== "number" ||
+    typeof event.id !== 'string' ||
+    typeof event.ts !== 'number' ||
     !Number.isFinite(event.ts) ||
-    typeof event.type !== "string"
+    typeof event.type !== 'string'
   ) {
     return null;
   }
 
-  if (typeof event.payload !== "object" || event.payload === null) {
+  if (typeof event.payload !== 'object' || event.payload === null) {
     return null;
   }
 
@@ -105,6 +105,66 @@ function parseAppEvent(raw: unknown): DisplayEvent | null {
     fullPayload: result.full,
   };
 }
+
+// ---------------------------------------------------------------------------
+// CSV export
+// ---------------------------------------------------------------------------
+
+/**
+ * Escapes a single cell value for RFC 4180 CSV:
+ * - Wraps the value in double-quotes when it contains a comma, double-quote,
+ *   or newline character.
+ * - Doubles any embedded double-quote characters.
+ */
+export function escapeCsvCell(value: string): string {
+  if (/[",\n\r]/.test(value)) {
+    return `"${value.replace(/"/g, '""')}"`;
+  }
+  return value;
+}
+
+const CSV_HEADER = 'id,ts,type,payload\n';
+
+/**
+ * Converts an array of {@link DisplayEvent} objects into a UTF-8 CSV string
+ * with columns: `id`, `ts` (ISO-8601), `type`, `payload` (full JSON).
+ *
+ * Commas, double-quotes, and newlines inside cell values are escaped per
+ * RFC 4180.
+ */
+export function buildEventsCsv(events: DisplayEvent[]): string {
+  const rows = events.map((event) => {
+    const id = escapeCsvCell(event.id);
+    const ts = escapeCsvCell(new Date(event.ts).toISOString());
+    const type = escapeCsvCell(event.type);
+    const payload = escapeCsvCell(event.fullPayload);
+    return `${id},${ts},${type},${payload}`;
+  });
+  return CSV_HEADER + rows.join('\n');
+}
+
+/**
+ * Triggers a browser download of `content` as a `.csv` file named
+ * `filename`. Uses a temporary Blob object URL that is revoked after the
+ * click to avoid memory leaks.
+ *
+ * This function is intentionally a thin wrapper so callers can test
+ * {@link buildEventsCsv} independently without touching the DOM.
+ */
+export function downloadCsv(content: string, filename: string): void {
+  const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.style.display = 'none';
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
+  URL.revokeObjectURL(url);
+}
+
+// ---------------------------------------------------------------------------
 
 /**
  * Safely serialises an arbitrary payload value to pretty-printed JSON.
@@ -127,18 +187,18 @@ function safeStringifyPayload(payload: unknown): {
     const serialized = JSON.stringify(
       payload,
       (_key, value) => {
-        if (typeof value === "object" && value !== null) {
+        if (typeof value === 'object' && value !== null) {
           if (seen.has(value)) {
-            return "[Circular]";
+            return '[Circular]';
           }
           seen.add(value);
         }
         return value;
       },
-      2,
+      2
     );
 
-    if (typeof serialized !== "string") {
+    if (typeof serialized !== 'string') {
       return null;
     }
 
