@@ -9,6 +9,43 @@ After the request resolves with data, an empty result, or an error, set
 `aria-busy="false"`. Error copy should remain outside the polite list region and
 use `role="alert"` for assertive announcement.
 
+## Filter Control Groups
+
+List pages that expose more than one control for shaping the list must group
+those controls in a `<fieldset>` with a visible `<legend>`. Loose sibling inputs
+and buttons are announced as an unrelated run of controls, with no shared
+context telling a screen-reader user what they act on. The fieldset gives the
+group an accessible name (`role="group"`), and the visible legend gives sighted
+users the same grouping cue.
+
+Strip the browser's default fieldset chrome with `border-0 p-0` and keep the
+existing layout on the fieldset itself (`flex`, `gap-*`, and so on) so grouping
+is a semantics-only change.
+
+The event log applies this in `src/app/events/Client.tsx`: the type filter,
+`Refresh now`, the live-refresh toggle, `Export CSV`, and `Clear filters` all
+sit inside a fieldset legended **Event log filters**.
+
+`Export CSV` is an action rather than a filter, but it exports the _filtered_
+rows and its disabled state is derived from the filtered result — so it belongs
+with the controls that shape that result rather than floating outside the group
+as the only ungrouped sibling.
+
+### Clear-all Controls
+
+A group that can be narrowed should offer a single reset control:
+
+- Disable it whenever no filter is active, so assistive tech reports it as
+  unavailable instead of offering a no-op. Compute "active" from the trimmed
+  filter value — a whitespace-only entry narrows nothing and must read as
+  inactive.
+- Announce the reset through the **existing** polite live region rather than
+  adding a second one. The event log renders an `sr-only` paragraph inside the
+  `aria-live="polite"` list region; because that region is `aria-atomic="true"`,
+  the message is announced together with the restored result count.
+- Drop the announcement as soon as the user filters again, so a stale
+  "Filters cleared" string is never re-announced on the next atomic update.
+
 ## Route Navigation
 
 After client-side navigation, the page title is announced in a `sr-only`
