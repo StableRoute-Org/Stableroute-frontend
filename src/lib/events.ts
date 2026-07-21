@@ -29,6 +29,13 @@ export type DisplayEvent = {
 export const MAX_RENDERED_EVENTS = 200;
 export const MAX_PAYLOAD_PREVIEW_LENGTH = 4_000;
 
+/**
+ * Rendered in place of a payload whose serialisation throws unexpectedly
+ * (e.g. a value JSON cannot represent, or a `toJSON`/getter that throws).
+ * Circular references are handled separately and never reach this fallback.
+ */
+export const UNSERIALIZABLE_PAYLOAD_FALLBACK = "[Unserializable payload]";
+
 type EventsResponse = {
   items: unknown[];
 };
@@ -112,10 +119,12 @@ function parseAppEvent(raw: unknown): DisplayEvent | null {
  * - **Circular references** → replaced with the string `"[Circular]"`.
  * - **Oversized payloads** → the output is truncated at
  *   `MAX_PAYLOAD_PREVIEW_LENGTH` chars and appended with `"… truncated"`.
- * - **Unexpected errors** during serialisation → the function returns `null`.
+ * - **Unexpected errors** during serialisation → both `preview` and `full`
+ *   fall back to {@link UNSERIALIZABLE_PAYLOAD_FALLBACK}.
  *
  * @returns An object with `preview` (possibly truncated) and `full` (complete)
- *          serialised strings, or `null` if the payload cannot be serialised.
+ *          serialised strings, or `null` only when the payload serialises to a
+ *          non-string (e.g. a `toJSON` that yields `undefined`).
  */
 function safeStringifyPayload(payload: unknown): {
   preview: string;
@@ -151,6 +160,9 @@ function safeStringifyPayload(payload: unknown): {
       full: serialized,
     };
   } catch {
-    return null;
+    return {
+      preview: UNSERIALIZABLE_PAYLOAD_FALLBACK,
+      full: UNSERIALIZABLE_PAYLOAD_FALLBACK,
+    };
   }
 }
