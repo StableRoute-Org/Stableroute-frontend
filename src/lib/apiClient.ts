@@ -19,6 +19,16 @@ export type ApiFetchOptions = {
 type AuthErrorHandler = (status: 401 | 403) => void;
 let _authErrorHandler: AuthErrorHandler | null = null;
 
+/**
+ * Notified about API connectivity: `onError` fires when a request fails at the
+ * network layer (offline, DNS failure, timeout), and `onSuccess` fires whenever
+ * the server responds at all (even with an HTTP error status) — a response
+ * means the API is reachable. HTTP 4xx/5xx responses are *not* connectivity
+ * failures and do not trigger `onError`.
+ */
+type ConnectionHandler = { onError: () => void; onSuccess: () => void };
+let _connectionHandler: ConnectionHandler | null = null;
+
 const DEFAULT_TIMEOUT_MS = 15_000;
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -28,6 +38,16 @@ export function registerAuthErrorHandler(handler: AuthErrorHandler): () => void 
   _authErrorHandler = handler;
   return () => {
     if (_authErrorHandler === handler) _authErrorHandler = null;
+  };
+}
+
+/** Called once by <ConnectionBanner> to observe API reachability. */
+export function registerConnectionHandler(
+  handler: ConnectionHandler,
+): () => void {
+  _connectionHandler = handler;
+  return () => {
+    if (_connectionHandler === handler) _connectionHandler = null;
   };
 }
 
@@ -127,6 +147,8 @@ export async function apiFetch<T>(
         signal: controller.signal,
         ...init,
       });
+      // A response of any status means the API is reachable.
+      _connectionHandler?.onSuccess();
       if (!res.ok && res.status >= 500 && attempt < maxAttempts) {
         await sleep(baseDelayMs * 2 ** (attempt - 1));
         continue;
@@ -150,6 +172,8 @@ export async function apiFetch<T>(
         await sleep(baseDelayMs * 2 ** (attempt - 1));
         continue;
       }
+      // Network-layer failure with no attempts left: the API is unreachable.
+      _connectionHandler?.onError();
       throw new Error(message);
     } finally {
       clearTimeout(timer);

@@ -59,8 +59,6 @@ describe("PairsPage", () => {
         }),
     } as unknown as Response);
 
-  it("renders pairs in a single polite live region", async () => {
-    mockFetch([{ source: "USDC", destination: "EURC" }]);
     render(<PairsPage />);
     await waitFor(() => {
       expect(screen.getByText("3 pairs")).toBeInTheDocument();
@@ -166,7 +164,7 @@ describe("PairsPage", () => {
 
     render(<PairsPage />);
     await waitFor(() => {
-      expect(screen.getByText(/No pairs found/i)).toBeInTheDocument();
+      expect(screen.getByText(/No pairs registered yet/i)).toBeInTheDocument();
     });
     expect(document.querySelector("[aria-live=polite]")).toHaveAttribute("aria-busy", "false");
   });
@@ -210,7 +208,7 @@ describe("PairsPage", () => {
     mockFetch([]);
     render(<PairsPage />);
     await waitFor(() => {
-      expect(screen.getByText(/No pairs found/i)).toBeInTheDocument();
+      expect(screen.getByText(/No pairs registered yet/i)).toBeInTheDocument();
     });
     expect(document.querySelectorAll("[aria-live=polite]")).toHaveLength(1);
   });

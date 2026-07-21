@@ -1,8 +1,10 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { Component, type ReactNode } from "react";
 import EventsPage from "./page";
+import EventsError from "./error";
+import { Header } from "@/components/Header";
 import { ToastProvider } from "@/components/ToastProvider";
-import { MAX_RENDERED_EVENTS } from "@/lib/events";
+import { MAX_PAYLOAD_PREVIEW_LENGTH, MAX_RENDERED_EVENTS } from "@/lib/events";
 
 const okEventsResponse = (items: unknown[]) =>
   ({
@@ -231,7 +233,7 @@ describe("EventsPage", () => {
         }),
     } as unknown as Response);
 
-    render(<EventsPage />);
+    renderPage();
 
     // Click Expand to reveal the payload
     const expandButton = await screen.findByRole("button", { name: /expand/i });
@@ -270,7 +272,7 @@ describe("EventsPage", () => {
         }),
     } as unknown as Response);
 
-    render(<EventsPage />);
+    renderPage();
 
     // Click Expand to reveal the payload
     const expandButton = await screen.findByRole("button", { name: /expand/i });
@@ -306,7 +308,7 @@ describe("EventsPage", () => {
         }),
     } as unknown as Response);
 
-    render(<EventsPage />);
+    renderPage();
 
     await screen.findByText("payload.small");
     expect(screen.queryByRole("button", { name: /^show full$/i })).not.toBeInTheDocument();
@@ -402,7 +404,7 @@ describe("EventsPage", () => {
         }),
     } as unknown as Response);
 
-    render(<EventsPage />);
+    renderPage();
 
     fireEvent.click(await screen.findByRole("button", { name: /copy json/i }));
 
@@ -784,7 +786,7 @@ describe("EventsPage", () => {
           }),
       } as unknown as Response);
 
-      render(<EventsPage />);
+      renderPage();
       expect(await screen.findByText("payload.deep")).toBeInTheDocument();
       expect(screen.getByText(/level0/)).toBeInTheDocument();
     });
@@ -805,7 +807,7 @@ describe("EventsPage", () => {
           }),
       } as unknown as Response);
 
-      render(<EventsPage />);
+      renderPage();
       expect(await screen.findByText("payload.empty")).toBeInTheDocument();
       expect(screen.getByText(/\{\s*\}/)).toBeInTheDocument();
     });
@@ -826,7 +828,7 @@ describe("EventsPage", () => {
           }),
       } as unknown as Response);
 
-      render(<EventsPage />);
+      renderPage();
       expect(await screen.findByText("payload.primitive")).toBeInTheDocument();
       expect(screen.getByText(/"hello"/)).toBeInTheDocument();
       expect(screen.getByText(/42/)).toBeInTheDocument();
@@ -850,7 +852,7 @@ describe("EventsPage", () => {
           }),
       } as unknown as Response);
 
-      render(<EventsPage />);
+      renderPage();
       expect(await screen.findByText("payload.array")).toBeInTheDocument();
       expect(screen.getByText(/nested/)).toBeInTheDocument();
     });

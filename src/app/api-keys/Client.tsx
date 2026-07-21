@@ -8,6 +8,8 @@ import { TimeAgo } from "@/components/TimeAgo";
 import { Badge } from "@/components/Badge";
 import { apiDelete, apiGet, apiPost } from "@/lib/apiClient";
 import { useList } from "@/lib/useList";
+import { writeToClipboard } from "@/lib/clipboard";
+import { useToast } from "@/components/ToastProvider";
 
 type Item = { prefix: string; label: string; createdAt: number };
 
@@ -23,6 +25,9 @@ export default function ApiKeysClient() {
   /** The prefix of the most recently created API key, used to mark its row with a "New" badge. Persists until page reload or navigation. */
   const [recentPrefix, setRecentPrefix] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  /** Set when an automatic clipboard copy fails, revealing a selectable fallback field. */
+  const [copyFailed, setCopyFailed] = useState(false);
+  const { push } = useToast();
 
   const onCreate = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -30,6 +35,7 @@ export default function ApiKeysClient() {
     try {
       const response = await apiPost<{ key: string; prefix?: string }>("/api/v1/api-keys", { label });
       setCreated(response.key);
+      setCopyFailed(false);
       setRecentPrefix(response.prefix ?? response.key.slice(0, 8));
       setLabel("");
       await reload();
@@ -42,12 +48,16 @@ export default function ApiKeysClient() {
 
   const copySecret = async () => {
     if (!created) return;
-    try {
-      await navigator.clipboard.writeText(created);
+    const result = await writeToClipboard(created);
+    if (result.ok) {
       setCreated(null);
-    } catch {
-      /* ignore in jsdom */
+      setCopyFailed(false);
+      return;
     }
+    // Keep the secret on screen and expose a selectable fallback field so the
+    // key can still be copied manually after an automatic copy fails.
+    setCopyFailed(true);
+    push("Couldn't copy the API key to the clipboard.", "error");
   };
 
   const secretVisible = created && typeof window !== "undefined" && window.isSecureContext;
@@ -88,6 +98,18 @@ export default function ApiKeysClient() {
           <IconButton label="Copy API key secret" onClick={() => void copySecret()}>
             ⧉
           </IconButton>
+        </div>
+      )}
+      {secretVisible && copyFailed && (
+        <div className="flex flex-col gap-1 text-sm">
+          <p>Couldn&apos;t copy automatically. Select and copy the key below.</p>
+          <input
+            aria-label="API key secret"
+            readOnly
+            value={created ?? ""}
+            onFocus={(event) => event.currentTarget.select()}
+            className="w-full rounded border border-neutral-300 px-3 py-2 font-mono text-xs dark:border-neutral-700 dark:bg-neutral-900"
+          />
         </div>
       )}
       {error && <p role="alert" className="text-sm text-rose-600">{error}</p>}

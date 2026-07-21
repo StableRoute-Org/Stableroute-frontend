@@ -85,13 +85,13 @@ export default function PairsClient() {
           className="rounded-md border border-neutral-300 px-3 py-2 dark:border-neutral-700 dark:bg-neutral-900"
         />
       </label>
-      {api.status === "error" && (
+      {status === "error" && (
         <p role="alert" className="text-sm text-rose-600">
-          {api.error}
+          {error}
         </p>
       )}
-      <section aria-live="polite" aria-busy={api.status === "loading"} className="contents">
-        {api.status === "loading" && (
+      <section aria-live="polite" aria-busy={status === "loading"} className="contents">
+        {status === "loading" && (
           <div className="flex items-center gap-2 text-sm text-neutral-600">
             <Spinner label="Loading pairs" />
             Loading…
@@ -146,7 +146,7 @@ export default function PairsClient() {
           setPendingDelete(null);
           void apiDelete(
             `/api/v1/pairs/${encodeURIComponent(target.source)}/${encodeURIComponent(target.destination)}`,
-          ).then(() => api.refetch());
+          ).then(() => refetch());
         }}
         onCancel={() => setPendingDelete(null)}
       />

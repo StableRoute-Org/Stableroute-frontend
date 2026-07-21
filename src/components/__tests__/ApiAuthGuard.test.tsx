@@ -3,22 +3,27 @@ import { ApiAuthGuard } from "../ApiAuthGuard";
 import { ToastProvider } from "../ToastProvider";
 import * as apiClient from "@/lib/apiClient";
 
+jest.mock("@/lib/apiClient");
+
+const mockRegister = apiClient.registerAuthErrorHandler as jest.MockedFunction<
+  typeof apiClient.registerAuthErrorHandler
+>;
+
 function setup() {
   let handler: ((status: 401 | 403) => void) | null = null;
-  const spy = jest
-    .spyOn(apiClient, "registerAuthErrorHandler")
-    .mockImplementation((cb) => {
-      handler = cb;
-      return () => {
-        handler = null;
-      };
-    });
-  return { spy, getHandler: () => handler };
+  mockRegister.mockImplementation((cb) => {
+    handler = cb;
+    return () => {
+      handler = null;
+    };
+  });
+  return { spy: mockRegister, getHandler: () => handler };
 }
 
 describe("ApiAuthGuard", () => {
   beforeEach(() => {
     jest.useFakeTimers();
+    mockRegister.mockReset();
   });
 
   afterEach(() => {

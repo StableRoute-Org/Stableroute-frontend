@@ -2,6 +2,11 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import RootLayout from "./layout";
 import { useToast } from "@/components/ToastProvider";
 
+// The root layout mounts <Header>, which calls usePathname() (needs the App
+// Router context) and <ThemeToggle>, which resolves the "system" theme through
+// window.matchMedia on mount. jsdom provides neither, so we stub both.
+jest.mock("next/navigation");
+
 function ToastHarness() {
   const { push } = useToast();
   return (
@@ -15,6 +20,14 @@ function ToastHarness() {
 }
 
 describe("RootLayout", () => {
+  beforeEach(() => {
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      writable: true,
+      value: jest.fn().mockReturnValue({ matches: false }),
+    });
+  });
+
   it("renders the skip link targeting the main content landmark", () => {
     render(
       <RootLayout>

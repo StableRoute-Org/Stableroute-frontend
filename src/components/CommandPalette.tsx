@@ -19,7 +19,7 @@ export function CommandPalette() {
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
 
-  const matches = Object.values(ROUTES).filter((route) =>
+  const matches = allRoutes.filter((route) =>
     route.title.toLowerCase().includes(query.toLowerCase()),
   );
 
@@ -28,33 +28,17 @@ export function CommandPalette() {
       ? `command-palette-option-${matches[activeIndex].href}`
       : undefined;
 
-  const matches = allRoutes.filter((route) =>
-    route.title.toLowerCase().includes(query.toLowerCase()),
-  );
-
-  const reset = useCallback(() => {
-    setQuery("");
-    setSelectedIndex(0);
-  }, []);
-
-  const close = useCallback(() => {
+  const close = () => {
     setOpen(false);
-    reset();
-  }, [reset]);
-
-  const navigate = useCallback(
-    (href: string) => {
-      close();
-      router.push(href);
-    },
-    [close, router],
-  );
+    setQuery("");
+    setActiveIndex(-1);
+  };
 
   // Open/close via keyboard shortcut
   useEffect(() => {
     /**
      * Handles the global keydown for the command palette:
-     * - ⌘/Ctrl+K opens the palette (saves current focus) or closes if already open.
+     * - ⌘/Ctrl+K opens the palette or closes it if already open.
      * - Escape closes the palette (only when open).
      */
     const onKeyDown = (event: KeyboardEvent) => {
@@ -73,78 +57,28 @@ export function CommandPalette() {
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [close]);
+  }, []);
 
-  // Move focus to input on open, restore on close
+  // Move focus to the input when the palette opens
   useEffect(() => {
     if (open) {
-      requestAnimationFrame(() => inputRef.current?.focus());
-    } else {
-      previousFocusRef.current?.focus();
-      previousFocusRef.current = null;
+      inputRef.current?.focus();
     }
   }, [open]);
 
-  // Reset selected index when query changes
+  // Keep the active option scrolled into view as the selection moves
   useEffect(() => {
-    setSelectedIndex(0);
-  }, [query]);
-
-  // Handle keyboard navigation within the palette
-  useEffect(() => {
-    if (!open) return;
-
-    const onKeyDown = (event: KeyboardEvent) => {
-      switch (event.key) {
-        case "ArrowDown": {
-          event.preventDefault();
-          setSelectedIndex((prev) =>
-            prev >= matches.length - 1 ? 0 : prev + 1,
-          );
-          break;
-        }
-        case "ArrowUp": {
-          event.preventDefault();
-          setSelectedIndex((prev) =>
-            prev <= 0 ? matches.length - 1 : prev - 1,
-          );
-          break;
-        }
-        case "Enter": {
-          event.preventDefault();
-          if (matches.length > 0 && matches[selectedIndex]) {
-            navigate(matches[selectedIndex].href);
-          }
-          break;
-        }
-        default:
-          break;
-      }
-    };
-
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [open, matches, selectedIndex, navigate]);
-
-  // Scroll the selected item into view
-  useEffect(() => {
-    if (!open || matches.length === 0) return;
-    const items = listRef.current?.querySelectorAll<HTMLElement>("[role=option]");
-    items?.[selectedIndex]?.scrollIntoView({ block: "nearest" });
-  }, [open, matches.length, selectedIndex]);
-
-  useEffect(() => {
-    if (!open) return;
-    inputRef.current?.focus();
-  }, [open]);
+    if (!open || activeIndex < 0) return;
+    const items =
+      listRef.current?.querySelectorAll<HTMLElement>("[role=option]");
+    items?.[activeIndex]?.scrollIntoView({ block: "nearest" });
+  }, [open, activeIndex]);
 
   const handleInputKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     switch (event.key) {
       case "ArrowDown":
         event.preventDefault();
-        setActiveIndex((prev) =>
-          prev < matches.length - 1 ? prev + 1 : prev,
-        );
+        setActiveIndex((prev) => (prev < matches.length - 1 ? prev + 1 : prev));
         break;
       case "ArrowUp":
         event.preventDefault();
@@ -154,9 +88,7 @@ export function CommandPalette() {
         event.preventDefault();
         if (activeIndex >= 0 && activeIndex < matches.length) {
           const selectedRoute = matches[activeIndex];
-          setOpen(false);
-          setQuery("");
-          setActiveIndex(-1);
+          close();
           router.push(selectedRoute.href);
         }
         break;
@@ -164,9 +96,7 @@ export function CommandPalette() {
   };
 
   const handleOptionClick = (href: string) => {
-    setOpen(false);
-    setQuery("");
-    setActiveIndex(-1);
+    close();
     router.push(href);
   };
 
@@ -204,6 +134,7 @@ export function CommandPalette() {
           className="w-full rounded-md border border-neutral-300 px-3 py-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 dark:border-neutral-700 dark:bg-neutral-950"
         />
         <ul
+          ref={listRef}
           id="command-palette-listbox"
           role="listbox"
           className="mt-2 max-h-64 overflow-auto"

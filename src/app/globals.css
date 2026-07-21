@@ -8,6 +8,10 @@
   --muted: #525252;
   --border: #e5e5e5;
   --card: #ffffff;
+  /* Shared focus-ring tokens (see docs/DESIGN_TOKENS.md). blue-600 clears the
+     3:1 WCAG minimum on light surfaces; the offset is theme-independent. */
+  --focus-ring-color: #2563eb;
+  --focus-ring-offset: 2px;
   color-scheme: light;
 }
 
@@ -17,6 +21,8 @@
   --muted: #a3a3a3;
   --border: #262626;
   --card: #171717;
+  /* Swap to blue-400 in dark mode, where blue-600 drops below 3:1 contrast. */
+  --focus-ring-color: #60a5fa;
   color-scheme: dark;
 }
 

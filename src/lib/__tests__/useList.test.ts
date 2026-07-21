@@ -1,4 +1,4 @@
-import { renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { useList } from "../useList";
 
 describe("useList", () => {
@@ -37,7 +37,11 @@ describe("useList", () => {
     const { result } = renderHook(() => useList(loader));
     await waitFor(() => expect(result.current.error).toBe("first error"));
 
-    result.current.reload();
+    // Flush only the synchronous part of reload (setLoading/​setError) so the
+    // intermediate state is observable before the loader promise settles.
+    act(() => {
+      void result.current.reload();
+    });
     expect(result.current.loading).toBe(true);
     expect(result.current.error).toBeNull();
 

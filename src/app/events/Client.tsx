@@ -3,13 +3,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/Button";
 import { EmptyState } from "@/components/EmptyState";
-import { Button } from "@/components/Button";
 import { TimeAgo } from "@/components/TimeAgo";
 import { useToast } from "@/components/ToastProvider";
 import { apiGet } from "@/lib/apiClient";
 import { writeToClipboard } from "@/lib/clipboard";
 import { parseEventsResponse, type DisplayEvent } from "@/lib/events";
-import { Button } from "@/components/Button";
 
 const REFRESH_MS = 10_000;
 const COLLAPSE_THRESHOLD = 400;
@@ -219,7 +217,9 @@ export default function EventsClient() {
                       <Button
                         type="button"
                         variant="secondary"
-                        onClick={() => void handleCopyPayload(event.id, payloadJson)}
+                        onClick={() =>
+                          void handleCopyPayload(event.id, event.fullPayload)
+                        }
                         className="px-3 py-1 text-[11px]"
                       >
                         Copy JSON

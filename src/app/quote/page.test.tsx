@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { act, cleanup, render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { Component, type ReactNode } from "react";
 import QuotePage from "./page";
 import QuoteError from "./error";
@@ -96,14 +96,15 @@ describe("QuotePage", () => {
 
     resolveRequest?.({
       ok: true,
-      json: async () => ({
-        source_asset: "USDC",
-        dest_asset: "EURC",
-        amount: "1000000",
-        estimated_rate: "1.0",
-        route: ["USDC", "EURC"],
-      }),
-    } as Response);
+      text: async () =>
+        JSON.stringify({
+          source_asset: "USDC",
+          dest_asset: "EURC",
+          amount: "1000000",
+          estimated_rate: "1.0",
+          route: ["USDC", "EURC"],
+        }),
+    } as unknown as Response);
 
     await waitFor(() => {
       expect(screen.getByRole("status")).toHaveTextContent(/USDC → EURC/);
@@ -127,14 +128,15 @@ describe("QuotePage", () => {
         secondSignal = init?.signal;
         return Promise.resolve({
           ok: true,
-          json: async () => ({
-            source_asset: "USDC",
-            dest_asset: "EURC",
-            amount: "1000000",
-            estimated_rate: "1.0",
-            route: ["USDC", "EURC"],
-          }),
-        } as Response);
+          text: async () =>
+            JSON.stringify({
+              source_asset: "USDC",
+              dest_asset: "EURC",
+              amount: "1000000",
+              estimated_rate: "1.0",
+              route: ["USDC", "EURC"],
+            }),
+        } as unknown as Response);
       });
     globalThis.fetch = mockFetch as unknown as typeof globalThis.fetch;
 
