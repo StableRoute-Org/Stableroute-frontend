@@ -10,7 +10,10 @@ import { useEffect, useState } from "react";
 function ApiBaseRow() {
   return (
     <Card title="API Base">
-      <p className="font-mono text-sm text-neutral-600 dark:text-neutral-400">
+      <p
+        data-testid="api-base-value"
+        className="font-mono text-sm text-neutral-600 dark:text-neutral-400"
+      >
         {getApiBase()}
       </p>
     </Card>
@@ -41,7 +44,7 @@ function RouterStatusRow() {
         <button
           type="button"
           onClick={status.refetch}
-          className="rounded-full border border-neutral-300 px-4 py-1.5 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[var(--focus-ring-offset)] focus-visible:outline-[color:var(--focus-ring-color)] dark:border-neutral-700"
+          className="rounded-full border border-neutral-300 px-4 py-1.5 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 dark:border-neutral-700"
         >
           Refresh
         </button>
@@ -69,6 +72,8 @@ function AppearancePreview() {
   return (
     <Card title="Appearance Preview">
       <div
+        data-testid="appearance-preview"
+        data-resolved-theme={resolved}
         className={`rounded-md border ${border} ${bg} ${text} p-4 transition-colors`}
       >
         <p className="text-sm font-medium">Sample Text</p>

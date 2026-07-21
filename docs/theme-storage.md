@@ -9,44 +9,62 @@ falls back to `system`. `writeTheme` is best-effort and silently skips the write
 when storage rejects access, so theme persistence cannot crash hydration or
 rendering.
 
-The value is stored as a **plain string** (`dark`, not `"dark"`) rather than
-JSON, because [`public/theme-init.js`](../public/theme-init.js) — a
-pre-hydration script that can't import application code — reads the same key
-with a raw `localStorage.getItem()` string comparison to avoid a flash of the
-wrong theme before React mounts. Keep the two in sync if this ever changes.
+## Storage key
 
-## `useLocalStorage`
+| Key | Values | Default |
+|-----|--------|---------|
+| `stableroute.theme` | `"light"` \| `"dark"` \| `"system"` | `"system"` |
 
-`readTheme`/`writeTheme` (in [`src/lib/theme.ts`](../src/lib/theme.ts)) and
-[`ThemeToggle`](../src/components/ThemeToggle.tsx)'s own state are both built
-on the shared [`useLocalStorage`](../src/lib/useLocalStorage.ts) hook, which
-also backs the quote page's saved-inputs prefill
-([`src/app/quote/Client.tsx`](../src/app/quote/Client.tsx)). It centralizes
-the guarded localStorage access that used to be duplicated in each call site:
+## How theme resolution works
 
-- **SSR-safe** — returns the default value on the server and on first client
-  render (avoiding a hydration mismatch), then syncs from storage in an
-  effect once mounted.
-- **Parse-failure-safe** — malformed JSON, or a value that fails an optional
-  `validate` predicate, falls back to the default instead of throwing.
-- **Write-failure-safe** — a quota-exceeded or disabled-storage error on
-  write is swallowed; the in-memory state still updates so the UI keeps
-  working even though the value won't persist across a reload.
-- **Serialization is pluggable** — defaults to JSON (`readLocalStorageValue`/
-  `writeLocalStorageValue`), but accepts a `rawStringSerializer` for values
-  (like the theme) that must round-trip as a plain string rather than
-  JSON-quoted, to stay compatible with a non-JSON reader or with values
-  persisted before the hook existed.
-
-```tsx
-const [theme, setTheme] = useLocalStorage<Theme>(
-  THEME_KEY,
-  "system",
-  isTheme,
-  rawStringSerializer,
-);
+```
+stored value        effectiveTheme() result
+───────────────     ───────────────────────────────
+"light"         →   "light"
+"dark"          →   "dark"
+"system"        →   "light" or "dark" (matchMedia query)
+absent/unknown  →   readTheme() returns "system" → matchMedia
 ```
 
-See [`src/lib/__tests__/useLocalStorage.test.ts`](../src/lib/__tests__/useLocalStorage.test.ts)
-for the full behavior contract, including SSR, malformed JSON, validation
-rejection, and quota-exceeded write failures.
+`effectiveTheme` reads `window.matchMedia("(prefers-color-scheme: dark)")` to
+resolve `"system"` at render time. In server-side rendering (no `window`), it
+falls back to `"light"`.
+
+## AppearancePreview
+
+`AppearancePreview` in `src/app/settings/Client.tsx` listens for
+`window` `storage` events so the preview region updates automatically when the
+theme is changed from another browser tab without requiring a page reload.
+
+It also exposes a `data-resolved-theme` attribute on its root element
+(`data-testid="appearance-preview"`) so tests can assert the resolved value
+directly without relying on CSS class names.
+
+## API base display
+
+The resolved API base URL is read from `getApiBase()` in `src/lib/config.ts`
+and displayed inside an element with `data-testid="api-base-value"`. The value
+comes from the `NEXT_PUBLIC_STABLEROUTE_API_BASE` environment variable, falling
+back to `http://localhost:3001` when the variable is unset. Trailing slashes are
+stripped before display.
+
+## Testing the settings page
+
+The test suite at `src/app/settings/page.test.tsx` covers:
+
+- Theme button clicks write the correct value under `stableroute.theme`
+- Only `stableroute.theme` is written (no key pollution)
+- `aria-pressed` reflects the active selection
+- API base shows the default or the env-override URL
+- Trailing slashes are stripped from the displayed URL
+- `AppearancePreview` resolves to `"light"` or `"dark"` based on the selection
+- `AppearancePreview` resolves `"system"` via `matchMedia`
+- `AppearancePreview` reacts to cross-tab `storage` events
+- Unknown/corrupt localStorage values fall back gracefully to `"system"`
+- The page renders without crashing when localStorage is unavailable
+
+Run the settings tests in isolation:
+
+```bash
+npx jest src/app/settings/page.test.tsx --verbose
+```
