@@ -1,13 +1,18 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Button } from "@/components/Button";
-import { EmptyState } from "@/components/EmptyState";
-import { TimeAgo } from "@/components/TimeAgo";
-import { useToast } from "@/components/ToastProvider";
-import { apiGet } from "@/lib/apiClient";
-import { writeToClipboard } from "@/lib/clipboard";
-import { parseEventsResponse, type DisplayEvent } from "@/lib/events";
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Button } from '@/components/Button';
+import { EmptyState } from '@/components/EmptyState';
+import { TimeAgo } from '@/components/TimeAgo';
+import { useToast } from '@/components/ToastProvider';
+import { apiGet } from '@/lib/apiClient';
+import { writeToClipboard } from '@/lib/clipboard';
+import {
+  buildEventsCsv,
+  downloadCsv,
+  parseEventsResponse,
+  type DisplayEvent,
+} from '@/lib/events';
 
 const REFRESH_MS = 10_000;
 const COLLAPSE_THRESHOLD = 400;
@@ -48,6 +53,19 @@ export default function EventsClient() {
     if (!needle) return items;
     return items.filter((event) => event.type.toLowerCase().includes(needle));
   }, [items, typeFilter]);
+
+  const load = useCallback(() => {
+    return apiGet<unknown>('/api/v1/events?limit=100')
+      .then((body) => {
+        const parsed = parseEventsResponse(body);
+        setItems(parsed.events);
+        setTotalValid(parsed.totalValid);
+        setCapped(parsed.capped);
+        setLastUpdatedAt(Date.now());
+        setError(null);
+      })
+      .catch((err) => setError((err as Error).message));
+  }, []);
 
   useEffect(() => {
     if (response !== null) setLastUpdatedAt(Date.now());
@@ -102,6 +120,13 @@ export default function EventsClient() {
     [push]
   );
 
+  const handleExportCsv = useCallback(() => {
+    if (!filteredItems || filteredItems.length === 0) return;
+    const csv = buildEventsCsv(filteredItems);
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    downloadCsv(csv, `events-${timestamp}.csv`);
+  }, [filteredItems]);
+
   return (
     <main
       id="main-content"
@@ -126,6 +151,14 @@ export default function EventsClient() {
           >
             {live ? 'Live on' : 'Live off'}
           </button>
+          <button
+            type="button"
+            onClick={handleExportCsv}
+            disabled={!filteredItems || filteredItems.length === 0}
+            className="rounded-full border border-neutral-300 px-4 py-1.5 text-sm disabled:opacity-40 dark:border-neutral-700"
+          >
+            Export CSV
+          </button>
         </div>
       </div>
       {lastUpdatedAt && (
@@ -142,9 +175,9 @@ export default function EventsClient() {
           className="rounded-md border border-neutral-300 px-3 py-2 dark:border-neutral-700 dark:bg-neutral-900"
         />
       </label>
-      {eventsApi.status === 'error' && (
+      {error && (
         <p role="alert" className="text-sm text-rose-600">
-          {eventsApi.error}
+          {error}
         </p>
       )}
       <section
@@ -225,7 +258,7 @@ export default function EventsClient() {
                         type="button"
                         variant="secondary"
                         onClick={() =>
-                          void handleCopyPayload(event.id, payloadJson)
+                          void handleCopyPayload(event.id, event.fullPayload)
                         }
                         className="px-3 py-1 text-[11px]"
                       >

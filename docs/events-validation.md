@@ -15,50 +15,44 @@ reaches React rendering.
 Malformed records are dropped. When the rendered list is capped, the events page
 shows a short note with the rendered count and total valid count.
 
-## Boundary behaviour
+## CSV Export
 
-The following boundaries are subtle enough that they are pinned by tests in
-[`src/lib/__tests__/eventsBoundaries.test.ts`](../src/lib/__tests__/eventsBoundaries.test.ts).
+The event log includes an **Export CSV** button that downloads the currently
+filtered rows as a `.csv` file. No additional network request is made — the CSV
+is built directly from the in-memory filtered list.
 
-### Payload preview truncation
+### Columns
 
-`MAX_PAYLOAD_PREVIEW_LENGTH` (4000) is an **inclusive** limit measured against
-the pretty-printed (2-space) JSON string:
+| Column    | Description                                         |
+|-----------|-----------------------------------------------------|
+| `id`      | Event identifier string                             |
+| `ts`      | Event timestamp as an ISO-8601 string               |
+| `type`    | Event type string (e.g. `pair.registered`)          |
+| `payload` | Full JSON payload (never truncated, RFC 4180 quoted)|
 
-| Serialised length | `payloadPreview` | `fullPayload` |
-| ----------------- | ---------------- | ------------- |
-| `< limit`         | untruncated      | identical to `payloadPreview` |
-| `== limit`        | untruncated      | identical to `payloadPreview` |
-| `> limit`         | first `limit` chars + `"\n… truncated"` | the complete, untruncated JSON |
+### Escaping
 
-`fullPayload` therefore only diverges from `payloadPreview` once the payload
-crosses the limit. Below and at the limit the two strings are the same
-reference-equal value, so a "show full" expander is only meaningful past the
-threshold.
+All cell values are escaped according to RFC 4180:
 
-### Non-serialisable payloads
+- Values containing a comma, double-quote, carriage return, or newline are
+  wrapped in double-quotes.
+- Embedded double-quote characters are doubled (`"` → `""`).
 
-- **Circular references** are replaced inline with the marker `"[Circular]"`.
-  The record is still rendered as a normal event — a cycle does not drop it.
-- **Serialisation that throws** (for example a `BigInt` value or a `toJSON`
-  getter that throws) yields the fallback string
-  `UNSERIALIZABLE_PAYLOAD_FALLBACK` (`"[Unserializable payload]"`) for both
-  `payloadPreview` and `fullPayload`, rather than throwing or dropping the row.
-- **Serialisation that produces a non-string** (for example a `toJSON` that
-  returns `undefined`) cannot be rendered, so the record is dropped and is not
-  counted in `totalValid`.
+The relevant helpers exported from `src/lib/events.ts` are:
 
-### Render cap
+- **`escapeCsvCell(value: string): string`** — escapes a single CSV cell value.
+- **`buildEventsCsv(events: DisplayEvent[]): string`** — converts a
+  `DisplayEvent[]` array to a UTF-8 CSV string with the header row.
+- **`downloadCsv(content: string, filename: string): void`** — creates a
+  temporary `Blob` object URL, triggers a browser download, and revokes the URL
+  after use to avoid memory leaks.
 
-`MAX_RENDERED_EVENTS` (200) caps the rendered list using a **strictly greater
-than** comparison:
+### Behaviour
 
-| Valid record count | `events.length` | `totalValid` | `capped` |
-| ------------------ | --------------- | ------------ | -------- |
-| `< max`            | all valid       | valid count  | `false`  |
-| `== max`           | `max`           | `max`        | `false`  |
-| `> max`            | `max` (sliced)  | valid count  | `true`   |
-
-`totalValid` always counts the valid records **before** the cap is applied, and
-never counts malformed records that were dropped during validation. This lets
-the UI show an accurate "showing 200 of N" note when the list is capped.
+- The button is **disabled** while events are loading or when the filtered list
+  is empty (including when a type filter matches no rows).
+- The button text is "Export CSV" — clear and concise for all users.
+- The filename is `events-<ISO-timestamp>.csv` (colons and periods replaced with
+  hyphens for cross-platform compatibility).
+- The export always uses the **full** payload (`fullPayload`), not the truncated
+  preview, so operators get complete data regardless of payload size.
