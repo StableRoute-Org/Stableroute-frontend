@@ -1,41 +1,46 @@
-"use client";
+'use client';
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from 'react';
+import type { FetchState } from './useApi';
 
-type UseListResult<T> = {
-  items: T[] | null;
-  error: string | null;
-  loading: boolean;
-  reload: () => Promise<void>;
-};
+export type UseListResult<T> = FetchState<T[], () => Promise<void>>;
 
-/** Shared load/reload list pattern for dashboard CRUD pages. */
+/** Shared load/refetch list pattern for dashboard CRUD pages. */
 export function useList<T>(loader: () => Promise<T[]>): UseListResult<T> {
-  const [items, setItems] = useState<T[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const cancelledRef = useRef(false);
+  const [state, setState] = useState<
+    | { status: 'loading' }
+    | { status: 'success'; data: T[] }
+    | { status: 'error'; error: string }
+  >({ status: 'loading' });
+  const mountedRef = useRef(true);
+  const requestIdRef = useRef(0);
 
-  const reload = useCallback(async () => {
-    cancelledRef.current = false;
-    setLoading(true);
-    setError(null);
+  const refetch = useCallback(async () => {
+    const requestId = ++requestIdRef.current;
+    setState({ status: 'loading' });
     try {
-      const next = await loader();
-      if (!cancelledRef.current) setItems(next);
+      const data = await loader();
+      if (mountedRef.current && requestId === requestIdRef.current) {
+        setState({ status: 'success', data });
+      }
     } catch (err) {
-      if (!cancelledRef.current) setError((err as Error).message);
-    } finally {
-      if (!cancelledRef.current) setLoading(false);
+      if (mountedRef.current && requestId === requestIdRef.current) {
+        setState({
+          status: 'error',
+          error: (err as Error).message ?? 'failed to load',
+        });
+      }
     }
   }, [loader]);
 
   useEffect(() => {
-    void reload();
+    mountedRef.current = true;
+    void refetch();
     return () => {
-      cancelledRef.current = true;
+      mountedRef.current = false;
+      requestIdRef.current += 1;
     };
-  }, [reload]);
+  }, [refetch]);
 
-  return { items, error, loading, reload };
+  return { ...state, refetch };
 }

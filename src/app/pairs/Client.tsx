@@ -1,14 +1,14 @@
-"use client";
+'use client';
 
-import { useMemo, useState } from "react";
-import Link from "next/link";
-import { Badge } from "@/components/Badge";
-import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { EmptyState } from "@/components/EmptyState";
-import { PageHeading } from "@/components/PageHeading";
-import { Spinner } from "@/components/Spinner";
-import { apiDelete } from "@/lib/apiClient";
-import { useApi } from "@/lib/useApi";
+import { useMemo, useState } from 'react';
+import Link from 'next/link';
+import { Badge } from '@/components/Badge';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { EmptyState } from '@/components/EmptyState';
+import { PageHeading } from '@/components/PageHeading';
+import { Spinner } from '@/components/Spinner';
+import { apiDelete } from '@/lib/apiClient';
+import { useApi } from '@/lib/useApi';
 
 type Pair = { source: string; destination: string };
 
@@ -35,18 +35,18 @@ function groupBySource(pairs: Pair[]): [string, string[]][] {
   }
   return [...map.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([source, destinations]) => [source, destinations.sort((a, b) => a.localeCompare(b))]);
+    .map(([source, destinations]) => [
+      source,
+      destinations.sort((a, b) => a.localeCompare(b)),
+    ]);
 }
 
 export default function PairsClient() {
-  const result = useApi<{ pairs: Pair[] }>("/api/v1/pairs");
-  const { status, refetch } = result;
-  const data = result.status === "ok" ? result.data : null;
-  const error = result.status === "error" ? result.error : null;
-  const [query, setQuery] = useState("");
+  const api = useApi<{ pairs: Pair[] }>('/api/v1/pairs');
+  const [query, setQuery] = useState('');
   const [pendingDelete, setPendingDelete] = useState<Pair | null>(null);
 
-  const pairs = status === "ok" && data ? data.pairs : null;
+  const pairs = api.status === 'success' ? api.data.pairs : null;
   const filtered = useMemo(() => {
     if (!pairs) return null;
     const needle = query.trim().toLowerCase();
@@ -54,24 +54,33 @@ export default function PairsClient() {
     return pairs.filter(
       (pair) =>
         pair.source.toLowerCase().includes(needle) ||
-        pair.destination.toLowerCase().includes(needle),
+        pair.destination.toLowerCase().includes(needle)
     );
   }, [pairs, query]);
 
   return (
-    <main id="main-content" tabIndex={-1} className="mx-auto flex min-h-[60vh] max-w-3xl flex-col gap-6 p-8">
+    <main
+      id="main-content"
+      tabIndex={-1}
+      className="mx-auto flex min-h-[60vh] max-w-3xl flex-col gap-6 p-8"
+    >
       <PageHeading
         title={
           <span className="flex items-center gap-2">
             Pairs
             {pairs !== null && (
-              <Badge variant="neutral">{pairs.length} pair{pairs.length !== 1 ? "s" : ""}</Badge>
+              <Badge variant="neutral">
+                {pairs.length} pair{pairs.length !== 1 ? 's' : ''}
+              </Badge>
             )}
           </span>
         }
         description="Registered routing pairs for the StableRoute router."
         action={
-          <Link href="/pairs/new" className="rounded-full bg-black px-4 py-2 text-sm font-medium text-white">
+          <Link
+            href="/pairs/new"
+            className="rounded-full bg-black px-4 py-2 text-sm font-medium text-white"
+          >
             New pair
           </Link>
         }
@@ -85,32 +94,47 @@ export default function PairsClient() {
           className="rounded-md border border-neutral-300 px-3 py-2 dark:border-neutral-700 dark:bg-neutral-900"
         />
       </label>
-      {api.status === "error" && (
+      {api.status === 'error' && (
         <p role="alert" className="text-sm text-rose-600">
           {api.error}
         </p>
       )}
-      <section aria-live="polite" aria-busy={api.status === "loading"} className="contents">
-        {api.status === "loading" && (
+      <section
+        aria-live="polite"
+        aria-busy={api.status === 'loading'}
+        className="contents"
+      >
+        {api.status === 'loading' && (
           <div className="flex items-center gap-2 text-sm text-neutral-600">
             <Spinner label="Loading pairs" />
             Loading…
           </div>
         )}
         {filtered && filtered.length === 0 && pairs && pairs.length === 0 && (
-          <EmptyState title="No pairs registered yet" description="Create your first source→destination routing pair." />
+          <EmptyState
+            title="No pairs registered yet"
+            description="Create your first source→destination routing pair."
+          />
         )}
         {filtered && filtered.length === 0 && pairs && pairs.length > 0 && (
-          <EmptyState title="No pairs found" description="Try a different filter or register a new pair." />
+          <EmptyState
+            title="No pairs found"
+            description="Try a different filter or register a new pair."
+          />
         )}
         {filtered && filtered.length > 0 && (
           <div className="flex flex-col gap-6">
             {groupBySource(filtered).map(([source, destinations]) => (
               <section key={source}>
-                <h2 className="mb-2 text-lg font-semibold tracking-tight">{source}</h2>
+                <h2 className="mb-2 text-lg font-semibold tracking-tight">
+                  {source}
+                </h2>
                 <ul className="divide-y divide-neutral-200 rounded-lg border border-neutral-200 dark:divide-neutral-800 dark:border-neutral-800">
                   {destinations.map((dest) => (
-                    <li key={`${source}::${dest}`} className="flex items-center justify-between gap-3 px-4 py-3">
+                    <li
+                      key={`${source}::${dest}`}
+                      className="flex items-center justify-between gap-3 px-4 py-3"
+                    >
                       <span className="font-mono text-sm">{dest}</span>
                       <div className="flex gap-2">
                         <Link
@@ -121,7 +145,9 @@ export default function PairsClient() {
                         </Link>
                         <button
                           type="button"
-                          onClick={() => setPendingDelete({ source, destination: dest })}
+                          onClick={() =>
+                            setPendingDelete({ source, destination: dest })
+                          }
                           className="rounded border px-3 py-1 text-xs"
                         >
                           Delete
@@ -145,7 +171,7 @@ export default function PairsClient() {
           const target = pendingDelete;
           setPendingDelete(null);
           void apiDelete(
-            `/api/v1/pairs/${encodeURIComponent(target.source)}/${encodeURIComponent(target.destination)}`,
+            `/api/v1/pairs/${encodeURIComponent(target.source)}/${encodeURIComponent(target.destination)}`
           ).then(() => api.refetch());
         }}
         onCancel={() => setPendingDelete(null)}

@@ -1,15 +1,13 @@
-"use client";
+'use client';
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Button } from "@/components/Button";
-import { EmptyState } from "@/components/EmptyState";
-import { Button } from "@/components/Button";
-import { TimeAgo } from "@/components/TimeAgo";
-import { useToast } from "@/components/ToastProvider";
-import { apiGet } from "@/lib/apiClient";
-import { writeToClipboard } from "@/lib/clipboard";
-import { parseEventsResponse, type DisplayEvent } from "@/lib/events";
-import { Button } from "@/components/Button";
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Button } from '@/components/Button';
+import { EmptyState } from '@/components/EmptyState';
+import { TimeAgo } from '@/components/TimeAgo';
+import { useToast } from '@/components/ToastProvider';
+import { writeToClipboard } from '@/lib/clipboard';
+import { parseEventsResponse, type DisplayEvent } from '@/lib/events';
+import { useApi } from '@/lib/useApi';
 
 const REFRESH_MS = 10_000;
 const COLLAPSE_THRESHOLD = 400;
@@ -24,18 +22,25 @@ function shouldStartCollapsed(payloadJson: string) {
 
 export default function EventsClient() {
   const { push } = useToast();
-  const [items, setItems] = useState<DisplayEvent[] | null>(null);
-  const [totalValid, setTotalValid] = useState(0);
-  const [capped, setCapped] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const eventsApi = useApi<unknown>('/api/v1/events?limit=100');
   const [live, setLive] = useState(false);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null);
   const [isVisible, setIsVisible] = useState(
-    () => typeof document === "undefined" || document.visibilityState === "visible",
+    () =>
+      typeof document === 'undefined' || document.visibilityState === 'visible'
   );
-  const [typeFilter, setTypeFilter] = useState("");
+  const [typeFilter, setTypeFilter] = useState('');
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [showFull, setShowFull] = useState<Record<string, boolean>>({});
+  const refetchEvents = eventsApi.refetch;
+  const response = eventsApi.status === 'success' ? eventsApi.data : null;
+  const parsed = useMemo(
+    () => (response === null ? null : parseEventsResponse(response)),
+    [response]
+  );
+  const items: DisplayEvent[] | null = parsed?.events ?? null;
+  const totalValid = parsed?.totalValid ?? 0;
+  const capped = parsed?.capped ?? false;
 
   const filteredItems = useMemo(() => {
     if (!items) return null;
@@ -44,31 +49,18 @@ export default function EventsClient() {
     return items.filter((event) => event.type.toLowerCase().includes(needle));
   }, [items, typeFilter]);
 
-  const load = useCallback(() => {
-    return apiGet<unknown>("/api/v1/events?limit=100")
-      .then((body) => {
-        const parsed = parseEventsResponse(body);
-        setItems(parsed.events);
-        setTotalValid(parsed.totalValid);
-        setCapped(parsed.capped);
-        setLastUpdatedAt(Date.now());
-        setError(null);
-      })
-      .catch((err) => setError((err as Error).message));
-  }, []);
-
   useEffect(() => {
-    void load();
-  }, [load]);
+    if (response !== null) setLastUpdatedAt(Date.now());
+  }, [response]);
 
   useEffect(() => {
     const handleVisibilityChange = () => {
-      setIsVisible(document.visibilityState === "visible");
+      setIsVisible(document.visibilityState === 'visible');
     };
 
-    document.addEventListener("visibilitychange", handleVisibilityChange);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => {
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, []);
 
@@ -79,18 +71,18 @@ export default function EventsClient() {
    */
   useEffect(() => {
     if (!live || !isVisible) return;
-    void load();
+    refetchEvents();
     const timer = setInterval(() => {
-      void load();
+      refetchEvents();
     }, REFRESH_MS);
     return () => {
       clearInterval(timer);
     };
-  }, [isVisible, live, load]);
+  }, [isVisible, live, refetchEvents]);
 
   const resultLabel = useMemo(() => {
-    if (!items) return "";
-    if (items.length === 0) return "0 events";
+    if (!items) return '';
+    if (items.length === 0) return '0 events';
     return capped
       ? `Showing ${items.length} of ${totalValid} events (capped).`
       : `${items.length} events`;
@@ -102,9 +94,12 @@ export default function EventsClient() {
       if (result.ok) return;
       // Reveal the payload so the user can select and copy it manually.
       setExpanded((current) => ({ ...current, [eventId]: true }));
-      push("Couldn't copy automatically. Select the payload below to copy it.", "error");
+      push(
+        "Couldn't copy automatically. Select the payload below to copy it.",
+        'error'
+      );
     },
-    [push],
+    [push]
   );
 
   return (
@@ -118,7 +113,7 @@ export default function EventsClient() {
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => void load()}
+            onClick={refetchEvents}
             className="rounded-full border border-neutral-300 px-4 py-1.5 text-sm dark:border-neutral-700"
           >
             Refresh now
@@ -129,7 +124,7 @@ export default function EventsClient() {
             onClick={() => setLive((value) => !value)}
             className="rounded-full border border-neutral-300 px-4 py-1.5 text-sm dark:border-neutral-700"
           >
-            {live ? "Live on" : "Live off"}
+            {live ? 'Live on' : 'Live off'}
           </button>
         </div>
       </div>
@@ -147,7 +142,11 @@ export default function EventsClient() {
           className="rounded-md border border-neutral-300 px-3 py-2 dark:border-neutral-700 dark:bg-neutral-900"
         />
       </label>
-      {error && <p role="alert" className="text-sm text-rose-600">{error}</p>}
+      {eventsApi.status === 'error' && (
+        <p role="alert" className="text-sm text-rose-600">
+          {eventsApi.error}
+        </p>
+      )}
       <section
         aria-labelledby="events-log-heading"
         aria-live="polite"
@@ -157,7 +156,9 @@ export default function EventsClient() {
         <h2 id="events-log-heading" className="sr-only">
           Event log entries
         </h2>
-        {!items && !error && <p>Loading…</p>}
+        {(eventsApi.status === 'idle' || eventsApi.status === 'loading') && (
+          <p>Loading…</p>
+        )}
         {items && items.length === 0 && (
           <EmptyState
             title="No events yet"
@@ -166,13 +167,17 @@ export default function EventsClient() {
         )}
         {filteredItems && filteredItems.length > 0 && (
           <>
-            <p className="text-sm text-neutral-600 dark:text-neutral-400">{resultLabel}</p>
+            <p className="text-sm text-neutral-600 dark:text-neutral-400">
+              {resultLabel}
+            </p>
             <ol className="flex flex-col gap-2">
               {filteredItems.map((event) => {
-                const isPayloadTruncated = event.payloadPreview !== event.fullPayload;
-                const payloadJson = isPayloadTruncated && showFull[event.id]
-                  ? event.fullPayload
-                  : event.payloadPreview;
+                const isPayloadTruncated =
+                  event.payloadPreview !== event.fullPayload;
+                const payloadJson =
+                  isPayloadTruncated && showFull[event.id]
+                    ? event.fullPayload
+                    : event.payloadPreview;
                 const defaultOpen = !shouldStartCollapsed(event.payloadPreview);
                 const isOpen = expanded[event.id] ?? defaultOpen;
                 const controlsId = `event-payload-${event.id}`;
@@ -199,7 +204,7 @@ export default function EventsClient() {
                         }
                         className="px-3 py-1 text-[11px]"
                       >
-                        {isOpen ? "Collapse" : "Expand"}
+                        {isOpen ? 'Collapse' : 'Expand'}
                       </Button>
                       {isPayloadTruncated && (
                         <Button
@@ -213,13 +218,15 @@ export default function EventsClient() {
                           }
                           className="px-3 py-1 text-[11px]"
                         >
-                          {showFull[event.id] ? "Show truncated" : "Show full"}
+                          {showFull[event.id] ? 'Show truncated' : 'Show full'}
                         </Button>
                       )}
                       <Button
                         type="button"
                         variant="secondary"
-                        onClick={() => void handleCopyPayload(event.id, payloadJson)}
+                        onClick={() =>
+                          void handleCopyPayload(event.id, payloadJson)
+                        }
                         className="px-3 py-1 text-[11px]"
                       >
                         Copy JSON
@@ -240,4 +247,3 @@ export default function EventsClient() {
     </main>
   );
 }
-
