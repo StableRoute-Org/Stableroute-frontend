@@ -17,14 +17,20 @@ import { metadata as webhooksMetadata } from './webhooks/page';
 import { metadata as notFoundMetadata } from './not-found';
 
 describe('Metadata and Document Semantics', () => {
+  beforeEach(() => {
+    Object.defineProperty(window, 'matchMedia', {
+      configurable: true,
+      writable: true,
+      value: jest.fn().mockReturnValue({ matches: false }),
+    });
+  });
+
   it('sets lang="en" and dir="ltr" on the html element', () => {
     const { container } = render(
       <RootLayout>
         <main id="main-content">Child page</main>
       </RootLayout>
     );
-
-    // Query within the rendered container to find the <html> tag from the component.
     const htmlElement = container.querySelector('html');
     expect(htmlElement).toHaveAttribute('lang', 'en');
     expect(htmlElement).toHaveAttribute('dir', 'ltr');
