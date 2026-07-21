@@ -1,5 +1,21 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import PairsPage from "./page";
+import { filterPairs, groupBySource } from "./pairsUtils";
+
+// SWC compiles named exports as non-configurable getters, so jest.spyOn()
+// can't redefine pairsUtils' exports directly ("Cannot redefine property").
+// Mocking the module with a factory that wraps the real implementations in
+// jest.fn() sidesteps that: every importer (including Client.tsx) gets the
+// same wrapped functions, which still delegate to the real logic but are
+// also trackable via .mock.calls.
+jest.mock("./pairsUtils", () => {
+  const actual = jest.requireActual("./pairsUtils");
+  return {
+    ...actual,
+    filterPairs: jest.fn(actual.filterPairs),
+    groupBySource: jest.fn(actual.groupBySource),
+  };
+});
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -8,6 +24,7 @@ import PairsPage from "./page";
 function mockFetch(pairs: { source: string; destination: string }[]) {
   global.fetch = jest.fn().mockResolvedValueOnce({
     ok: true,
+    status: 200,
     text: async () => JSON.stringify({ pairs }),
   } as unknown as Response);
 }
@@ -47,17 +64,11 @@ describe("PairsPage", () => {
   });
 
   it("shows count badge with total pairs", async () => {
-    global.fetch = jest.fn().mockResolvedValueOnce({
-      ok: true,
-      text: async () =>
-        JSON.stringify({
-          pairs: [
-            { source: "USDC", destination: "EURC" },
-            { source: "USDC", destination: "NGNC" },
-            { source: "BTC", destination: "USDC" },
-          ],
-        }),
-    } as unknown as Response);
+    mockFetch([
+      { source: "USDC", destination: "EURC" },
+      { source: "USDC", destination: "NGNC" },
+      { source: "BTC", destination: "USDC" },
+    ]);
 
     render(<PairsPage />);
     await waitFor(() => {
@@ -65,9 +76,19 @@ describe("PairsPage", () => {
     });
   });
 
+  it("renders pairs in a single polite live region", async () => {
+    mockFetch([{ source: "USDC", destination: "EURC" }]);
+    render(<PairsPage />);
+    await waitFor(() => {
+      expect(screen.getByText("1 pair")).toBeInTheDocument();
+    });
+    expect(document.querySelectorAll("[aria-live=polite]")).toHaveLength(1);
+  });
+
   it("uses singular 'pair' when count is 1", async () => {
     global.fetch = jest.fn().mockResolvedValueOnce({
       ok: true,
+      status: 200,
       text: async () =>
         JSON.stringify({
           pairs: [{ source: "USDC", destination: "EURC" }],
@@ -83,6 +104,7 @@ describe("PairsPage", () => {
   it("groups pairs by source with sorted headings and destinations", async () => {
     global.fetch = jest.fn().mockResolvedValueOnce({
       ok: true,
+      status: 200,
       text: async () =>
         JSON.stringify({
           pairs: [
@@ -125,6 +147,7 @@ describe("PairsPage", () => {
   it("shows single source with multiple destinations without repeating the source", async () => {
     global.fetch = jest.fn().mockResolvedValueOnce({
       ok: true,
+      status: 200,
       text: async () =>
         JSON.stringify({
           pairs: [
@@ -159,12 +182,13 @@ describe("PairsPage", () => {
   it("announces empty state 'No pairs registered yet' when zero pairs", async () => {
     global.fetch = jest.fn().mockResolvedValueOnce({
       ok: true,
+      status: 200,
       text: async () => JSON.stringify({ pairs: [] }),
     } as unknown as Response);
 
     render(<PairsPage />);
     await waitFor(() => {
-      expect(screen.getByText(/No pairs registered yet/i)).toBeInTheDocument();
+      expect(screen.getByText("No pairs registered yet")).toBeInTheDocument();
     });
     expect(document.querySelector("[aria-live=polite]")).toHaveAttribute("aria-busy", "false");
   });
@@ -172,6 +196,7 @@ describe("PairsPage", () => {
   it("shows 'No pairs found' when filter matches nothing with existing pairs", async () => {
     global.fetch = jest.fn().mockResolvedValueOnce({
       ok: true,
+      status: 200,
       text: async () =>
         JSON.stringify({
           pairs: [{ source: "USDC", destination: "EURC" }],
@@ -214,7 +239,7 @@ describe("PairsPage", () => {
   });
 
   it("does not show count badge while loading", () => {
-    global.fetch = jest.fn(() => new Promise(() => {})) as unknown as typeof global.fetch;
+    mockFetchPending();
     render(<PairsPage />);
 
     // During loading, badge text like "3 pairs" or "1 pair" must not be present.
@@ -225,6 +250,7 @@ describe("PairsPage", () => {
   it("preserves quote and delete links with correct URLs in grouped view", async () => {
     global.fetch = jest.fn().mockResolvedValueOnce({
       ok: true,
+      status: 200,
       text: async () =>
         JSON.stringify({
           pairs: [{ source: "USDC", destination: "EURC" }],
@@ -241,5 +267,165 @@ describe("PairsPage", () => {
       "href",
       "/quote?source=USDC&dest=EURC",
     );
+  });
+
+  // -------------------------------------------------------------------------
+  // Memoized filtering / grouping (issue: avoid recomputing on every render)
+  // -------------------------------------------------------------------------
+
+  describe("memoized filtering and grouping", () => {
+    // filterPairs/groupBySource are jest.fn() wrappers (see the jest.mock
+    // factory above) around the real implementations, shared with whatever
+    // Client.tsx imports. mockClear (not mockReset) resets call counts
+    // between tests without discarding the wrapped real implementation.
+    const filterSpy = filterPairs as jest.Mock;
+    const groupSpy = groupBySource as jest.Mock;
+
+    beforeEach(() => {
+      filterSpy.mockClear();
+      groupSpy.mockClear();
+    });
+
+    it("does not refilter or regroup when opening/cancelling the delete dialog", async () => {
+      global.fetch = jest.fn().mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        text: async () =>
+          JSON.stringify({
+            pairs: [
+              { source: "USDC", destination: "EURC" },
+              { source: "BTC", destination: "USDC" },
+            ],
+          }),
+      } as unknown as Response);
+
+      render(<PairsPage />);
+      await waitFor(() => {
+        expect(screen.getByText("2 pairs")).toBeInTheDocument();
+      });
+
+      const filterCallsAfterLoad = filterSpy.mock.calls.length;
+      const groupCallsAfterLoad = groupSpy.mock.calls.length;
+
+      // Opening the delete dialog changes `pendingDelete`, an unrelated
+      // piece of state — it must not trigger a refilter/regroup.
+      fireEvent.click(screen.getAllByText("Delete")[0]);
+      const dialog = document.querySelector('[role="dialog"]');
+      expect(dialog).not.toBeNull();
+
+      expect(filterSpy.mock.calls.length).toBe(filterCallsAfterLoad);
+      expect(groupSpy.mock.calls.length).toBe(groupCallsAfterLoad);
+
+      // Cancelling closes the dialog — another unrelated re-render.
+      const cancelButton = Array.from(dialog!.querySelectorAll("button")).find(
+        (btn) => btn.textContent === "Cancel",
+      )!;
+      fireEvent.click(cancelButton);
+      await waitFor(() => {
+        expect(document.querySelector('[role="dialog"]')).toBeNull();
+      });
+
+      expect(filterSpy.mock.calls.length).toBe(filterCallsAfterLoad);
+      expect(groupSpy.mock.calls.length).toBe(groupCallsAfterLoad);
+    });
+
+    it("does refilter and regroup when the query changes", async () => {
+      global.fetch = jest.fn().mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        text: async () =>
+          JSON.stringify({
+            pairs: [
+              { source: "USDC", destination: "EURC" },
+              { source: "BTC", destination: "USDC" },
+            ],
+          }),
+      } as unknown as Response);
+
+      render(<PairsPage />);
+      await waitFor(() => {
+        expect(screen.getByText("2 pairs")).toBeInTheDocument();
+      });
+
+      const filterCallsAfterLoad = filterSpy.mock.calls.length;
+      const groupCallsAfterLoad = groupSpy.mock.calls.length;
+
+      const input = screen.getByPlaceholderText("Search by asset code");
+      fireEvent.change(input, { target: { value: "BTC" } });
+
+      await waitFor(() => {
+        expect(screen.queryByText("EURC")).not.toBeInTheDocument();
+      });
+
+      expect(filterSpy.mock.calls.length).toBeGreaterThan(filterCallsAfterLoad);
+      expect(groupSpy.mock.calls.length).toBeGreaterThan(groupCallsAfterLoad);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Delete flow (regression coverage for the previously-undefined `api`
+  // reference, which threw on every render before this component ever
+  // reached the confirm/cancel/refetch logic below)
+  // -------------------------------------------------------------------------
+
+  describe("delete flow", () => {
+    it("does not call the API when the delete confirmation is cancelled", async () => {
+      mockFetch([{ source: "USDC", destination: "EURC" }]);
+      render(<PairsPage />);
+      await waitFor(() => {
+        expect(screen.getByText("1 pair")).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByText("Delete"));
+      const dialog = await screen.findByRole("dialog");
+
+      const fetchCallsBeforeCancel = (global.fetch as jest.Mock).mock.calls.length;
+      fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+
+      await waitFor(() => {
+        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      });
+      expect((global.fetch as jest.Mock).mock.calls.length).toBe(fetchCallsBeforeCancel);
+      expect(screen.getByText("EURC")).toBeInTheDocument();
+    });
+
+    it("calls apiDelete and refetches after confirming", async () => {
+      global.fetch = jest
+        .fn()
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          text: async () =>
+            JSON.stringify({ pairs: [{ source: "USDC", destination: "EURC" }] }),
+        } as unknown as Response)
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 204,
+          text: async () => "",
+        } as unknown as Response)
+        .mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          text: async () => JSON.stringify({ pairs: [] }),
+        } as unknown as Response);
+
+      render(<PairsPage />);
+      await waitFor(() => {
+        expect(screen.getByText("1 pair")).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByText("Delete"));
+      const dialog = await screen.findByRole("dialog");
+      fireEvent.click(within(dialog).getByRole("button", { name: "Delete" }));
+
+      await waitFor(() => {
+        expect(screen.getByText("No pairs registered yet")).toBeInTheDocument();
+      });
+
+      const calls = (global.fetch as jest.Mock).mock.calls;
+      expect(calls).toHaveLength(3);
+      expect(String(calls[1][1]?.method)).toBe("DELETE");
+      expect(String(calls[1][0])).toContain("/api/v1/pairs/USDC/EURC");
+    });
   });
 });

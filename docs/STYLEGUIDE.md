@@ -229,3 +229,20 @@ function SortHeader({ label, sortKey, activeSortKey, sortDir, onSort }) {
 - [`README.md`](../README.md) — overview, routes, scripts.
 - [`docs/theme-storage.md`](./theme-storage.md) — light/dark toggle and the
   `localStorage` contract that backs it.
+
+
+## IconButton accessible-label contract
+
+`IconButton` is icon-only, so it requires a `label: string` prop, which is
+applied as `aria-label` on the rendered `<button>`. This is not optional —
+there is no visible text fallback.
+
+- **Accessible name**: always sourced from `label`, never inferred from
+  `children` (icons are typically `aria-hidden`).
+- **Disabled**: pass the native `disabled` prop. Disabled buttons remain
+  discoverable by role/name for assistive tech, but the browser blocks the
+  click event, so `onClick` will not fire.
+- **Busy**: there is no dedicated `busy` prop. Pass `aria-busy="true"`
+  directly — it's forwarded like any other HTML/ARIA attribute via
+  `ButtonHTMLAttributes`.
+- Coverage: see `src/components/__tests__/IconButton.test.tsx`.
