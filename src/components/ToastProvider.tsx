@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import {
   createContext,
@@ -8,9 +8,9 @@ import {
   useRef,
   useState,
   type ReactNode,
-} from "react";
+} from 'react';
 
-type ToastLevel = "info" | "error";
+type ToastLevel = 'info' | 'error';
 
 export type ToastPushOptions = {
   durationMs?: number;
@@ -20,7 +20,11 @@ export type ToastPushOptions = {
 type Toast = { id: string; message: string; level: ToastLevel };
 
 type Ctx = {
-  push: (message: string, level?: ToastLevel, options?: ToastPushOptions) => void;
+  push: (
+    message: string,
+    level?: ToastLevel,
+    options?: ToastPushOptions
+  ) => void;
 };
 
 const DEFAULT_DURATION_MS = 4000;
@@ -30,7 +34,9 @@ const ToastCtx = createContext<Ctx | null>(null);
 export function ToastProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<Toast[]>([]);
   const itemsRef = useRef(items);
-  const timersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+  const timersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(
+    new Map()
+  );
 
   useEffect(() => {
     itemsRef.current = items;
@@ -49,11 +55,15 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       clearTimer(id);
       setItems((current) => current.filter((toast) => toast.id !== id));
     },
-    [clearTimer],
+    [clearTimer]
   );
 
   const push = useCallback(
-    (message: string, level: ToastLevel = "info", options?: ToastPushOptions) => {
+    (
+      message: string,
+      level: ToastLevel = 'info',
+      options?: ToastPushOptions
+    ) => {
       if (itemsRef.current.some((toast) => toast.message === message)) {
         return;
       }
@@ -73,10 +83,13 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
       if (!options?.sticky) {
         const durationMs = options?.durationMs ?? DEFAULT_DURATION_MS;
-        timersRef.current.set(id, setTimeout(() => dismiss(id), durationMs));
+        timersRef.current.set(
+          id,
+          setTimeout(() => dismiss(id), durationMs)
+        );
       }
     },
-    [clearTimer, dismiss],
+    [clearTimer, dismiss]
   );
 
   useEffect(() => {
@@ -102,11 +115,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
         {items.map((toast) => (
           <div
             key={toast.id}
-            role={toast.level === "error" ? "alert" : "status"}
+            role={toast.level === 'error' ? 'alert' : 'status'}
             className={`pointer-events-auto flex items-start gap-2 rounded-md px-4 py-2 text-sm shadow-lg ${
-              toast.level === "error"
-                ? "bg-rose-600 text-white"
-                : "bg-black text-white dark:bg-white dark:text-black"
+              toast.level === 'error'
+                ? 'bg-rose-600 text-white'
+                : 'bg-black text-white dark:bg-white dark:text-black'
             }`}
           >
             <span className="flex-1">{toast.message}</span>
@@ -127,6 +140,6 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 
 export function useToast() {
   const ctx = useContext(ToastCtx);
-  if (!ctx) throw new Error("useToast must be used inside <ToastProvider>");
+  if (!ctx) throw new Error('useToast must be used inside <ToastProvider>');
   return ctx;
 }

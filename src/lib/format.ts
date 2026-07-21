@@ -1,14 +1,14 @@
 /** Format a stroops amount as a human XLM number (1 XLM = 1e7 stroops). */
 export function formatStroops(stroops: number): string {
   const xlm = stroops / 1e7;
-  if (xlm === 0) return "0 XLM";
+  if (xlm === 0) return '0 XLM';
   if (xlm < 0.01) return `${stroops} stroops`;
   return `${xlm.toFixed(2)} XLM`;
 }
 
 /** Format a numeric count with thousands separators. */
 export function formatNumber(n: number): string {
-  return n.toLocaleString("en-US");
+  return n.toLocaleString('en-US');
 }
 
 /** Human-readable quote amount with the raw base-unit string preserved for operators. */
@@ -34,7 +34,7 @@ export function formatQuoteRateDisplay(rate: string): {
   }
   const display = Number.isInteger(parsed)
     ? formatNumber(parsed)
-    : parsed.toLocaleString("en-US", { maximumFractionDigits: 6 });
+    : parsed.toLocaleString('en-US', { maximumFractionDigits: 6 });
   return { display, title: rate };
 }
 
@@ -45,8 +45,8 @@ export function formatTime(ms: number): string {
 
 /** Format a timestamp for absolute display (locale-aware date + time). */
 export function formatTimestamp(ms: number): string {
-  return new Date(ms).toLocaleString("en-US", {
-    dateStyle: "medium",
-    timeStyle: "short",
+  return new Date(ms).toLocaleString('en-US', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
   });
 }

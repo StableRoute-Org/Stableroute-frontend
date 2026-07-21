@@ -1,65 +1,65 @@
-export type RouteGroup = "Routing" | "Operations" | "Reference";
+export type RouteGroup = 'Routing' | 'Operations' | 'Reference';
 
 export const ROUTES = {
   home: {
-    href: "/",
-    title: "Home",
-    description: "StableRoute dashboard landing page.",
-    group: "Routing",
+    href: '/',
+    title: 'Home',
+    description: 'StableRoute dashboard landing page.',
+    group: 'Routing',
   },
   pairs: {
-    href: "/pairs",
-    title: "Pairs",
-    description: "Manage registered routing pairs.",
-    group: "Routing",
+    href: '/pairs',
+    title: 'Pairs',
+    description: 'Manage registered routing pairs.',
+    group: 'Routing',
   },
   quote: {
-    href: "/quote",
-    title: "Quote",
-    description: "Request routing quotes.",
-    group: "Routing",
+    href: '/quote',
+    title: 'Quote',
+    description: 'Request routing quotes.',
+    group: 'Routing',
   },
   stats: {
-    href: "/stats",
-    title: "Stats",
-    description: "View router metrics.",
-    group: "Routing",
+    href: '/stats',
+    title: 'Stats',
+    description: 'View router metrics.',
+    group: 'Routing',
   },
   admin: {
-    href: "/admin",
-    title: "Admin",
-    description: "Pause or resume the router.",
-    group: "Operations",
+    href: '/admin',
+    title: 'Admin',
+    description: 'Pause or resume the router.',
+    group: 'Operations',
   },
   events: {
-    href: "/events",
-    title: "Events",
-    description: "Inspect router event log.",
-    group: "Operations",
+    href: '/events',
+    title: 'Events',
+    description: 'Inspect router event log.',
+    group: 'Operations',
   },
   webhooks: {
-    href: "/webhooks",
-    title: "Webhooks",
-    description: "Register webhook endpoints.",
-    group: "Operations",
+    href: '/webhooks',
+    title: 'Webhooks',
+    description: 'Register webhook endpoints.',
+    group: 'Operations',
   },
   apiKeys: {
-    href: "/api-keys",
-    title: "API keys",
-    description: "Manage operator API keys.",
-    group: "Operations",
+    href: '/api-keys',
+    title: 'API keys',
+    description: 'Manage operator API keys.',
+    group: 'Operations',
   },
   settings: {
-    href: "/settings",
-    title: "Settings",
-    description: "Appearance and API configuration.",
-    group: "Reference",
+    href: '/settings',
+    title: 'Settings',
+    description: 'Appearance and API configuration.',
+    group: 'Reference',
   },
   docs: {
-    href: "/docs",
-    title: "Docs",
-    description: "HTTP API reference.",
-    group: "Reference",
+    href: '/docs',
+    title: 'Docs',
+    description: 'HTTP API reference.',
+    group: 'Reference',
   },
 } as const satisfies Record<
   string,
@@ -74,7 +74,10 @@ export type RouteEntry = (typeof ROUTES)[keyof typeof ROUTES];
  * own declaration order, so Header/CommandPalette render sections in a
  * stable, predictable sequence without needing a separate ordering config.
  */
-export function getRoutesByGroup(): Array<{ group: RouteGroup; routes: RouteEntry[] }> {
+export function getRoutesByGroup(): Array<{
+  group: RouteGroup;
+  routes: RouteEntry[];
+}> {
   const groupOrder: RouteGroup[] = [];
   const byGroup = new Map<RouteGroup, RouteEntry[]>();
 

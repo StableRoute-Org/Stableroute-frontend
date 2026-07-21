@@ -1,11 +1,11 @@
-"use client";
+'use client';
 
-import { Card } from "@/components/Card";
-import { ThemeToggle } from "@/components/ThemeToggle";
-import { readTheme, effectiveTheme, type Theme } from "@/lib/theme";
-import { getApiBase } from "@/lib/config";
-import { useApi } from "@/lib/useApi";
-import { useEffect, useState } from "react";
+import { Card } from '@/components/Card';
+import { ThemeToggle } from '@/components/ThemeToggle';
+import { readTheme, effectiveTheme, type Theme } from '@/lib/theme';
+import { getApiBase } from '@/lib/config';
+import { useApi } from '@/lib/useApi';
+import { useEffect, useState } from 'react';
 
 function ApiBaseRow() {
   return (
@@ -23,22 +23,24 @@ function ApiBaseRow() {
 type RouterStatus = { paused: boolean };
 
 function RouterStatusRow() {
-  const status = useApi<RouterStatus>("/api/v1/admin/status");
+  const status = useApi<RouterStatus>('/api/v1/admin/status');
 
   return (
     <Card title="Router status">
       <div className="flex items-center justify-between gap-3">
-        {status.status === "loading" && (
-          <p className="text-sm text-neutral-600 dark:text-neutral-400">Loading…</p>
+        {status.status === 'loading' && (
+          <p className="text-sm text-neutral-600 dark:text-neutral-400">
+            Loading…
+          </p>
         )}
-        {status.status === "error" && (
+        {status.status === 'error' && (
           <p role="alert" className="text-sm text-rose-600">
             {status.error}
           </p>
         )}
-        {status.status === "ok" && (
+        {status.status === 'success' && (
           <p className="text-sm">
-            Router is <strong>{status.data.paused ? "Paused" : "Live"}</strong>
+            Router is <strong>{status.data.paused ? 'Paused' : 'Live'}</strong>
           </p>
         )}
         <button
@@ -54,20 +56,21 @@ function RouterStatusRow() {
 }
 
 function AppearancePreview() {
-  const [theme, setTheme] = useState<Theme>("system");
+  const [theme, setTheme] = useState<Theme>('system');
 
   useEffect(() => {
     setTheme(readTheme());
     const handler = () => setTheme(readTheme());
-    window.addEventListener("storage", handler);
-    return () => window.removeEventListener("storage", handler);
+    window.addEventListener('storage', handler);
+    return () => window.removeEventListener('storage', handler);
   }, []);
 
   const resolved = effectiveTheme(theme);
-  const bg = resolved === "dark" ? "bg-neutral-800" : "bg-white";
-  const text = resolved === "dark" ? "text-neutral-100" : "text-neutral-900";
-  const muted = resolved === "dark" ? "text-neutral-400" : "text-neutral-500";
-  const border = resolved === "dark" ? "border-neutral-700" : "border-neutral-200";
+  const bg = resolved === 'dark' ? 'bg-neutral-800' : 'bg-white';
+  const text = resolved === 'dark' ? 'text-neutral-100' : 'text-neutral-900';
+  const muted = resolved === 'dark' ? 'text-neutral-400' : 'text-neutral-500';
+  const border =
+    resolved === 'dark' ? 'border-neutral-700' : 'border-neutral-200';
 
   return (
     <Card title="Appearance Preview">

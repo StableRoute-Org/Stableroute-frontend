@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { useCallback, useEffect, useState } from "react";
-import { registerConnectionHandler } from "@/lib/apiClient";
+import { useCallback, useEffect, useState } from 'react';
+import { registerConnectionHandler } from '@/lib/apiClient';
 
 const CONSECUTIVE_FAILURE_THRESHOLD = 2;
 
@@ -29,19 +29,19 @@ export function ConnectionBanner() {
       setVisible(true);
     };
 
-    window.addEventListener("offline", handleOffline);
+    window.addEventListener('offline', handleOffline);
 
     const unregister = registerConnectionHandler({
       onError: handleError,
       onSuccess: handleSuccess,
     });
 
-    if (typeof navigator !== "undefined" && !navigator.onLine) {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
       setVisible(true);
     }
 
     return () => {
-      window.removeEventListener("offline", handleOffline);
+      window.removeEventListener('offline', handleOffline);
       unregister();
     };
   }, [handleError, handleSuccess]);

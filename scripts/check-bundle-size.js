@@ -7,7 +7,12 @@ function evaluateBudget(sizes, budget) {
     try {
       parsedBudget = JSON.parse(budget);
     } catch (e) {
-      return { failed: true, exitCode: 1, results: [], error: "Malformed budget file" };
+      return {
+        failed: true,
+        exitCode: 1,
+        results: [],
+        error: 'Malformed budget file',
+      };
     }
   }
 
@@ -21,10 +26,19 @@ function evaluateBudget(sizes, budget) {
 
   for (const { route, sizeInKb } of sizes) {
     if (route.startsWith('/api/')) continue;
-    const allowedLimit = parsedBudget.routes && parsedBudget.routes[route] ? parsedBudget.routes[route] : defaultMaxKb;
-    
+    const allowedLimit =
+      parsedBudget.routes && parsedBudget.routes[route]
+        ? parsedBudget.routes[route]
+        : defaultMaxKb;
+
     if (sizeInKb > allowedLimit) {
-      results.push({ route, passed: false, sizeInKb, allowedLimit, delta: sizeInKb - allowedLimit });
+      results.push({
+        route,
+        passed: false,
+        sizeInKb,
+        allowedLimit,
+        delta: sizeInKb - allowedLimit,
+      });
       failed = true;
     } else {
       results.push({ route, passed: true, sizeInKb, allowedLimit, delta: 0 });
@@ -46,7 +60,9 @@ function runCheck() {
 
   const logPath = path.resolve(__dirname, '../build-log.txt');
   if (!fs.existsSync(logPath)) {
-    console.error("No build-log.txt found. Ensure you run 'npm run build > build-log.txt 2>&1' first.");
+    console.error(
+      "No build-log.txt found. Ensure you run 'npm run build > build-log.txt 2>&1' first."
+    );
     process.exit(1);
   }
 
@@ -69,8 +85,11 @@ function runCheck() {
     sizes.push({ route, sizeInKb });
   }
 
-  const { failed, exitCode, results, error } = evaluateBudget(sizes, budgetContent);
-  
+  const { failed, exitCode, results, error } = evaluateBudget(
+    sizes,
+    budgetContent
+  );
+
   if (error) {
     console.error(`\u274C Bundle size check failed: ${error}`);
     process.exit(exitCode);
@@ -78,16 +97,22 @@ function runCheck() {
 
   for (const res of results) {
     if (!res.passed) {
-      console.error(`\u274C Bundle size exceeded for route '${res.route}': ${res.sizeInKb.toFixed(2)} kB (Limit: ${res.allowedLimit} kB) - Delta: +${res.delta.toFixed(2)} kB`);
+      console.error(
+        `\u274C Bundle size exceeded for route '${res.route}': ${res.sizeInKb.toFixed(2)} kB (Limit: ${res.allowedLimit} kB) - Delta: +${res.delta.toFixed(2)} kB`
+      );
     } else {
-      console.log(`\u2705 Route '${res.route}': ${res.sizeInKb.toFixed(2)} kB (Limit: ${res.allowedLimit} kB)`);
+      console.log(
+        `\u2705 Route '${res.route}': ${res.sizeInKb.toFixed(2)} kB (Limit: ${res.allowedLimit} kB)`
+      );
     }
   }
 
   if (failed) {
-    console.error("\nBundle size check failed! Please optimize your imports or increase the budget if intentional.");
+    console.error(
+      '\nBundle size check failed! Please optimize your imports or increase the budget if intentional.'
+    );
   } else {
-    console.log("\nBundle size check passed.");
+    console.log('\nBundle size check passed.');
   }
   process.exit(exitCode);
 }

@@ -11,8 +11,8 @@ rendering.
 
 ## Storage key
 
-| Key | Values | Default |
-|-----|--------|---------|
+| Key                 | Values                              | Default    |
+| ------------------- | ----------------------------------- | ---------- |
 | `stableroute.theme` | `"light"` \| `"dark"` \| `"system"` | `"system"` |
 
 ## How theme resolution works

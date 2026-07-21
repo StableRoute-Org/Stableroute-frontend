@@ -1,12 +1,13 @@
-import { type ReactNode } from "react";
+import { type ReactNode } from 'react';
 
-type Variant = "neutral" | "ok" | "warning" | "danger";
+type Variant = 'neutral' | 'ok' | 'warning' | 'danger';
 
 const variants: Record<Variant, string> = {
-  neutral: "bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300",
-  ok: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300",
-  warning: "bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300",
-  danger: "bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300",
+  neutral:
+    'bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300',
+  ok: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300',
+  warning: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300',
+  danger: 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300',
 };
 
 /**
@@ -19,15 +20,15 @@ const variants: Record<Variant, string> = {
  * through the badge label text by the consuming page.
  */
 const forcedColorsIcons: Record<Variant, string> = {
-  neutral: "",
-  ok: "✓ ",
-  warning: "⚠ ",
-  danger: "✕ ",
+  neutral: '',
+  ok: '✓ ',
+  warning: '⚠ ',
+  danger: '✕ ',
 };
 
 export function Badge({
   children,
-  variant = "neutral",
+  variant = 'neutral',
 }: {
   children: ReactNode;
   variant?: Variant;

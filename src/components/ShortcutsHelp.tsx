@@ -1,32 +1,33 @@
-"use client";
+'use client';
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from 'react';
 
 export const shortcuts = [
   {
-    keys: "?",
-    label: "Open shortcuts help",
-    description: "Show this reference from any StableRoute page.",
+    keys: '?',
+    label: 'Open shortcuts help',
+    description: 'Show this reference from any StableRoute page.',
   },
   {
-    keys: "Esc",
-    label: "Close overlays",
-    description: "Dismiss the shortcuts help and other modal-style surfaces.",
+    keys: 'Esc',
+    label: 'Close overlays',
+    description: 'Dismiss the shortcuts help and other modal-style surfaces.',
   },
   {
-    keys: "Tab / Shift+Tab",
-    label: "Move through navigation and controls",
-    description: "Reach the header links, page actions, forms, and footer links.",
+    keys: 'Tab / Shift+Tab',
+    label: 'Move through navigation and controls',
+    description:
+      'Reach the header links, page actions, forms, and footer links.',
   },
   {
-    keys: "Enter / Space",
-    label: "Activate the focused control",
-    description: "Open links, press buttons, and submit focused form actions.",
+    keys: 'Enter / Space',
+    label: 'Activate the focused control',
+    description: 'Open links, press buttons, and submit focused form actions.',
   },
   {
-    keys: "Ctrl+R / Cmd+R",
-    label: "Refresh route data",
-    description: "Reload the current page to request fresh backend state.",
+    keys: 'Ctrl+R / Cmd+R',
+    label: 'Refresh route data',
+    description: 'Reload the current page to request fresh backend state.',
   },
 ];
 
@@ -34,9 +35,9 @@ function isEditableTarget(target: EventTarget | null) {
   if (!(target instanceof HTMLElement)) return false;
   const tagName = target.tagName.toLowerCase();
   return (
-    tagName === "input" ||
-    tagName === "textarea" ||
-    tagName === "select" ||
+    tagName === 'input' ||
+    tagName === 'textarea' ||
+    tagName === 'select' ||
     target.isContentEditable ||
     Boolean(target.closest('[contenteditable="true"]'))
   );
@@ -50,20 +51,21 @@ export function ShortcutsHelp() {
     function onKeyDown(event: KeyboardEvent) {
       if (isEditableTarget(event.target)) return;
 
-      const wantsHelp = event.key === "?" || (event.key === "/" && event.shiftKey);
+      const wantsHelp =
+        event.key === '?' || (event.key === '/' && event.shiftKey);
       if (wantsHelp) {
         event.preventDefault();
         setOpen(true);
         return;
       }
 
-      if (event.key === "Escape") {
+      if (event.key === 'Escape') {
         setOpen(false);
       }
     }
 
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
 
   useEffect(() => {

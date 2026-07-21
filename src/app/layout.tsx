@@ -1,28 +1,30 @@
-import type { Metadata } from "next";
-import Script from "next/script";
-import "./globals.css";
-import { Header } from "@/components/Header";
-import { Footer } from "@/components/Footer";
-import { ToastProvider } from "@/components/ToastProvider";
-import { ApiAuthGuard } from "@/components/ApiAuthGuard";
-import { AppShellExtras } from "@/components/AppShellExtras";
+import type { Metadata } from 'next';
+import Script from 'next/script';
+import './globals.css';
+import { Header } from '@/components/Header';
+import { Footer } from '@/components/Footer';
+import { ToastProvider } from '@/components/ToastProvider';
+import { ApiAuthGuard } from '@/components/ApiAuthGuard';
+import { AppShellExtras } from '@/components/AppShellExtras';
 
 export const metadata: Metadata = {
   title: {
-    default: "StableRoute",
-    template: "%s — StableRoute",
+    default: 'StableRoute',
+    template: '%s — StableRoute',
   },
-  description: "Stablecoin liquidity routing on Stellar",
-  applicationName: "StableRoute",
+  description: 'Stablecoin liquidity routing on Stellar',
+  applicationName: 'StableRoute',
   openGraph: {
-    title: "StableRoute",
-    description: "Liquidity routing for stablecoin and fiat-backed tokens on Stellar.",
-    type: "website",
+    title: 'StableRoute',
+    description:
+      'Liquidity routing for stablecoin and fiat-backed tokens on Stellar.',
+    type: 'website',
   },
   twitter: {
-    card: "summary",
-    title: "StableRoute",
-    description: "Liquidity routing for stablecoin and fiat-backed tokens on Stellar.",
+    card: 'summary',
+    title: 'StableRoute',
+    description:
+      'Liquidity routing for stablecoin and fiat-backed tokens on Stellar.',
   },
 };
 

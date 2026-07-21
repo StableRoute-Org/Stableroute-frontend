@@ -1,10 +1,10 @@
-"use client";
+'use client';
 
-import { useEffect, useRef, useState } from "react";
-import { TextField } from "@/components/TextField";
-import { apiFetch, type ApiError } from "@/lib/apiClient";
-import { formatQuoteAmountDisplay, formatQuoteRateDisplay } from "@/lib/format";
-import { useLocalStorage } from "@/lib/useLocalStorage";
+import { useEffect, useRef, useState } from 'react';
+import { TextField } from '@/components/TextField';
+import { apiFetch, type ApiError } from '@/lib/apiClient';
+import { formatQuoteAmountDisplay, formatQuoteRateDisplay } from '@/lib/format';
+import { useLocalStorage } from '@/lib/useLocalStorage';
 
 type Quote = {
   source_asset: string;
@@ -28,8 +28,8 @@ type QuoteInputs = {
 
 type HistoryEntry = QuoteInputs & { savedAt: number };
 
-const INPUTS_KEY = "stableroute.quote.inputs";
-const HISTORY_KEY = "stableroute.quote.history";
+const INPUTS_KEY = 'stableroute.quote.inputs';
+const HISTORY_KEY = 'stableroute.quote.history';
 const MAX_HISTORY = 5;
 const ASSET_CODE_PATTERN = /^[A-Za-z0-9]{1,12}$/;
 const MIN_SUBMIT_INTERVAL_MS = 1_000;
@@ -45,11 +45,11 @@ function isValidAmount(value: string): boolean {
 
 function isQuoteInputs(value: unknown): value is QuoteInputs {
   return (
-    typeof value === "object" &&
+    typeof value === 'object' &&
     value !== null &&
-    typeof (value as QuoteInputs).source === "string" &&
-    typeof (value as QuoteInputs).dest === "string" &&
-    typeof (value as QuoteInputs).amount === "string"
+    typeof (value as QuoteInputs).source === 'string' &&
+    typeof (value as QuoteInputs).dest === 'string' &&
+    typeof (value as QuoteInputs).amount === 'string'
   );
 }
 
@@ -71,7 +71,7 @@ function pushHistory(entry: QuoteInputs) {
       (item) =>
         item.source !== entry.source ||
         item.dest !== entry.dest ||
-        item.amount !== entry.amount,
+        item.amount !== entry.amount
     ),
   ].slice(0, MAX_HISTORY);
   localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
@@ -82,11 +82,11 @@ export default function QuoteClient() {
   const [savedInputs, setSavedInputs] = useLocalStorage<QuoteInputs | null>(
     INPUTS_KEY,
     null,
-    isQuoteInputs,
+    isQuoteInputs
   );
-  const [sourceAsset, setSourceAsset] = useState("");
-  const [destAsset, setDestAsset] = useState("");
-  const [amount, setAmount] = useState("");
+  const [sourceAsset, setSourceAsset] = useState('');
+  const [destAsset, setDestAsset] = useState('');
+  const [amount, setAmount] = useState('');
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [quote, setQuote] = useState<Quote | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
@@ -135,7 +135,8 @@ export default function QuoteClient() {
     event.preventDefault();
     const now = Date.now();
     const lastSubmitAt = lastSubmitAtRef.current;
-    const isCoolingDown = lastSubmitAt !== null && now - lastSubmitAt < MIN_SUBMIT_INTERVAL_MS;
+    const isCoolingDown =
+      lastSubmitAt !== null && now - lastSubmitAt < MIN_SUBMIT_INTERVAL_MS;
 
     if (isCoolingDown) {
       return;
@@ -150,13 +151,17 @@ export default function QuoteClient() {
     const normalizedSource = normalizeAssetCode(sourceAsset);
     const normalizedDest = normalizeAssetCode(destAsset);
 
-    if (!normalizedSource) nextErrors.source = "Use 1-12 letters or numbers.";
-    if (!normalizedDest) nextErrors.dest = "Use 1-12 letters or numbers.";
+    if (!normalizedSource) nextErrors.source = 'Use 1-12 letters or numbers.';
+    if (!normalizedDest) nextErrors.dest = 'Use 1-12 letters or numbers.';
     if (!isValidAmount(amount)) {
-      nextErrors.amount = "Amount must be a positive integer (base units).";
+      nextErrors.amount = 'Amount must be a positive integer (base units).';
     }
-    if (normalizedSource && normalizedDest && normalizedSource === normalizedDest) {
-      nextErrors.dest = "Source and destination assets must differ.";
+    if (
+      normalizedSource &&
+      normalizedDest &&
+      normalizedSource === normalizedDest
+    ) {
+      nextErrors.dest = 'Source and destination assets must differ.';
     }
 
     if (Object.keys(nextErrors).length > 0) {
@@ -196,7 +201,7 @@ export default function QuoteClient() {
       if (requestId !== activeRequestRef.current) return;
       if (controller.signal.aborted) return;
       const apiError = err as ApiError & { requestId?: string };
-      setFormError(apiError.message ?? "quote request failed");
+      setFormError(apiError.message ?? 'quote request failed');
       setRequestId(apiError.requestId ?? null);
     } finally {
       if (requestId === activeRequestRef.current) {
@@ -222,13 +227,18 @@ export default function QuoteClient() {
       </header>
 
       {history.length > 0 && (
-        <section aria-labelledby="recent-quotes-heading" className="flex flex-col gap-2">
+        <section
+          aria-labelledby="recent-quotes-heading"
+          className="flex flex-col gap-2"
+        >
           <h2 id="recent-quotes-heading" className="text-sm font-medium">
             Recent quotes
           </h2>
           <ul className="flex flex-col gap-1">
             {history.map((entry) => (
-              <li key={`${entry.source}-${entry.dest}-${entry.amount}-${entry.savedAt}`}>
+              <li
+                key={`${entry.source}-${entry.dest}-${entry.amount}-${entry.savedAt}`}
+              >
                 <button
                   type="button"
                   onClick={() => applyInputs(entry)}
@@ -286,38 +296,43 @@ export default function QuoteClient() {
           disabled={loading}
           className="self-start rounded-full bg-black px-5 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[var(--focus-ring-offset)] focus-visible:outline-[color:var(--focus-ring-color)]"
         >
-          {loading ? "Quoting…" : "Get quote"}
+          {loading ? 'Quoting…' : 'Get quote'}
         </button>
       </form>
 
-      {quote && (() => {
-        const amountFmt = formatQuoteAmountDisplay(quote.amount);
-        const rateFmt = formatQuoteRateDisplay(quote.estimated_rate);
-        return (
-          <section
-            role="status"
-            aria-live="polite"
-            className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm dark:border-emerald-900 dark:bg-emerald-950"
-          >
-            <dl className="grid gap-2">
-              <div>
-                <dt className="font-medium text-neutral-700 dark:text-neutral-300">Route</dt>
-                <dd>{quote.route.join(" → ")}</dd>
-              </div>
-              <div>
-                <dt className="font-medium text-neutral-700 dark:text-neutral-300">Amount</dt>
-                <dd title={amountFmt.title}>{amountFmt.display}</dd>
-              </div>
-              <div>
-                <dt className="font-medium text-neutral-700 dark:text-neutral-300">
-                  Estimated rate
-                </dt>
-                <dd title={rateFmt.title}>{rateFmt.display}</dd>
-              </div>
-            </dl>
-          </section>
-        );
-      })()}
+      {quote &&
+        (() => {
+          const amountFmt = formatQuoteAmountDisplay(quote.amount);
+          const rateFmt = formatQuoteRateDisplay(quote.estimated_rate);
+          return (
+            <section
+              role="status"
+              aria-live="polite"
+              className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm dark:border-emerald-900 dark:bg-emerald-950"
+            >
+              <dl className="grid gap-2">
+                <div>
+                  <dt className="font-medium text-neutral-700 dark:text-neutral-300">
+                    Route
+                  </dt>
+                  <dd>{quote.route.join(' → ')}</dd>
+                </div>
+                <div>
+                  <dt className="font-medium text-neutral-700 dark:text-neutral-300">
+                    Amount
+                  </dt>
+                  <dd title={amountFmt.title}>{amountFmt.display}</dd>
+                </div>
+                <div>
+                  <dt className="font-medium text-neutral-700 dark:text-neutral-300">
+                    Estimated rate
+                  </dt>
+                  <dd title={rateFmt.title}>{rateFmt.display}</dd>
+                </div>
+              </dl>
+            </section>
+          );
+        })()}
       {formError && (
         <div role="alert" className="text-sm text-rose-700 dark:text-rose-400">
           <p>{formError}</p>

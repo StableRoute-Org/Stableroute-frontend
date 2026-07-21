@@ -1,12 +1,12 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { ROUTES } from "@/lib/routes";
+import { useEffect, useState } from 'react';
+import { ROUTES } from '@/lib/routes';
 
 const SHORTCUTS = [
-  { keys: "?", description: "Open this shortcuts help" },
-  { keys: "Ctrl/⌘ K", description: "Open command palette" },
-  { keys: "Esc", description: "Close dialogs and overlays" },
+  { keys: '?', description: 'Open this shortcuts help' },
+  { keys: 'Ctrl/⌘ K', description: 'Open command palette' },
+  { keys: 'Esc', description: 'Close dialogs and overlays' },
 ];
 
 export function KeyboardShortcutsHelp() {
@@ -14,16 +14,17 @@ export function KeyboardShortcutsHelp() {
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "?" && !event.metaKey && !event.ctrlKey) {
+      if (event.key === '?' && !event.metaKey && !event.ctrlKey) {
         const target = event.target as HTMLElement | null;
-        if (target?.tagName === "INPUT" || target?.tagName === "TEXTAREA") return;
+        if (target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA')
+          return;
         event.preventDefault();
         setOpen((value) => !value);
       }
-      if (event.key === "Escape") setOpen(false);
+      if (event.key === 'Escape') setOpen(false);
     };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
 
   if (!open) return null;
@@ -47,12 +48,17 @@ export function KeyboardShortcutsHelp() {
           {SHORTCUTS.map((item) => (
             <li key={item.keys} className="flex justify-between gap-4">
               <span>{item.description}</span>
-              <kbd className="rounded border px-2 py-0.5 font-mono text-xs">{item.keys}</kbd>
+              <kbd className="rounded border px-2 py-0.5 font-mono text-xs">
+                {item.keys}
+              </kbd>
             </li>
           ))}
         </ul>
         <p className="mt-4 text-xs text-neutral-500">
-          Jump routes: {Object.values(ROUTES).map((route) => route.href).join(", ")}
+          Jump routes:{' '}
+          {Object.values(ROUTES)
+            .map((route) => route.href)
+            .join(', ')}
         </p>
       </div>
     </div>

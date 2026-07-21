@@ -1,11 +1,10 @@
-export type ClipboardWriteFailureReason = "unsupported" | "denied";
+export type ClipboardWriteFailureReason = 'unsupported' | 'denied';
 
 export type ClipboardWriteResult =
-  | { ok: true }
-  | { ok: false; reason: ClipboardWriteFailureReason };
+  { ok: true } | { ok: false; reason: ClipboardWriteFailureReason };
 
-function getClipboard(): Pick<Clipboard, "writeText"> | undefined {
-  if (typeof navigator === "undefined") return undefined;
+function getClipboard(): Pick<Clipboard, 'writeText'> | undefined {
+  if (typeof navigator === 'undefined') return undefined;
   return navigator.clipboard;
 }
 
@@ -17,9 +16,9 @@ function getClipboard(): Pick<Clipboard, "writeText"> | undefined {
  */
 export function isClipboardWriteAvailable(): boolean {
   return (
-    typeof window !== "undefined" &&
+    typeof window !== 'undefined' &&
     window.isSecureContext === true &&
-    typeof getClipboard()?.writeText === "function"
+    typeof getClipboard()?.writeText === 'function'
   );
 }
 
@@ -30,14 +29,16 @@ export function isClipboardWriteAvailable(): boolean {
  * plus a selectable fallback field) instead of risking an unhandled
  * rejection.
  */
-export async function writeToClipboard(text: string): Promise<ClipboardWriteResult> {
+export async function writeToClipboard(
+  text: string
+): Promise<ClipboardWriteResult> {
   if (!isClipboardWriteAvailable()) {
-    return { ok: false, reason: "unsupported" };
+    return { ok: false, reason: 'unsupported' };
   }
   try {
     await getClipboard()!.writeText(text);
     return { ok: true };
   } catch {
-    return { ok: false, reason: "denied" };
+    return { ok: false, reason: 'denied' };
   }
 }

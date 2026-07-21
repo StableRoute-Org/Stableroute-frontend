@@ -1,4 +1,4 @@
-import { type ButtonHTMLAttributes, type ReactNode } from "react";
+import { type ButtonHTMLAttributes, type ReactNode } from 'react';
 
 type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
   label: string;
@@ -6,7 +6,12 @@ type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
 };
 
 /** Icon-only control with a required accessible name. */
-export function IconButton({ label, children, className = "", ...rest }: Props) {
+export function IconButton({
+  label,
+  children,
+  className = '',
+  ...rest
+}: Props) {
   return (
     <button
       type="button"

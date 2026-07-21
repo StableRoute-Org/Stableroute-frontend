@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
-import { ROUTES } from "@/lib/routes";
+import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { ROUTES } from '@/lib/routes';
 
 /**
  * Registers a global keydown listener that opens/closes the command palette
@@ -12,12 +12,12 @@ import { ROUTES } from "@/lib/routes";
 export function CommandPalette() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const matches = Object.values(ROUTES).filter((route) =>
-    route.title.toLowerCase().includes(query.toLowerCase()),
+    route.title.toLowerCase().includes(query.toLowerCase())
   );
 
   const activeOptionId =
@@ -27,20 +27,20 @@ export function CommandPalette() {
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
         event.preventDefault();
         setOpen((value) => !value);
-        setQuery("");
+        setQuery('');
         setActiveIndex(-1);
       }
-      if (event.key === "Escape") {
+      if (event.key === 'Escape') {
         setOpen(false);
-        setQuery("");
+        setQuery('');
         setActiveIndex(-1);
       }
     };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
 
   useEffect(() => {
@@ -50,22 +50,20 @@ export function CommandPalette() {
 
   const handleInputKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     switch (event.key) {
-      case "ArrowDown":
+      case 'ArrowDown':
         event.preventDefault();
-        setActiveIndex((prev) =>
-          prev < matches.length - 1 ? prev + 1 : prev,
-        );
+        setActiveIndex((prev) => (prev < matches.length - 1 ? prev + 1 : prev));
         break;
-      case "ArrowUp":
+      case 'ArrowUp':
         event.preventDefault();
         setActiveIndex((prev) => (prev > 0 ? prev - 1 : -1));
         break;
-      case "Enter":
+      case 'Enter':
         event.preventDefault();
         if (activeIndex >= 0 && activeIndex < matches.length) {
           const selectedRoute = matches[activeIndex];
           setOpen(false);
-          setQuery("");
+          setQuery('');
           setActiveIndex(-1);
           router.push(selectedRoute.href);
         }
@@ -75,7 +73,7 @@ export function CommandPalette() {
 
   const handleOptionClick = (href: string) => {
     setOpen(false);
-    setQuery("");
+    setQuery('');
     setActiveIndex(-1);
     router.push(href);
   };
@@ -125,8 +123,8 @@ export function CommandPalette() {
                   type="button"
                   className={`w-full rounded px-2 py-2 text-left text-sm transition-colors ${
                     index === activeIndex
-                      ? "bg-blue-500 text-white dark:bg-blue-600"
-                      : "hover:bg-neutral-100 dark:hover:bg-neutral-800"
+                      ? 'bg-blue-500 text-white dark:bg-blue-600'
+                      : 'hover:bg-neutral-100 dark:hover:bg-neutral-800'
                   }`}
                   onClick={() => handleOptionClick(route.href)}
                   onMouseEnter={() => setActiveIndex(index)}

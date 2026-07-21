@@ -1,9 +1,10 @@
-import AdminClient from "./Client";
+import AdminClient from './Client';
 
 /** Server wrapper for `AdminClient`. */
 export const metadata = {
-  title: "Admin",
-  description: "Operator controls: pause and unpause the StableRoute router and view status.",
+  title: 'Admin',
+  description:
+    'Operator controls: pause and unpause the StableRoute router and view status.',
 };
 
 export default function AdminPage() {

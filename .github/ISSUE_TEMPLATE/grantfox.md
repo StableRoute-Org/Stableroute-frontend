@@ -1,7 +1,7 @@
 ---
 name: GrantFox contribution
 about: Report a GrantFox OSS campaign task pickup or question
-labels: ["GRANTFOX OSS"]
+labels: ['GRANTFOX OSS']
 ---
 
 ## Issue / task

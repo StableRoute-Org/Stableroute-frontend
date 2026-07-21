@@ -11,7 +11,7 @@ export function filterPairs(pairs: Pair[], query: string): Pair[] {
   return pairs.filter(
     (pair) =>
       pair.source.toLowerCase().includes(needle) ||
-      pair.destination.toLowerCase().includes(needle),
+      pair.destination.toLowerCase().includes(needle)
   );
 }
 
@@ -38,5 +38,8 @@ export function groupBySource(pairs: Pair[]): [string, string[]][] {
   }
   return [...map.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([source, destinations]) => [source, destinations.sort((a, b) => a.localeCompare(b))]);
+    .map(([source, destinations]) => [
+      source,
+      destinations.sort((a, b) => a.localeCompare(b)),
+    ]);
 }

@@ -27,10 +27,10 @@ Added a `ConnectionHandler` mechanism that follows the existing `registerAuthErr
 
 A `"use client"` component mounted in the global shell that tracks connectivity from two sources:
 
-| Signal | How it's detected | Behavior |
-|--------|-------------------|----------|
-| Browser offline | `navigator.onLine` on mount + `window` `offline` event listener | Shows banner immediately |
-| API unreachable | `registerConnectionHandler` → `onError` callback | Shows banner after **2 consecutive** network failures |
+| Signal          | How it's detected                                               | Behavior                                              |
+| --------------- | --------------------------------------------------------------- | ----------------------------------------------------- |
+| Browser offline | `navigator.onLine` on mount + `window` `offline` event listener | Shows banner immediately                              |
+| API unreachable | `registerConnectionHandler` → `onError` callback                | Shows banner after **2 consecutive** network failures |
 
 **State machine:**
 
@@ -59,20 +59,20 @@ Placed `<ConnectionBanner />` above `<Header />` inside the `<ToastProvider>`, s
 
 Comprehensive test suite covering all states and transitions:
 
-| # | Test | What it verifies |
-|---|------|-----------------|
-| 1 | Does not render when online and no failures | Initial/default state |
-| 2 | Renders immediately when `navigator.onLine` is false | Offline-on-mount detection |
-| 3 | Shows after offline event fires | Browser offline → banner visibility |
-| 4 | Shows after 2 consecutive API errors | Threshold-based triggering (1 failure = no banner) |
-| 5 | Clears when a successful request fires after failures | `onSuccess` clears the banner |
-| 6 | Resets the failure counter on success | Counter resets, requiring 2 new failures to re-trigger |
-| 7 | User can dismiss the banner | Dismiss button hides the banner |
-| 8 | Re-shows on a new error after user dismiss | Dismiss is temporary; new errors re-trigger |
-| 9 | Stays hidden after dismiss without new errors | No false re-triggering |
-| 10 | Clears on success even when shown due to offline state | `onSuccess` works regardless of visibility source |
-| 11 | Unregisters connection handler on unmount | Cleanup prevents memory leaks |
-| 12 | Removes offline event listener on unmount | Cleanup prevents memory leaks |
+| #   | Test                                                   | What it verifies                                       |
+| --- | ------------------------------------------------------ | ------------------------------------------------------ |
+| 1   | Does not render when online and no failures            | Initial/default state                                  |
+| 2   | Renders immediately when `navigator.onLine` is false   | Offline-on-mount detection                             |
+| 3   | Shows after offline event fires                        | Browser offline → banner visibility                    |
+| 4   | Shows after 2 consecutive API errors                   | Threshold-based triggering (1 failure = no banner)     |
+| 5   | Clears when a successful request fires after failures  | `onSuccess` clears the banner                          |
+| 6   | Resets the failure counter on success                  | Counter resets, requiring 2 new failures to re-trigger |
+| 7   | User can dismiss the banner                            | Dismiss button hides the banner                        |
+| 8   | Re-shows on a new error after user dismiss             | Dismiss is temporary; new errors re-trigger            |
+| 9   | Stays hidden after dismiss without new errors          | No false re-triggering                                 |
+| 10  | Clears on success even when shown due to offline state | `onSuccess` works regardless of visibility source      |
+| 11  | Unregisters connection handler on unmount              | Cleanup prevents memory leaks                          |
+| 12  | Removes offline event listener on unmount              | Cleanup prevents memory leaks                          |
 
 ### 5. `ARCHITECTURE.md` — Documentation
 
@@ -82,7 +82,7 @@ Added a **Connectivity monitoring** section explaining the `ConnectionBanner` ar
 
 1. **Two-failure threshold**: A single network failure could be a transient blip (e.g., WiFi reconnect). Requiring two consecutive failures before showing the banner avoids alert fatigue.
 
-2. **HTTP errors excluded from "unreachable"**: A 500 or 400 response means the API *is* reachable — it's just returning an error. These are handled by page-level error states. Only true network failures (timeouts, DNS errors, connection refused) trigger the connectivity banner.
+2. **HTTP errors excluded from "unreachable"**: A 500 or 400 response means the API _is_ reachable — it's just returning an error. These are handled by page-level error states. Only true network failures (timeouts, DNS errors, connection refused) trigger the connectivity banner.
 
 3. **`onSuccess` wrapped in try-catch**: The callback is invoked from inside the `apiFetch` try block. If the callback ever threw, it would be caught by the error handler and misclassified. Defensive try-catch prevents this.
 
@@ -98,6 +98,7 @@ PASS src/lib/__tests__/apiClient.test.ts          (15/15, all pre-existing tests
 ```
 
 All pre-existing test failures (11 suites, 47 tests) are unrelated to these changes and exist on `main`:
+
 - `events/page.test.tsx` — `Button is not defined` in events/Client.tsx
 - `pairs/page.test.tsx` — text content/attribute mismatches
 - `layout.test.tsx`, `Header.test.tsx`, `ThemeToggle.test.tsx` — missing mocks (`useRouter`, `window.matchMedia`)

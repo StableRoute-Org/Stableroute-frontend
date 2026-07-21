@@ -61,14 +61,13 @@ The shared API client (`src/lib/apiClient.ts`) exposes `apiFetch`, `apiGet`, `ap
 
 Rejected errors are guaranteed to carry a `status` property (`number`) and, when the server returns a parseable JSON error body matching the `ApiError` shape, the `error` and `requestId` properties from the response. When the response is non-OK and the body is empty or not valid JSON, the client synthesises an `ApiError`-shaped error:
 
-| Property | Value |
-|----------|-------|
-| `message` | `"Request failed (<status>)"` |
-| `error` | `"http_<status>"` |
-| `status` | `<status>` (the HTTP status code) |
+| Property  | Value                             |
+| --------- | --------------------------------- |
+| `message` | `"Request failed (<status>)"`     |
+| `error`   | `"http_<status>"`                 |
+| `status`  | `<status>` (the HTTP status code) |
 
 This ensures that callers never receive a raw `SyntaxError` from a gateway HTML page, an empty `502` body, or any other non-JSON response. A `200` with a non-JSON body throws `"Invalid JSON response"`.
-
 
 ### Environment Variables
 
@@ -184,22 +183,22 @@ Users who enable "Reduce Motion" in their OS or browser accessibility settings a
 
 Animations affected:
 
-| Component | Tailwind class | Behaviour under reduced motion |
-|-----------|---------------|-------------------------------|
-| `<Spinner>` (`src/components/Spinner.tsx`) | `animate-spin` | SVG stops spinning; `role="status"` and `sr-only` label are **preserved** so screen readers still announce loading state |
-| Loading skeleton (`src/app/loading.tsx`) | `animate-pulse` | Skeleton shapes remain visible as static placeholders |
-| Any future transition | `transition-*` | Collapsed to `0.01 ms` |
+| Component                                  | Tailwind class  | Behaviour under reduced motion                                                                                           |
+| ------------------------------------------ | --------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `<Spinner>` (`src/components/Spinner.tsx`) | `animate-spin`  | SVG stops spinning; `role="status"` and `sr-only` label are **preserved** so screen readers still announce loading state |
+| Loading skeleton (`src/app/loading.tsx`)   | `animate-pulse` | Skeleton shapes remain visible as static placeholders                                                                    |
+| Any future transition                      | `transition-*`  | Collapsed to `0.01 ms`                                                                                                   |
 
 The component APIs and visual design for users without reduced-motion enabled are **unchanged**.
 
 #### How to test
 
-| Platform | Steps |
-|----------|-------|
-| macOS | System Settings → Accessibility → Display → enable **Reduce Motion** |
-| Windows | Settings → Ease of Access → Display → turn off **Show animations** |
-| Linux (GNOME) | Settings → Accessibility → Seeing → enable **Reduced Animation** |
-| Any browser | Open DevTools → **Rendering** panel → set **Emulate CSS media feature `prefers-reduced-motion`** to `reduce` |
+| Platform      | Steps                                                                                                        |
+| ------------- | ------------------------------------------------------------------------------------------------------------ |
+| macOS         | System Settings → Accessibility → Display → enable **Reduce Motion**                                         |
+| Windows       | Settings → Ease of Access → Display → turn off **Show animations**                                           |
+| Linux (GNOME) | Settings → Accessibility → Seeing → enable **Reduced Animation**                                             |
+| Any browser   | Open DevTools → **Rendering** panel → set **Emulate CSS media feature `prefers-reduced-motion`** to `reduce` |
 
 ### ARIA Live Regions
 

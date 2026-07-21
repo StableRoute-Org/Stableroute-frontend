@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { useEffect } from "react";
-import { registerAuthErrorHandler } from "@/lib/apiClient";
-import { useToast } from "@/components/ToastProvider";
+import { useEffect } from 'react';
+import { registerAuthErrorHandler } from '@/lib/apiClient';
+import { useToast } from '@/components/ToastProvider';
 
 export function ApiAuthGuard() {
   const { push } = useToast();
@@ -12,8 +12,8 @@ export function ApiAuthGuard() {
       const message =
         status === 403
           ? "You don't have permission to perform that action."
-          : "Your session has expired. Please sign in again.";
-      push(message, "error");
+          : 'Your session has expired. Please sign in again.';
+      push(message, 'error');
     });
     return unregister;
   }, [push]);

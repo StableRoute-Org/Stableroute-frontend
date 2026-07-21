@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { useEffect, useRef, type ReactNode } from "react";
-import { Button } from "./Button";
+import { useEffect, useRef, type ReactNode } from 'react';
+import { Button } from './Button';
 
-type Tone = "danger" | "default";
+type Tone = 'danger' | 'default';
 
 type Props = {
   open: boolean;
@@ -20,9 +20,9 @@ export function ConfirmDialog({
   open,
   title,
   description,
-  confirmLabel = "Confirm",
-  cancelLabel = "Cancel",
-  tone = "danger",
+  confirmLabel = 'Confirm',
+  cancelLabel = 'Cancel',
+  tone = 'danger',
   onConfirm,
   onCancel,
 }: Props) {
@@ -31,11 +31,11 @@ export function ConfirmDialog({
   useEffect(() => {
     if (!open) return;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onCancel();
+      if (event.key === 'Escape') onCancel();
     };
-    window.addEventListener("keydown", onKeyDown);
-    panelRef.current?.querySelector<HTMLElement>("button")?.focus();
-    return () => window.removeEventListener("keydown", onKeyDown);
+    window.addEventListener('keydown', onKeyDown);
+    panelRef.current?.querySelector<HTMLElement>('button')?.focus();
+    return () => window.removeEventListener('keydown', onKeyDown);
   }, [open, onCancel]);
 
   if (!open) return null;
@@ -66,7 +66,7 @@ export function ConfirmDialog({
           </Button>
           <Button
             type="button"
-            variant={tone === "danger" ? "danger" : "primary"}
+            variant={tone === 'danger' ? 'danger' : 'primary'}
             onClick={onConfirm}
           >
             {confirmLabel}

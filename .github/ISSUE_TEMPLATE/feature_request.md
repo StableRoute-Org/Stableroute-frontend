@@ -1,9 +1,9 @@
 ---
 name: Feature request
 about: Suggest a frontend improvement or new user-facing behaviour
-title: "feat: "
+title: 'feat: '
 labels: enhancement
-assignees: ""
+assignees: ''
 ---
 
 ## Summary

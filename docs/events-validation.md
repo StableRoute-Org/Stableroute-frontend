@@ -23,12 +23,12 @@ is built directly from the in-memory filtered list.
 
 ### Columns
 
-| Column    | Description                                         |
-|-----------|-----------------------------------------------------|
-| `id`      | Event identifier string                             |
-| `ts`      | Event timestamp as an ISO-8601 string               |
-| `type`    | Event type string (e.g. `pair.registered`)          |
-| `payload` | Full JSON payload (never truncated, RFC 4180 quoted)|
+| Column    | Description                                          |
+| --------- | ---------------------------------------------------- |
+| `id`      | Event identifier string                              |
+| `ts`      | Event timestamp as an ISO-8601 string                |
+| `type`    | Event type string (e.g. `pair.registered`)           |
+| `payload` | Full JSON payload (never truncated, RFC 4180 quoted) |
 
 ### Escaping
 

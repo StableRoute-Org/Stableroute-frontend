@@ -5,7 +5,7 @@ import { Button } from '@/components/Button';
 import { EmptyState } from '@/components/EmptyState';
 import { TimeAgo } from '@/components/TimeAgo';
 import { useToast } from '@/components/ToastProvider';
-import { apiGet } from '@/lib/apiClient';
+import { useApi } from '@/lib/useApi';
 import { writeToClipboard } from '@/lib/clipboard';
 import {
   buildEventsCsv,
@@ -46,6 +46,7 @@ export default function EventsClient() {
   const items: DisplayEvent[] | null = parsed?.events ?? null;
   const totalValid = parsed?.totalValid ?? 0;
   const capped = parsed?.capped ?? false;
+  const error = eventsApi.status === 'error' ? eventsApi.error : null;
 
   const filteredItems = useMemo(() => {
     if (!items) return null;
@@ -53,19 +54,6 @@ export default function EventsClient() {
     if (!needle) return items;
     return items.filter((event) => event.type.toLowerCase().includes(needle));
   }, [items, typeFilter]);
-
-  const load = useCallback(() => {
-    return apiGet<unknown>('/api/v1/events?limit=100')
-      .then((body) => {
-        const parsed = parseEventsResponse(body);
-        setItems(parsed.events);
-        setTotalValid(parsed.totalValid);
-        setCapped(parsed.capped);
-        setLastUpdatedAt(Date.now());
-        setError(null);
-      })
-      .catch((err) => setError((err as Error).message));
-  }, []);
 
   useEffect(() => {
     if (response !== null) setLastUpdatedAt(Date.now());

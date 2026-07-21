@@ -26,9 +26,9 @@ See `ARCHITECTURE.md` for module layout and `README.md` for local setup via `.en
 Every pull request targeting `main` must pass **both** of the following GitHub Actions jobs
 before it can be merged:
 
-| Job | Command | What it enforces |
-|-----|---------|-----------------|
-| **Lint** | `npm run lint` | Zero ESLint errors (warnings do not block merge, errors do) |
+| Job              | Command                         | What it enforces                                             |
+| ---------------- | ------------------------------- | ------------------------------------------------------------ |
+| **Lint**         | `npm run lint`                  | Zero ESLint errors (warnings do not block merge, errors do)  |
 | **Build & Test** | `npm run build` then `npm test` | Successful Next.js production build and all Jest tests green |
 
 The jobs run in **parallel** to keep CI fast. Both must be green — a green Build & Test
@@ -66,12 +66,12 @@ npm run test:coverage
 
 ## Branch naming
 
-| Type | Pattern | Example |
-|------|---------|---------|
-| Feature | `feat/<issue>-<slug>` | `feat/89-swap-direction` |
-| Bug fix | `fix/<issue>-<slug>` | `fix/102-header-overflow` |
-| Chore / CI | `chore/<slug>` | `chore/ci-lint-job` |
-| Enhancement | `enhancement/<slug>` | `enhancement/ci-run-npm-run-lint` |
+| Type        | Pattern               | Example                           |
+| ----------- | --------------------- | --------------------------------- |
+| Feature     | `feat/<issue>-<slug>` | `feat/89-swap-direction`          |
+| Bug fix     | `fix/<issue>-<slug>`  | `fix/102-header-overflow`         |
+| Chore / CI  | `chore/<slug>`        | `chore/ci-lint-job`               |
+| Enhancement | `enhancement/<slug>`  | `enhancement/ci-run-npm-run-lint` |
 
 ---
 
@@ -85,6 +85,7 @@ npm run test:coverage
 ```
 
 Example:
+
 ```
 chore(ci): add a lint job to the CI workflow (#336)
 

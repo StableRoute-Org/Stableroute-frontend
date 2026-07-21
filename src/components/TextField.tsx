@@ -1,4 +1,4 @@
-import { type InputHTMLAttributes, type ReactNode, useId } from "react";
+import { type InputHTMLAttributes, type ReactNode, useId } from 'react';
 
 type Props = InputHTMLAttributes<HTMLInputElement> & {
   label: ReactNode;
@@ -10,7 +10,7 @@ export function TextField({
   label,
   description,
   error,
-  className = "",
+  className = '',
   id,
   ...rest
 }: Props) {
@@ -23,7 +23,9 @@ export function TextField({
       <label htmlFor={inputId}>{label}</label>
       <input
         id={inputId}
-        aria-describedby={[descId, errId].filter(Boolean).join(" ") || undefined}
+        aria-describedby={
+          [descId, errId].filter(Boolean).join(' ') || undefined
+        }
         aria-invalid={error ? true : undefined}
         className="rounded-md border border-neutral-300 bg-[var(--background)] px-3 py-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[var(--focus-ring-offset)] focus-visible:outline-[color:var(--focus-ring-color)] dark:border-neutral-700"
         {...rest}

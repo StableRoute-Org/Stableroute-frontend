@@ -66,9 +66,9 @@ teams can still correlate failures without the message leaking sensitive data.
 
 ```ts
 // Accessing requestId in a catch block:
-const err = await apiFetch("/api/v1/quote?...").catch((e) => e);
-console.log(err.message);    // sanitized, safe to show in a toast
-console.log(err.requestId);  // original, safe for support correlation
+const err = await apiFetch('/api/v1/quote?...').catch((e) => e);
+console.log(err.message); // sanitized, safe to show in a toast
+console.log(err.requestId); // original, safe for support correlation
 ```
 
 ## Auth error handler
@@ -79,12 +79,12 @@ handler shows a toast and the request still rejects so callers can react.
 
 ## Helpers
 
-| Function | Method | Notes |
-|----------|--------|-------|
-| `apiGet` | GET | Optional retry on 5xx |
-| `apiPost` | POST | JSON body |
-| `apiPatch` | PATCH | JSON body |
-| `apiDelete` | DELETE | 204 → `undefined` |
+| Function    | Method | Notes                 |
+| ----------- | ------ | --------------------- |
+| `apiGet`    | GET    | Optional retry on 5xx |
+| `apiPost`   | POST   | JSON body             |
+| `apiPatch`  | PATCH  | JSON body             |
+| `apiDelete` | DELETE | 204 → `undefined`     |
 
 ## Timeouts
 

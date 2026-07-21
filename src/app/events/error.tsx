@@ -1,6 +1,9 @@
-"use client";
+'use client';
 
-import { SegmentError, type SegmentErrorProps } from "@/components/SegmentError";
+import {
+  SegmentError,
+  type SegmentErrorProps,
+} from '@/components/SegmentError';
 
 /**
  * Segment-level error boundary for `/events`.
@@ -12,6 +15,6 @@ import { SegmentError, type SegmentErrorProps } from "@/components/SegmentError"
  * "Try again" calls Next's `reset()` to re-render just this segment without
  * a full page reload.
  */
-export default function EventsError(props: Omit<SegmentErrorProps, "segment">) {
+export default function EventsError(props: Omit<SegmentErrorProps, 'segment'>) {
   return <SegmentError segment="events" {...props} />;
 }

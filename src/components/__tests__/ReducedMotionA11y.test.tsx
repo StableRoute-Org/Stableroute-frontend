@@ -14,43 +14,43 @@
  *   - ToastProvider: notifications region, per-toast role="status"/"alert"
  */
 
-import { render, screen, fireEvent } from "@testing-library/react";
-import { Spinner } from "../Spinner";
-import Loading from "../../app/loading";
-import { ToastProvider, useToast } from "../ToastProvider";
+import { render, screen, fireEvent } from '@testing-library/react';
+import { Spinner } from '../Spinner';
+import Loading from '../../app/loading';
+import { ToastProvider, useToast } from '../ToastProvider';
 
 // ---------------------------------------------------------------------------
 // Spinner
 // ---------------------------------------------------------------------------
 
-describe("Spinner – reduced-motion accessibility smoke tests", () => {
-  it("exposes role=status so screen readers announce loading state", () => {
+describe('Spinner – reduced-motion accessibility smoke tests', () => {
+  it('exposes role=status so screen readers announce loading state', () => {
     render(<Spinner />);
-    expect(screen.getByRole("status")).toBeInTheDocument();
+    expect(screen.getByRole('status')).toBeInTheDocument();
   });
 
   it("provides a visible sr-only label (default: 'Loading')", () => {
     render(<Spinner />);
-    expect(screen.getByText("Loading")).toBeInTheDocument();
+    expect(screen.getByText('Loading')).toBeInTheDocument();
   });
 
-  it("accepts and announces a custom label", () => {
+  it('accepts and announces a custom label', () => {
     render(<Spinner label="Fetching data" />);
-    expect(screen.getByRole("status")).toHaveTextContent("Fetching data");
+    expect(screen.getByRole('status')).toHaveTextContent('Fetching data');
   });
 
-  it("keeps the animate-spin class on the SVG (visual; not removed for reduced-motion)", () => {
+  it('keeps the animate-spin class on the SVG (visual; not removed for reduced-motion)', () => {
     render(<Spinner />);
     // The SVG carries animate-spin; CSS collapses its duration but the class
     // stays so the DOM is always consistent.
-    const svg = document.querySelector("svg");
-    expect(svg).toHaveClass("animate-spin");
+    const svg = document.querySelector('svg');
+    expect(svg).toHaveClass('animate-spin');
   });
 
-  it("hides the SVG from assistive technology with aria-hidden", () => {
+  it('hides the SVG from assistive technology with aria-hidden', () => {
     render(<Spinner />);
-    const svg = document.querySelector("svg");
-    expect(svg).toHaveAttribute("aria-hidden", "true");
+    const svg = document.querySelector('svg');
+    expect(svg).toHaveAttribute('aria-hidden', 'true');
   });
 });
 
@@ -58,25 +58,25 @@ describe("Spinner – reduced-motion accessibility smoke tests", () => {
 // Loading skeleton (src/app/loading.tsx)
 // ---------------------------------------------------------------------------
 
-describe("Loading skeleton – reduced-motion accessibility smoke tests", () => {
-  it("renders the #main-content focus landmark", () => {
+describe('Loading skeleton – reduced-motion accessibility smoke tests', () => {
+  it('renders the #main-content focus landmark', () => {
     render(<Loading />);
-    const main = document.getElementById("main-content");
+    const main = document.getElementById('main-content');
     expect(main).toBeInTheDocument();
-    expect(main?.tagName.toLowerCase()).toBe("main");
+    expect(main?.tagName.toLowerCase()).toBe('main');
   });
 
-  it("exposes tabIndex=-1 so skip-navigation links can focus it", () => {
+  it('exposes tabIndex=-1 so skip-navigation links can focus it', () => {
     render(<Loading />);
-    expect(document.getElementById("main-content")).toHaveAttribute(
-      "tabIndex",
-      "-1",
+    expect(document.getElementById('main-content')).toHaveAttribute(
+      'tabIndex',
+      '-1'
     );
   });
 
-  it("renders exactly three skeleton placeholder divs with animate-pulse", () => {
+  it('renders exactly three skeleton placeholder divs with animate-pulse', () => {
     render(<Loading />);
-    expect(document.querySelectorAll(".animate-pulse")).toHaveLength(3);
+    expect(document.querySelectorAll('.animate-pulse')).toHaveLength(3);
   });
 });
 
@@ -88,12 +88,15 @@ function ToastA11yHarness() {
   const { push } = useToast();
   return (
     <div>
-      <button type="button" onClick={() => push("info message", "info", { sticky: true })}>
+      <button
+        type="button"
+        onClick={() => push('info message', 'info', { sticky: true })}
+      >
         push-info
       </button>
       <button
         type="button"
-        onClick={() => push("error message", "error", { sticky: true })}
+        onClick={() => push('error message', 'error', { sticky: true })}
       >
         push-error
       </button>
@@ -101,55 +104,55 @@ function ToastA11yHarness() {
   );
 }
 
-describe("ToastProvider – reduced-motion accessibility smoke tests", () => {
-  it("renders a notifications region accessible to assistive technology", () => {
+describe('ToastProvider – reduced-motion accessibility smoke tests', () => {
+  it('renders a notifications region accessible to assistive technology', () => {
     render(
       <ToastProvider>
         <ToastA11yHarness />
-      </ToastProvider>,
+      </ToastProvider>
     );
     expect(
-      screen.getByRole("region", { name: /notifications/i }),
+      screen.getByRole('region', { name: /notifications/i })
     ).toBeInTheDocument();
   });
 
-  it("notifications region is an aria-live=polite region", () => {
+  it('notifications region is an aria-live=polite region', () => {
     render(
       <ToastProvider>
         <ToastA11yHarness />
-      </ToastProvider>,
+      </ToastProvider>
     );
-    const region = screen.getByRole("region", { name: /notifications/i });
-    expect(region).toHaveAttribute("aria-live", "polite");
+    const region = screen.getByRole('region', { name: /notifications/i });
+    expect(region).toHaveAttribute('aria-live', 'polite');
   });
 
-  it("info toast uses role=status so screen readers announce it politely", () => {
+  it('info toast uses role=status so screen readers announce it politely', () => {
     render(
       <ToastProvider>
         <ToastA11yHarness />
-      </ToastProvider>,
+      </ToastProvider>
     );
-    fireEvent.click(screen.getByRole("button", { name: "push-info" }));
-    expect(screen.getByRole("status")).toHaveTextContent("info message");
+    fireEvent.click(screen.getByRole('button', { name: 'push-info' }));
+    expect(screen.getByRole('status')).toHaveTextContent('info message');
   });
 
-  it("error toast uses role=alert so screen readers announce it assertively", () => {
+  it('error toast uses role=alert so screen readers announce it assertively', () => {
     render(
       <ToastProvider>
         <ToastA11yHarness />
-      </ToastProvider>,
+      </ToastProvider>
     );
-    fireEvent.click(screen.getByRole("button", { name: "push-error" }));
-    expect(screen.getByRole("alert")).toHaveTextContent("error message");
+    fireEvent.click(screen.getByRole('button', { name: 'push-error' }));
+    expect(screen.getByRole('alert')).toHaveTextContent('error message');
   });
 
-  it("each toast has a Dismiss button with a descriptive aria-label", () => {
+  it('each toast has a Dismiss button with a descriptive aria-label', () => {
     render(
       <ToastProvider>
         <ToastA11yHarness />
-      </ToastProvider>,
+      </ToastProvider>
     );
-    fireEvent.click(screen.getByRole("button", { name: "push-info" }));
-    expect(screen.getByRole("button", { name: "Dismiss" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'push-info' }));
+    expect(screen.getByRole('button', { name: 'Dismiss' })).toBeInTheDocument();
   });
 });

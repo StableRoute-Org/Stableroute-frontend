@@ -1,21 +1,22 @@
-"use client";
+'use client';
 
-import { useEffect, useState } from "react";
-import { formatTimestamp } from "@/lib/format";
+import { useEffect, useState } from 'react';
+import { formatTimestamp } from '@/lib/format';
 
 const UNITS: { ms: number; label: string }[] = [
-  { ms: 86_400_000, label: "d" },
-  { ms: 3_600_000, label: "h" },
-  { ms: 60_000, label: "m" },
-  { ms: 1_000, label: "s" },
+  { ms: 86_400_000, label: 'd' },
+  { ms: 3_600_000, label: 'h' },
+  { ms: 60_000, label: 'm' },
+  { ms: 1_000, label: 's' },
 ];
 
 function formatRelative(deltaMs: number): string {
-  if (deltaMs < 0) return "just now";
+  if (deltaMs < 0) return 'just now';
   for (const unit of UNITS) {
-    if (deltaMs >= unit.ms) return `${Math.floor(deltaMs / unit.ms)}${unit.label} ago`;
+    if (deltaMs >= unit.ms)
+      return `${Math.floor(deltaMs / unit.ms)}${unit.label} ago`;
   }
-  return "just now";
+  return 'just now';
 }
 
 export function TimeAgo({ ts }: { ts: number }) {

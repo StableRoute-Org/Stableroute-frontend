@@ -1,5 +1,5 @@
-import { render, screen, waitFor, fireEvent } from "@testing-library/react";
-import WebhooksPage from "./page";
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import WebhooksPage from './page';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -10,7 +10,9 @@ import WebhooksPage from "./page";
  * /api/v1/webhooks request, and optionally with additional responses for
  * subsequent calls (POST, DELETE, reload GET).
  */
-function mockFetchSequence(...responses: Array<{ ok: boolean; body?: unknown; status?: number }>) {
+function mockFetchSequence(
+  ...responses: Array<{ ok: boolean; body?: unknown; status?: number }>
+) {
   let call = 0;
   global.fetch = jest.fn().mockImplementation(() => {
     const resp = responses[call] ?? responses[responses.length - 1];
@@ -27,7 +29,7 @@ function mockFetchSequence(...responses: Array<{ ok: boolean; body?: unknown; st
       status: resp.status ?? 500,
       text: () =>
         Promise.resolve(
-          JSON.stringify({ error: "server_error", message: "Server error" }),
+          JSON.stringify({ error: 'server_error', message: 'Server error' })
         ),
     } as unknown as Response);
   });
@@ -35,16 +37,16 @@ function mockFetchSequence(...responses: Array<{ ok: boolean; body?: unknown; st
 
 /** A single webhook fixture. */
 const HOOK_1 = {
-  id: "wh-001",
-  url: "https://example.com/hook",
-  events: ["pair.registered", "pair.deleted"],
+  id: 'wh-001',
+  url: 'https://example.com/hook',
+  events: ['pair.registered', 'pair.deleted'],
   createdAt: Date.now() - 60_000,
 };
 
 const HOOK_2 = {
-  id: "wh-002",
-  url: "https://other.example.com/hook",
-  events: ["quote.requested"],
+  id: 'wh-002',
+  url: 'https://other.example.com/hook',
+  events: ['quote.requested'],
   createdAt: Date.now() - 120_000,
 };
 
@@ -52,7 +54,7 @@ const HOOK_2 = {
 // Setup / teardown
 // ---------------------------------------------------------------------------
 
-describe("WebhooksPage", () => {
+describe('WebhooksPage', () => {
   let originalFetch: typeof global.fetch;
 
   beforeEach(() => {
@@ -68,110 +70,123 @@ describe("WebhooksPage", () => {
   // LIST / RENDER
   // -------------------------------------------------------------------------
 
-  it("shows loading indicator before data arrives", () => {
+  it('shows loading indicator before data arrives', () => {
     // fetch that never resolves → stays in loading state
-    global.fetch = jest.fn(() => new Promise(() => {})) as unknown as typeof global.fetch;
+    global.fetch = jest.fn(
+      () => new Promise(() => {})
+    ) as unknown as typeof global.fetch;
     render(<WebhooksPage />);
-    expect(screen.getByText("Loading…")).toBeInTheDocument();
+    expect(screen.getByText('Loading…')).toBeInTheDocument();
   });
 
-  it("renders the page heading", async () => {
+  it('renders the page heading', async () => {
     mockFetchSequence({ ok: true, body: { items: [] } });
     render(<WebhooksPage />);
-    expect(screen.getByRole("heading", { level: 1, name: /webhooks/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { level: 1, name: /webhooks/i })
+    ).toBeInTheDocument();
   });
 
-  it("renders a registered webhook URL in the list", async () => {
+  it('renders a registered webhook URL in the list', async () => {
     mockFetchSequence({ ok: true, body: { items: [HOOK_1] } });
     render(<WebhooksPage />);
     await waitFor(() =>
-      expect(screen.getByText("https://example.com/hook")).toBeInTheDocument(),
+      expect(screen.getByText('https://example.com/hook')).toBeInTheDocument()
     );
   });
 
-  it("renders all event badges for a webhook", async () => {
+  it('renders all event badges for a webhook', async () => {
     mockFetchSequence({ ok: true, body: { items: [HOOK_1] } });
     render(<WebhooksPage />);
     await waitFor(() =>
-      expect(screen.getByText("pair.registered")).toBeInTheDocument(),
+      expect(screen.getByText('pair.registered')).toBeInTheDocument()
     );
-    expect(screen.getByText("pair.deleted")).toBeInTheDocument();
+    expect(screen.getByText('pair.deleted')).toBeInTheDocument();
   });
 
-  it("renders multiple webhooks", async () => {
+  it('renders multiple webhooks', async () => {
     mockFetchSequence({ ok: true, body: { items: [HOOK_1, HOOK_2] } });
     render(<WebhooksPage />);
     await waitFor(() =>
-      expect(screen.getByText("https://example.com/hook")).toBeInTheDocument(),
+      expect(screen.getByText('https://example.com/hook')).toBeInTheDocument()
     );
-    expect(screen.getByText("https://other.example.com/hook")).toBeInTheDocument();
+    expect(
+      screen.getByText('https://other.example.com/hook')
+    ).toBeInTheDocument();
   });
 
-  it("shows the empty state message when there are no webhooks", async () => {
+  it('shows the empty state message when there are no webhooks', async () => {
     mockFetchSequence({ ok: true, body: { items: [] } });
     render(<WebhooksPage />);
     await waitFor(() =>
-      expect(screen.getByText(/No webhooks registered/i)).toBeInTheDocument(),
+      expect(screen.getByText(/No webhooks registered/i)).toBeInTheDocument()
     );
   });
 
-  it("renders webhooks inside a single aria-live=polite region", async () => {
+  it('renders webhooks inside a single aria-live=polite region', async () => {
     mockFetchSequence({ ok: true, body: { items: [HOOK_1] } });
     render(<WebhooksPage />);
     await waitFor(() =>
-      expect(screen.getByText("https://example.com/hook")).toBeInTheDocument(),
+      expect(screen.getByText('https://example.com/hook')).toBeInTheDocument()
     );
-    const live = document.querySelector("[aria-live=polite]");
+    const live = document.querySelector('[aria-live=polite]');
     expect(live).toBeInTheDocument();
-    expect(live).toHaveAttribute("aria-atomic", "true");
+    expect(live).toHaveAttribute('aria-atomic', 'true');
   });
 
-  it("has exactly one aria-live=polite region", async () => {
+  it('has exactly one aria-live=polite region', async () => {
     mockFetchSequence({ ok: true, body: { items: [] } });
     render(<WebhooksPage />);
     await waitFor(() =>
-      expect(screen.getByText(/No webhooks registered/i)).toBeInTheDocument(),
+      expect(screen.getByText(/No webhooks registered/i)).toBeInTheDocument()
     );
-    expect(document.querySelectorAll("[aria-live=polite]")).toHaveLength(1);
+    expect(document.querySelectorAll('[aria-live=polite]')).toHaveLength(1);
   });
 
-  it("has exactly one #main-content landmark", async () => {
+  it('has exactly one #main-content landmark', async () => {
     mockFetchSequence({ ok: true, body: { items: [] } });
     render(<WebhooksPage />);
     await waitFor(() =>
-      expect(screen.getByText(/No webhooks registered/i)).toBeInTheDocument(),
+      expect(screen.getByText(/No webhooks registered/i)).toBeInTheDocument()
     );
-    expect(document.querySelectorAll("#main-content")).toHaveLength(1);
+    expect(document.querySelectorAll('#main-content')).toHaveLength(1);
   });
 
   // -------------------------------------------------------------------------
   // ERROR STATES
   // -------------------------------------------------------------------------
 
-  it("surfaces a list-load failure with role=alert", async () => {
+  it('surfaces a list-load failure with role=alert', async () => {
     // apiClient converts network errors to "Network request failed"
-    global.fetch = jest.fn().mockRejectedValueOnce(new Error("Network error")) as unknown as typeof global.fetch;
+    global.fetch = jest
+      .fn()
+      .mockRejectedValueOnce(
+        new Error('Network error')
+      ) as unknown as typeof global.fetch;
     render(<WebhooksPage />);
-    await waitFor(() =>
-      expect(screen.getByRole("alert")).toBeInTheDocument(),
+    await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument());
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      /Network request failed/i
     );
-    expect(screen.getByRole("alert")).toHaveTextContent(/Network request failed/i);
   });
 
-  it("surfaces an HTTP error from the list endpoint with role=alert", async () => {
+  it('surfaces an HTTP error from the list endpoint with role=alert', async () => {
     // apiClient extracts the message field from the JSON body
     global.fetch = jest.fn().mockResolvedValueOnce({
       ok: false,
       status: 403,
-      text: () => Promise.resolve(JSON.stringify({ error: "forbidden", message: "Forbidden" })),
+      text: () =>
+        Promise.resolve(
+          JSON.stringify({ error: 'forbidden', message: 'Forbidden' })
+        ),
     } as unknown as Response);
     render(<WebhooksPage />);
     await waitFor(() =>
-      expect(screen.getByRole("alert")).toHaveTextContent(/Forbidden/i),
+      expect(screen.getByRole('alert')).toHaveTextContent(/Forbidden/i)
     );
   });
 
-  it("surfaces a create failure with role=alert", async () => {
+  it('surfaces a create failure with role=alert', async () => {
     // GET list succeeds; POST fails with validation error (apiClient extracts body.message)
     const fetchMock = jest.fn();
     fetchMock
@@ -184,7 +199,12 @@ describe("WebhooksPage", () => {
         ok: false,
         status: 422,
         text: () =>
-          Promise.resolve(JSON.stringify({ error: "validation_error", message: "Invalid URL" })),
+          Promise.resolve(
+            JSON.stringify({
+              error: 'validation_error',
+              message: 'Invalid URL',
+            })
+          ),
       } as unknown as Response);
     global.fetch = fetchMock as unknown as typeof global.fetch;
     render(<WebhooksPage />);
@@ -192,18 +212,16 @@ describe("WebhooksPage", () => {
 
     // Fill in URL and submit
     fireEvent.change(screen.getByLabelText(/URL/i), {
-      target: { value: "https://example.com/new" },
+      target: { value: 'https://example.com/new' },
     });
-    fireEvent.submit(screen.getByLabelText(/URL/i).closest("form")!);
+    fireEvent.submit(screen.getByLabelText(/URL/i).closest('form')!);
 
     // Confirm dialog appears — click Confirm
-    await waitFor(() =>
-      expect(screen.getByRole("dialog")).toBeInTheDocument(),
-    );
-    fireEvent.click(screen.getByRole("button", { name: /^confirm$/i }));
+    await waitFor(() => expect(screen.getByRole('dialog')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /^confirm$/i }));
 
     await waitFor(() =>
-      expect(screen.getByRole("alert")).toHaveTextContent(/Invalid URL/i),
+      expect(screen.getByRole('alert')).toHaveTextContent(/Invalid URL/i)
     );
   });
 
@@ -211,47 +229,45 @@ describe("WebhooksPage", () => {
   // FORM: URL VALIDATION
   // -------------------------------------------------------------------------
 
-  it("shows an error when submitted without HTTPS", async () => {
+  it('shows an error when submitted without HTTPS', async () => {
     mockFetchSequence({ ok: true, body: { items: [] } });
     render(<WebhooksPage />);
     await waitFor(() => screen.getByText(/No webhooks registered/i));
 
     fireEvent.change(screen.getByLabelText(/URL/i), {
-      target: { value: "http://example.com/hook" },
+      target: { value: 'http://example.com/hook' },
     });
-    fireEvent.submit(screen.getByLabelText(/URL/i).closest("form")!);
+    fireEvent.submit(screen.getByLabelText(/URL/i).closest('form')!);
+
+    await waitFor(() => expect(screen.getByRole('dialog')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /^confirm$/i }));
 
     await waitFor(() =>
-      expect(screen.getByRole("dialog")).toBeInTheDocument(),
-    );
-    fireEvent.click(screen.getByRole("button", { name: /^confirm$/i }));
-
-    await waitFor(() =>
-      expect(screen.getByRole("alert")).toHaveTextContent(/https/i),
+      expect(screen.getByRole('alert')).toHaveTextContent(/https/i)
     );
   });
 
-  it("shows an error when no events are selected", async () => {
+  it('shows an error when no events are selected', async () => {
     mockFetchSequence({ ok: true, body: { items: [] } });
     render(<WebhooksPage />);
     await waitFor(() => screen.getByText(/No webhooks registered/i));
 
     // Deselect the default "pair.registered" checkbox
-    const checkbox = screen.getByRole("checkbox", { name: /pair\.registered/i });
+    const checkbox = screen.getByRole('checkbox', {
+      name: /pair\.registered/i,
+    });
     fireEvent.click(checkbox);
 
     fireEvent.change(screen.getByLabelText(/URL/i), {
-      target: { value: "https://example.com/hook" },
+      target: { value: 'https://example.com/hook' },
     });
-    fireEvent.submit(screen.getByLabelText(/URL/i).closest("form")!);
+    fireEvent.submit(screen.getByLabelText(/URL/i).closest('form')!);
+
+    await waitFor(() => expect(screen.getByRole('dialog')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: /^confirm$/i }));
 
     await waitFor(() =>
-      expect(screen.getByRole("dialog")).toBeInTheDocument(),
-    );
-    fireEvent.click(screen.getByRole("button", { name: /^confirm$/i }));
-
-    await waitFor(() =>
-      expect(screen.getByRole("alert")).toHaveTextContent(/at least one event/i),
+      expect(screen.getByRole('alert')).toHaveTextContent(/at least one event/i)
     );
   });
 
@@ -259,37 +275,39 @@ describe("WebhooksPage", () => {
   // EVENT CHECKBOXES
   // -------------------------------------------------------------------------
 
-  it("renders a checkbox for every WEBHOOK_EVENT_OPTIONS entry", async () => {
+  it('renders a checkbox for every WEBHOOK_EVENT_OPTIONS entry', async () => {
     mockFetchSequence({ ok: true, body: { items: [] } });
     render(<WebhooksPage />);
     await waitFor(() => screen.getByText(/No webhooks registered/i));
 
     const expected = [
-      "pair.registered",
-      "pair.deleted",
-      "quote.requested",
-      "router.paused",
-      "router.unpaused",
+      'pair.registered',
+      'pair.deleted',
+      'quote.requested',
+      'router.paused',
+      'router.unpaused',
     ];
     expected.forEach((evt) => {
-      expect(screen.getByRole("checkbox", { name: evt })).toBeInTheDocument();
+      expect(screen.getByRole('checkbox', { name: evt })).toBeInTheDocument();
     });
   });
 
-  it("pre-selects pair.registered by default", async () => {
+  it('pre-selects pair.registered by default', async () => {
     mockFetchSequence({ ok: true, body: { items: [] } });
     render(<WebhooksPage />);
     await waitFor(() => screen.getByText(/No webhooks registered/i));
 
-    expect(screen.getByRole("checkbox", { name: /pair\.registered/i })).toBeChecked();
+    expect(
+      screen.getByRole('checkbox', { name: /pair\.registered/i })
+    ).toBeChecked();
   });
 
-  it("toggles an event checkbox on/off", async () => {
+  it('toggles an event checkbox on/off', async () => {
     mockFetchSequence({ ok: true, body: { items: [] } });
     render(<WebhooksPage />);
     await waitFor(() => screen.getByText(/No webhooks registered/i));
 
-    const cb = screen.getByRole("checkbox", { name: /pair\.deleted/i });
+    const cb = screen.getByRole('checkbox', { name: /pair\.deleted/i });
     expect(cb).not.toBeChecked();
     fireEvent.click(cb);
     expect(cb).toBeChecked();
@@ -297,7 +315,7 @@ describe("WebhooksPage", () => {
     expect(cb).not.toBeChecked();
   });
 
-  it("sends only selected events in the POST body", async () => {
+  it('sends only selected events in the POST body', async () => {
     const fetchMock = jest.fn();
     // GET list
     fetchMock.mockResolvedValueOnce({
@@ -309,7 +327,7 @@ describe("WebhooksPage", () => {
     fetchMock.mockResolvedValueOnce({
       ok: true,
       status: 201,
-      text: () => Promise.resolve("{}"),
+      text: () => Promise.resolve('{}'),
     } as unknown as Response);
     // GET reload
     fetchMock.mockResolvedValueOnce({
@@ -323,22 +341,25 @@ describe("WebhooksPage", () => {
     await waitFor(() => screen.getByText(/No webhooks registered/i));
 
     // Select pair.deleted in addition to the default pair.registered
-    fireEvent.click(screen.getByRole("checkbox", { name: /pair\.deleted/i }));
+    fireEvent.click(screen.getByRole('checkbox', { name: /pair\.deleted/i }));
 
     fireEvent.change(screen.getByLabelText(/URL/i), {
-      target: { value: "https://example.com/hook" },
+      target: { value: 'https://example.com/hook' },
     });
-    fireEvent.submit(screen.getByLabelText(/URL/i).closest("form")!);
+    fireEvent.submit(screen.getByLabelText(/URL/i).closest('form')!);
 
-    await waitFor(() => screen.getByRole("dialog"));
-    fireEvent.click(screen.getByRole("button", { name: /^confirm$/i }));
+    await waitFor(() => screen.getByRole('dialog'));
+    fireEvent.click(screen.getByRole('button', { name: /^confirm$/i }));
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
 
     const postCall = fetchMock.mock.calls[1];
-    const body = JSON.parse(postCall[1].body as string) as { url: string; events: string[] };
+    const body = JSON.parse(postCall[1].body as string) as {
+      url: string;
+      events: string[];
+    };
     expect(body.events).toEqual(
-      expect.arrayContaining(["pair.registered", "pair.deleted"]),
+      expect.arrayContaining(['pair.registered', 'pair.deleted'])
     );
     expect(body.events).toHaveLength(2);
   });
@@ -347,7 +368,7 @@ describe("WebhooksPage", () => {
   // CREATE FLOW
   // -------------------------------------------------------------------------
 
-  it("clears the URL field after a successful create", async () => {
+  it('clears the URL field after a successful create', async () => {
     const fetchMock = jest.fn();
     fetchMock
       .mockResolvedValueOnce({
@@ -358,7 +379,7 @@ describe("WebhooksPage", () => {
       .mockResolvedValueOnce({
         ok: true,
         status: 201,
-        text: () => Promise.resolve("{}"),
+        text: () => Promise.resolve('{}'),
       } as unknown as Response)
       .mockResolvedValueOnce({
         ok: true,
@@ -371,17 +392,19 @@ describe("WebhooksPage", () => {
     await waitFor(() => screen.getByText(/No webhooks registered/i));
 
     const urlInput = screen.getByLabelText(/URL/i);
-    fireEvent.change(urlInput, { target: { value: "https://example.com/hook" } });
-    expect(urlInput).toHaveValue("https://example.com/hook");
+    fireEvent.change(urlInput, {
+      target: { value: 'https://example.com/hook' },
+    });
+    expect(urlInput).toHaveValue('https://example.com/hook');
 
-    fireEvent.submit(urlInput.closest("form")!);
-    await waitFor(() => screen.getByRole("dialog"));
-    fireEvent.click(screen.getByRole("button", { name: /^confirm$/i }));
+    fireEvent.submit(urlInput.closest('form')!);
+    await waitFor(() => screen.getByRole('dialog'));
+    fireEvent.click(screen.getByRole('button', { name: /^confirm$/i }));
 
-    await waitFor(() => expect(urlInput).toHaveValue(""));
+    await waitFor(() => expect(urlInput).toHaveValue(''));
   });
 
-  it("reloads the list after a successful create", async () => {
+  it('reloads the list after a successful create', async () => {
     const fetchMock = jest.fn();
     fetchMock
       .mockResolvedValueOnce({
@@ -392,13 +415,12 @@ describe("WebhooksPage", () => {
       .mockResolvedValueOnce({
         ok: true,
         status: 201,
-        text: () => Promise.resolve("{}"),
+        text: () => Promise.resolve('{}'),
       } as unknown as Response)
       .mockResolvedValueOnce({
         ok: true,
         status: 200,
-        text: () =>
-          Promise.resolve(JSON.stringify({ items: [HOOK_1] })),
+        text: () => Promise.resolve(JSON.stringify({ items: [HOOK_1] })),
       } as unknown as Response);
     global.fetch = fetchMock as unknown as typeof global.fetch;
 
@@ -406,21 +428,21 @@ describe("WebhooksPage", () => {
     await waitFor(() => screen.getByText(/No webhooks registered/i));
 
     fireEvent.change(screen.getByLabelText(/URL/i), {
-      target: { value: "https://example.com/hook" },
+      target: { value: 'https://example.com/hook' },
     });
-    fireEvent.submit(screen.getByLabelText(/URL/i).closest("form")!);
-    await waitFor(() => screen.getByRole("dialog"));
-    fireEvent.click(screen.getByRole("button", { name: /^confirm$/i }));
+    fireEvent.submit(screen.getByLabelText(/URL/i).closest('form')!);
+    await waitFor(() => screen.getByRole('dialog'));
+    fireEvent.click(screen.getByRole('button', { name: /^confirm$/i }));
 
     // After reload, the new webhook URL should appear in the list
     await waitFor(() =>
-      expect(screen.getByText("https://example.com/hook")).toBeInTheDocument(),
+      expect(screen.getByText('https://example.com/hook')).toBeInTheDocument()
     );
     // GET (initial) + POST + GET (reload) = 3 calls
     expect(fetchMock).toHaveBeenCalledTimes(3);
   });
 
-  it("sends the correct URL and events in the POST body", async () => {
+  it('sends the correct URL and events in the POST body', async () => {
     const fetchMock = jest.fn();
     fetchMock
       .mockResolvedValueOnce({
@@ -431,7 +453,7 @@ describe("WebhooksPage", () => {
       .mockResolvedValueOnce({
         ok: true,
         status: 201,
-        text: () => Promise.resolve("{}"),
+        text: () => Promise.resolve('{}'),
       } as unknown as Response)
       .mockResolvedValueOnce({
         ok: true,
@@ -444,22 +466,25 @@ describe("WebhooksPage", () => {
     await waitFor(() => screen.getByText(/No webhooks registered/i));
 
     fireEvent.change(screen.getByLabelText(/URL/i), {
-      target: { value: "https://target.example.com/wh" },
+      target: { value: 'https://target.example.com/wh' },
     });
-    fireEvent.submit(screen.getByLabelText(/URL/i).closest("form")!);
-    await waitFor(() => screen.getByRole("dialog"));
-    fireEvent.click(screen.getByRole("button", { name: /^confirm$/i }));
+    fireEvent.submit(screen.getByLabelText(/URL/i).closest('form')!);
+    await waitFor(() => screen.getByRole('dialog'));
+    fireEvent.click(screen.getByRole('button', { name: /^confirm$/i }));
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
 
     const postCall = fetchMock.mock.calls[1];
-    expect(postCall[0]).toContain("/api/v1/webhooks");
-    const body = JSON.parse(postCall[1].body as string) as { url: string; events: string[] };
-    expect(body.url).toBe("https://target.example.com/wh");
-    expect(body.events).toContain("pair.registered");
+    expect(postCall[0]).toContain('/api/v1/webhooks');
+    const body = JSON.parse(postCall[1].body as string) as {
+      url: string;
+      events: string[];
+    };
+    expect(body.url).toBe('https://target.example.com/wh');
+    expect(body.events).toContain('pair.registered');
   });
 
-  it("shows Registering… on the button while submitting", async () => {
+  it('shows Registering… on the button while submitting', async () => {
     const fetchMock = jest.fn();
     let resolvePost!: (v: unknown) => void;
     fetchMock
@@ -472,7 +497,7 @@ describe("WebhooksPage", () => {
         () =>
           new Promise((res) => {
             resolvePost = res;
-          }),
+          })
       );
     global.fetch = fetchMock as unknown as typeof global.fetch;
 
@@ -480,25 +505,27 @@ describe("WebhooksPage", () => {
     await waitFor(() => screen.getByText(/No webhooks registered/i));
 
     fireEvent.change(screen.getByLabelText(/URL/i), {
-      target: { value: "https://example.com/hook" },
+      target: { value: 'https://example.com/hook' },
     });
-    fireEvent.submit(screen.getByLabelText(/URL/i).closest("form")!);
-    await waitFor(() => screen.getByRole("dialog"));
-    fireEvent.click(screen.getByRole("button", { name: /^confirm$/i }));
+    fireEvent.submit(screen.getByLabelText(/URL/i).closest('form')!);
+    await waitFor(() => screen.getByRole('dialog'));
+    fireEvent.click(screen.getByRole('button', { name: /^confirm$/i }));
 
     await waitFor(() =>
-      expect(screen.getByRole("button", { name: /registering/i })).toBeDisabled(),
+      expect(
+        screen.getByRole('button', { name: /registering/i })
+      ).toBeDisabled()
     );
 
     // Unblock the POST
     resolvePost({
       ok: true,
       status: 201,
-      text: () => Promise.resolve("{}"),
+      text: () => Promise.resolve('{}'),
     });
   });
 
-  it("cancelling the confirm dialog does not submit", async () => {
+  it('cancelling the confirm dialog does not submit', async () => {
     const fetchMock = jest.fn().mockResolvedValueOnce({
       ok: true,
       status: 200,
@@ -510,12 +537,12 @@ describe("WebhooksPage", () => {
     await waitFor(() => screen.getByText(/No webhooks registered/i));
 
     fireEvent.change(screen.getByLabelText(/URL/i), {
-      target: { value: "https://example.com/hook" },
+      target: { value: 'https://example.com/hook' },
     });
-    fireEvent.submit(screen.getByLabelText(/URL/i).closest("form")!);
-    await waitFor(() => screen.getByRole("dialog"));
+    fireEvent.submit(screen.getByLabelText(/URL/i).closest('form')!);
+    await waitFor(() => screen.getByRole('dialog'));
 
-    fireEvent.click(screen.getByRole("button", { name: /cancel/i }));
+    fireEvent.click(screen.getByRole('button', { name: /cancel/i }));
 
     // Only the initial GET; no POST
     expect(fetchMock).toHaveBeenCalledTimes(1);
@@ -525,7 +552,7 @@ describe("WebhooksPage", () => {
   // REMOVE FLOW
   // -------------------------------------------------------------------------
 
-  it("calls apiDelete with the correct webhook id", async () => {
+  it('calls apiDelete with the correct webhook id', async () => {
     const fetchMock = jest.fn();
     // GET list with one webhook
     fetchMock.mockResolvedValueOnce({
@@ -537,7 +564,7 @@ describe("WebhooksPage", () => {
     fetchMock.mockResolvedValueOnce({
       ok: true,
       status: 204,
-      text: () => Promise.resolve(""),
+      text: () => Promise.resolve(''),
     } as unknown as Response);
     // GET reload after delete
     fetchMock.mockResolvedValueOnce({
@@ -549,24 +576,24 @@ describe("WebhooksPage", () => {
 
     render(<WebhooksPage />);
     await waitFor(() =>
-      expect(screen.getByText("https://example.com/hook")).toBeInTheDocument(),
+      expect(screen.getByText('https://example.com/hook')).toBeInTheDocument()
     );
 
     // Click the Remove icon button for HOOK_1
-    fireEvent.click(screen.getByRole("button", { name: /remove webhook/i }));
+    fireEvent.click(screen.getByRole('button', { name: /remove webhook/i }));
 
     // Confirm deletion in the dialog
-    await waitFor(() => screen.getByRole("dialog"));
-    fireEvent.click(screen.getByRole("button", { name: /^remove$/i }));
+    await waitFor(() => screen.getByRole('dialog'));
+    fireEvent.click(screen.getByRole('button', { name: /^remove$/i }));
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
 
     const deleteCall = fetchMock.mock.calls[1];
     expect(deleteCall[0]).toContain(`/api/v1/webhooks/${HOOK_1.id}`);
-    expect(deleteCall[1].method).toBe("DELETE");
+    expect(deleteCall[1].method).toBe('DELETE');
   });
 
-  it("reloads the list after a successful remove", async () => {
+  it('reloads the list after a successful remove', async () => {
     const fetchMock = jest.fn();
     fetchMock
       .mockResolvedValueOnce({
@@ -577,7 +604,7 @@ describe("WebhooksPage", () => {
       .mockResolvedValueOnce({
         ok: true,
         status: 204,
-        text: () => Promise.resolve(""),
+        text: () => Promise.resolve(''),
       } as unknown as Response)
       .mockResolvedValueOnce({
         ok: true,
@@ -588,31 +615,32 @@ describe("WebhooksPage", () => {
 
     render(<WebhooksPage />);
     await waitFor(() =>
-      expect(screen.getByText("https://example.com/hook")).toBeInTheDocument(),
+      expect(screen.getByText('https://example.com/hook')).toBeInTheDocument()
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /remove webhook/i }));
-    await waitFor(() => screen.getByRole("dialog"));
-    fireEvent.click(screen.getByRole("button", { name: /^remove$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /remove webhook/i }));
+    await waitFor(() => screen.getByRole('dialog'));
+    fireEvent.click(screen.getByRole('button', { name: /^remove$/i }));
 
     // After reload the list should be empty
     await waitFor(() =>
-      expect(screen.getByText(/No webhooks registered/i)).toBeInTheDocument(),
+      expect(screen.getByText(/No webhooks registered/i)).toBeInTheDocument()
     );
   });
 
-  it("removes the correct webhook when multiple are listed", async () => {
+  it('removes the correct webhook when multiple are listed', async () => {
     const fetchMock = jest.fn();
     fetchMock
       .mockResolvedValueOnce({
         ok: true,
         status: 200,
-        text: () => Promise.resolve(JSON.stringify({ items: [HOOK_1, HOOK_2] })),
+        text: () =>
+          Promise.resolve(JSON.stringify({ items: [HOOK_1, HOOK_2] })),
       } as unknown as Response)
       .mockResolvedValueOnce({
         ok: true,
         status: 204,
-        text: () => Promise.resolve(""),
+        text: () => Promise.resolve(''),
       } as unknown as Response)
       .mockResolvedValueOnce({
         ok: true,
@@ -623,15 +651,17 @@ describe("WebhooksPage", () => {
 
     render(<WebhooksPage />);
     await waitFor(() =>
-      expect(screen.getByText("https://example.com/hook")).toBeInTheDocument(),
+      expect(screen.getByText('https://example.com/hook')).toBeInTheDocument()
     );
 
     // Click the first Remove button (HOOK_1)
-    const removeButtons = screen.getAllByRole("button", { name: /remove webhook/i });
+    const removeButtons = screen.getAllByRole('button', {
+      name: /remove webhook/i,
+    });
     fireEvent.click(removeButtons[0]);
 
-    await waitFor(() => screen.getByRole("dialog"));
-    fireEvent.click(screen.getByRole("button", { name: /^remove$/i }));
+    await waitFor(() => screen.getByRole('dialog'));
+    fireEvent.click(screen.getByRole('button', { name: /^remove$/i }));
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
 
@@ -639,7 +669,7 @@ describe("WebhooksPage", () => {
     expect(deleteCall[0]).toContain(`/api/v1/webhooks/${HOOK_1.id}`);
   });
 
-  it("cancelling the remove dialog does not call DELETE", async () => {
+  it('cancelling the remove dialog does not call DELETE', async () => {
     const fetchMock = jest.fn().mockResolvedValueOnce({
       ok: true,
       status: 200,
@@ -649,17 +679,17 @@ describe("WebhooksPage", () => {
 
     render(<WebhooksPage />);
     await waitFor(() =>
-      expect(screen.getByText("https://example.com/hook")).toBeInTheDocument(),
+      expect(screen.getByText('https://example.com/hook')).toBeInTheDocument()
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /remove webhook/i }));
-    await waitFor(() => screen.getByRole("dialog"));
-    fireEvent.click(screen.getByRole("button", { name: /cancel/i }));
+    fireEvent.click(screen.getByRole('button', { name: /remove webhook/i }));
+    await waitFor(() => screen.getByRole('dialog'));
+    fireEvent.click(screen.getByRole('button', { name: /cancel/i }));
 
     // Only the initial GET; no DELETE
     expect(fetchMock).toHaveBeenCalledTimes(1);
     // Webhook URL still visible
-    expect(screen.getByText("https://example.com/hook")).toBeInTheDocument();
+    expect(screen.getByText('https://example.com/hook')).toBeInTheDocument();
   });
 
   // -------------------------------------------------------------------------
@@ -670,10 +700,10 @@ describe("WebhooksPage", () => {
     mockFetchSequence({ ok: true, body: { items: [HOOK_1, HOOK_2] } });
     render(<WebhooksPage />);
     await waitFor(() =>
-      expect(screen.getByText("https://example.com/hook")).toBeInTheDocument(),
+      expect(screen.getByText('https://example.com/hook')).toBeInTheDocument()
     );
-    const timeEls = document.querySelectorAll("time");
+    const timeEls = document.querySelectorAll('time');
     expect(timeEls.length).toBeGreaterThanOrEqual(2);
-    timeEls.forEach((el) => expect(el).toHaveAttribute("dateTime"));
+    timeEls.forEach((el) => expect(el).toHaveAttribute('dateTime'));
   });
 });

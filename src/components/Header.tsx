@@ -1,10 +1,10 @@
-"use client";
+'use client';
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useState } from "react";
-import { ThemeToggle } from "@/components/ThemeToggle";
-import { getRoutesByGroup } from "@/lib/routes";
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { useState } from 'react';
+import { ThemeToggle } from '@/components/ThemeToggle';
+import { getRoutesByGroup } from '@/lib/routes';
 
 const routeGroups = getRoutesByGroup();
 
@@ -30,14 +30,14 @@ export function Header() {
             aria-controls="main-nav"
             onClick={() => setMobileOpen((open) => !open)}
           >
-            {mobileOpen ? "Close" : "Menu"}
+            {mobileOpen ? 'Close' : 'Menu'}
           </button>
         </div>
       </div>
       <nav
         id="main-nav"
         aria-label="Main navigation"
-        className={`mx-auto max-w-5xl px-4 pb-4 ${mobileOpen ? "block" : "hidden md:block"}`}
+        className={`mx-auto max-w-5xl px-4 pb-4 ${mobileOpen ? 'block' : 'hidden md:block'}`}
       >
         <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-start md:gap-6">
           {routeGroups.map(({ group, routes }, index) => (
@@ -45,7 +45,7 @@ export function Header() {
               key={group}
               className={
                 index > 0
-                  ? "border-t border-neutral-200 pt-3 md:border-t-0 md:border-l md:pt-0 md:pl-4 dark:border-neutral-800"
+                  ? 'border-t border-neutral-200 pt-3 md:border-t-0 md:border-l md:pt-0 md:pl-4 dark:border-neutral-800'
                   : undefined
               }
             >
@@ -59,7 +59,7 @@ export function Header() {
                     <li key={link.href}>
                       <Link
                         href={link.href}
-                        aria-current={active ? "page" : undefined}
+                        aria-current={active ? 'page' : undefined}
                         className="block rounded px-2 py-1 hover:bg-neutral-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[var(--focus-ring-offset)] focus-visible:outline-[color:var(--focus-ring-color)] dark:hover:bg-neutral-800"
                         onClick={() => setMobileOpen(false)}
                       >

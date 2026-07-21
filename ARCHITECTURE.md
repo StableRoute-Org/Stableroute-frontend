@@ -56,10 +56,10 @@ Jest + Testing Library cover components, page semantics, and parsing helpers (`e
 ## Bundle Budget
 
 To ensure optimal performance, this project enforces a **bundle-size budget** in the CI pipeline (`check-bundle-size.js`).
+
 - **Philosophy**: We keep our First Load JS small. The budget is checked strictly to prevent unintended size bloat when importing third-party libraries.
 - **Verification**: The CI runs `npm run build` and inspects the emitted First Load JS for each route against the limits defined in `.bundle-budget.json`. If any route exceeds its limit, the build fails.
 - **Updating the baseline**: If a bundle size increase is intentional (e.g., adding a crucial new feature or library), you must manually update the limits in `.bundle-budget.json` to reflect the new baseline before merging your PR.
-
 
 # Architecture
 
@@ -128,6 +128,7 @@ Jest + Testing Library cover components, page semantics, and parsing helpers (`e
 ## Bundle Budget
 
 To ensure optimal performance, this project enforces a **bundle-size budget** in the CI pipeline (`check-bundle-size.js`).
+
 - **Philosophy**: We keep our First Load JS small. The budget is checked strictly to prevent unintended size bloat when importing third-party libraries.
 - **Verification**: The CI runs `npm run build` and inspects the emitted First Load JS for each route against the limits defined in `.bundle-budget.json`. If any route exceeds its limit, the build fails.
 - **Updating the baseline**: If a bundle size increase is intentional (e.g., adding a crucial new feature or library), you must manually update the limits in `.bundle-budget.json` to reflect the new baseline before merging your PR.

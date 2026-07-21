@@ -1,9 +1,9 @@
-import { render, screen, act } from "@testing-library/react";
-import { ApiAuthGuard } from "../ApiAuthGuard";
-import { ToastProvider } from "../ToastProvider";
-import * as apiClient from "@/lib/apiClient";
+import { render, screen, act } from '@testing-library/react';
+import { ApiAuthGuard } from '../ApiAuthGuard';
+import { ToastProvider } from '../ToastProvider';
+import * as apiClient from '@/lib/apiClient';
 
-jest.mock("@/lib/apiClient");
+jest.mock('@/lib/apiClient');
 
 const mockRegister = apiClient.registerAuthErrorHandler as jest.MockedFunction<
   typeof apiClient.registerAuthErrorHandler
@@ -20,7 +20,7 @@ function setup() {
   return { spy: mockRegister, getHandler: () => handler };
 }
 
-describe("ApiAuthGuard", () => {
+describe('ApiAuthGuard', () => {
   beforeEach(() => {
     jest.useFakeTimers();
     mockRegister.mockReset();
@@ -31,23 +31,23 @@ describe("ApiAuthGuard", () => {
     jest.restoreAllMocks();
   });
 
-  it("registers an auth error handler on mount", () => {
+  it('registers an auth error handler on mount', () => {
     const { spy } = setup();
     render(
       <ToastProvider>
         <ApiAuthGuard />
-      </ToastProvider>,
+      </ToastProvider>
     );
     expect(spy).toHaveBeenCalledTimes(1);
     expect(spy).toHaveBeenCalledWith(expect.any(Function));
   });
 
-  it("pushes a session-expired toast on 401", () => {
+  it('pushes a session-expired toast on 401', () => {
     const { getHandler } = setup();
     render(
       <ToastProvider>
         <ApiAuthGuard />
-      </ToastProvider>,
+      </ToastProvider>
     );
 
     act(() => {
@@ -55,16 +55,16 @@ describe("ApiAuthGuard", () => {
     });
 
     expect(
-      screen.getByText("Your session has expired. Please sign in again."),
+      screen.getByText('Your session has expired. Please sign in again.')
     ).toBeInTheDocument();
   });
 
-  it("pushes a permission-denied toast on 403", () => {
+  it('pushes a permission-denied toast on 403', () => {
     const { getHandler } = setup();
     render(
       <ToastProvider>
         <ApiAuthGuard />
-      </ToastProvider>,
+      </ToastProvider>
     );
 
     act(() => {
@@ -72,16 +72,16 @@ describe("ApiAuthGuard", () => {
     });
 
     expect(
-      screen.getByText("You don't have permission to perform that action."),
+      screen.getByText("You don't have permission to perform that action.")
     ).toBeInTheDocument();
   });
 
-  it("unregisters the handler on unmount", () => {
+  it('unregisters the handler on unmount', () => {
     const { getHandler } = setup();
     const { unmount } = render(
       <ToastProvider>
         <ApiAuthGuard />
-      </ToastProvider>,
+      </ToastProvider>
     );
 
     expect(getHandler()).not.toBeNull();

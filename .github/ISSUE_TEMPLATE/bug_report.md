@@ -1,9 +1,9 @@
 ---
 name: Bug report
 about: Report a reproducible problem in the StableRoute frontend
-title: "bug: "
+title: 'bug: '
 labels: bug
-assignees: ""
+assignees: ''
 ---
 
 ## Summary

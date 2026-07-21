@@ -270,7 +270,7 @@ describe('PairsPage', () => {
   // Memoized filtering / grouping (issue: avoid recomputing on every render)
   // -------------------------------------------------------------------------
 
-  describe("memoized filtering and grouping", () => {
+  describe('memoized filtering and grouping', () => {
     // filterPairs/groupBySource are jest.fn() wrappers (see the jest.mock
     // factory above) around the real implementations, shared with whatever
     // Client.tsx imports. mockClear (not mockReset) resets call counts
@@ -283,22 +283,22 @@ describe('PairsPage', () => {
       groupSpy.mockClear();
     });
 
-    it("does not refilter or regroup when opening/cancelling the delete dialog", async () => {
+    it('does not refilter or regroup when opening/cancelling the delete dialog', async () => {
       global.fetch = jest.fn().mockResolvedValueOnce({
         ok: true,
         status: 200,
         text: async () =>
           JSON.stringify({
             pairs: [
-              { source: "USDC", destination: "EURC" },
-              { source: "BTC", destination: "USDC" },
+              { source: 'USDC', destination: 'EURC' },
+              { source: 'BTC', destination: 'USDC' },
             ],
           }),
       } as unknown as Response);
 
       render(<PairsPage />);
       await waitFor(() => {
-        expect(screen.getByText("2 pairs")).toBeInTheDocument();
+        expect(screen.getByText('2 pairs')).toBeInTheDocument();
       });
 
       const filterCallsAfterLoad = filterSpy.mock.calls.length;
@@ -306,7 +306,7 @@ describe('PairsPage', () => {
 
       // Opening the delete dialog changes `pendingDelete`, an unrelated
       // piece of state — it must not trigger a refilter/regroup.
-      fireEvent.click(screen.getAllByText("Delete")[0]);
+      fireEvent.click(screen.getAllByText('Delete')[0]);
       const dialog = document.querySelector('[role="dialog"]');
       expect(dialog).not.toBeNull();
 
@@ -314,8 +314,8 @@ describe('PairsPage', () => {
       expect(groupSpy.mock.calls.length).toBe(groupCallsAfterLoad);
 
       // Cancelling closes the dialog — another unrelated re-render.
-      const cancelButton = Array.from(dialog!.querySelectorAll("button")).find(
-        (btn) => btn.textContent === "Cancel",
+      const cancelButton = Array.from(dialog!.querySelectorAll('button')).find(
+        (btn) => btn.textContent === 'Cancel'
       )!;
       fireEvent.click(cancelButton);
       await waitFor(() => {
@@ -326,32 +326,32 @@ describe('PairsPage', () => {
       expect(groupSpy.mock.calls.length).toBe(groupCallsAfterLoad);
     });
 
-    it("does refilter and regroup when the query changes", async () => {
+    it('does refilter and regroup when the query changes', async () => {
       global.fetch = jest.fn().mockResolvedValueOnce({
         ok: true,
         status: 200,
         text: async () =>
           JSON.stringify({
             pairs: [
-              { source: "USDC", destination: "EURC" },
-              { source: "BTC", destination: "USDC" },
+              { source: 'USDC', destination: 'EURC' },
+              { source: 'BTC', destination: 'USDC' },
             ],
           }),
       } as unknown as Response);
 
       render(<PairsPage />);
       await waitFor(() => {
-        expect(screen.getByText("2 pairs")).toBeInTheDocument();
+        expect(screen.getByText('2 pairs')).toBeInTheDocument();
       });
 
       const filterCallsAfterLoad = filterSpy.mock.calls.length;
       const groupCallsAfterLoad = groupSpy.mock.calls.length;
 
-      const input = screen.getByPlaceholderText("Search by asset code");
-      fireEvent.change(input, { target: { value: "BTC" } });
+      const input = screen.getByPlaceholderText('Search by asset code');
+      fireEvent.change(input, { target: { value: 'BTC' } });
 
       await waitFor(() => {
-        expect(screen.queryByText("EURC")).not.toBeInTheDocument();
+        expect(screen.queryByText('EURC')).not.toBeInTheDocument();
       });
 
       expect(filterSpy.mock.calls.length).toBeGreaterThan(filterCallsAfterLoad);
@@ -365,40 +365,45 @@ describe('PairsPage', () => {
   // reached the confirm/cancel/refetch logic below)
   // -------------------------------------------------------------------------
 
-  describe("delete flow", () => {
-    it("does not call the API when the delete confirmation is cancelled", async () => {
-      mockFetch([{ source: "USDC", destination: "EURC" }]);
+  describe('delete flow', () => {
+    it('does not call the API when the delete confirmation is cancelled', async () => {
+      mockFetch([{ source: 'USDC', destination: 'EURC' }]);
       render(<PairsPage />);
       await waitFor(() => {
-        expect(screen.getByText("1 pair")).toBeInTheDocument();
+        expect(screen.getByText('1 pair')).toBeInTheDocument();
       });
 
-      fireEvent.click(screen.getByText("Delete"));
-      const dialog = await screen.findByRole("dialog");
+      fireEvent.click(screen.getByText('Delete'));
+      const dialog = await screen.findByRole('dialog');
 
-      const fetchCallsBeforeCancel = (global.fetch as jest.Mock).mock.calls.length;
-      fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+      const fetchCallsBeforeCancel = (global.fetch as jest.Mock).mock.calls
+        .length;
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel' }));
 
       await waitFor(() => {
-        expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
       });
-      expect((global.fetch as jest.Mock).mock.calls.length).toBe(fetchCallsBeforeCancel);
-      expect(screen.getByText("EURC")).toBeInTheDocument();
+      expect((global.fetch as jest.Mock).mock.calls.length).toBe(
+        fetchCallsBeforeCancel
+      );
+      expect(screen.getByText('EURC')).toBeInTheDocument();
     });
 
-    it("calls apiDelete and refetches after confirming", async () => {
+    it('calls apiDelete and refetches after confirming', async () => {
       global.fetch = jest
         .fn()
         .mockResolvedValueOnce({
           ok: true,
           status: 200,
           text: async () =>
-            JSON.stringify({ pairs: [{ source: "USDC", destination: "EURC" }] }),
+            JSON.stringify({
+              pairs: [{ source: 'USDC', destination: 'EURC' }],
+            }),
         } as unknown as Response)
         .mockResolvedValueOnce({
           ok: true,
           status: 204,
-          text: async () => "",
+          text: async () => '',
         } as unknown as Response)
         .mockResolvedValueOnce({
           ok: true,
@@ -408,21 +413,21 @@ describe('PairsPage', () => {
 
       render(<PairsPage />);
       await waitFor(() => {
-        expect(screen.getByText("1 pair")).toBeInTheDocument();
+        expect(screen.getByText('1 pair')).toBeInTheDocument();
       });
 
-      fireEvent.click(screen.getByText("Delete"));
-      const dialog = await screen.findByRole("dialog");
-      fireEvent.click(within(dialog).getByRole("button", { name: "Delete" }));
+      fireEvent.click(screen.getByText('Delete'));
+      const dialog = await screen.findByRole('dialog');
+      fireEvent.click(within(dialog).getByRole('button', { name: 'Delete' }));
 
       await waitFor(() => {
-        expect(screen.getByText("No pairs registered yet")).toBeInTheDocument();
+        expect(screen.getByText('No pairs registered yet')).toBeInTheDocument();
       });
 
       const calls = (global.fetch as jest.Mock).mock.calls;
       expect(calls).toHaveLength(3);
-      expect(String(calls[1][1]?.method)).toBe("DELETE");
-      expect(String(calls[1][0])).toContain("/api/v1/pairs/USDC/EURC");
+      expect(String(calls[1][1]?.method)).toBe('DELETE');
+      expect(String(calls[1][0])).toContain('/api/v1/pairs/USDC/EURC');
     });
   });
 });

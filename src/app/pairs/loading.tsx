@@ -1,9 +1,13 @@
-import { PageHeading } from "@/components/PageHeading";
-import { Spinner } from "@/components/Spinner";
+import { PageHeading } from '@/components/PageHeading';
+import { Spinner } from '@/components/Spinner';
 
 export default function PairsLoading() {
   return (
-    <main id="main-content" tabIndex={-1} className="mx-auto flex min-h-[60vh] max-w-3xl flex-col gap-6 p-8 focus:outline-none">
+    <main
+      id="main-content"
+      tabIndex={-1}
+      className="mx-auto flex min-h-[60vh] max-w-3xl flex-col gap-6 p-8 focus:outline-none"
+    >
       <PageHeading
         title="Pairs"
         description="Registered routing pairs for the StableRoute router."

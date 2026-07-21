@@ -1,14 +1,24 @@
-import { render, screen, fireEvent, waitFor, cleanup, act } from "@testing-library/react";
-import { Component, type ReactNode } from "react";
-import QuotePage from "./page";
-import QuoteError from "./error";
-import { Header } from "@/components/Header";
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+  cleanup,
+  act,
+} from '@testing-library/react';
+import { Component, type ReactNode } from 'react';
+import QuotePage from './page';
+import QuoteError from './error';
+import { Header } from '@/components/Header';
 
-const getSourceInput = () => screen.getByRole("textbox", { name: /Source asset/i });
-const getDestinationInput = () => screen.getByRole("textbox", { name: /Destination asset/i });
-const getAmountInput = () => screen.getByRole("textbox", { name: /Amount \(base units\)/i });
+const getSourceInput = () =>
+  screen.getByRole('textbox', { name: /Source asset/i });
+const getDestinationInput = () =>
+  screen.getByRole('textbox', { name: /Destination asset/i });
+const getAmountInput = () =>
+  screen.getByRole('textbox', { name: /Amount \(base units\)/i });
 
-describe("QuotePage", () => {
+describe('QuotePage', () => {
   let originalFetch: typeof globalThis.fetch;
 
   beforeEach(() => {
@@ -22,50 +32,64 @@ describe("QuotePage", () => {
     jest.useRealTimers();
   });
 
-  it("renders the heading and form fields", () => {
+  it('renders the heading and form fields', () => {
     render(<QuotePage />);
-    expect(screen.getByRole("heading", { name: /Get a quote/i })).toBeInTheDocument();
-    expect(screen.getByLabelText(/Source asset/i, { selector: "input" })).toBeInTheDocument();
-    expect(screen.getByLabelText(/Destination asset/i, { selector: "input" })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: /Get a quote/i })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(/Source asset/i, { selector: 'input' })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(/Destination asset/i, { selector: 'input' })
+    ).toBeInTheDocument();
     expect(screen.getByLabelText(/Amount/i)).toBeInTheDocument();
   });
 
-  it("calls the backend and renders the route on success", async () => {
+  it('calls the backend and renders the route on success', async () => {
     const mockFetch = jest.fn().mockResolvedValueOnce({
       ok: true,
       text: async () =>
         JSON.stringify({
-        source_asset: "USDC",
-        dest_asset: "EURC",
-        amount: "1000000",
-        estimated_rate: "1.0",
-        route: ["USDC", "EURC"],
-      }),
+          source_asset: 'USDC',
+          dest_asset: 'EURC',
+          amount: '1000000',
+          estimated_rate: '1.0',
+          route: ['USDC', 'EURC'],
+        }),
     } as unknown as Response);
     globalThis.fetch = mockFetch as unknown as typeof globalThis.fetch;
 
     render(<QuotePage />);
-    fireEvent.change(screen.getByLabelText(/Source asset/i, { selector: "input" }), {
-      target: { value: "USDC" },
-    });
-    fireEvent.change(screen.getByLabelText(/Destination asset/i, { selector: "input" }), {
-      target: { value: "EURC" },
-    });
+    fireEvent.change(
+      screen.getByLabelText(/Source asset/i, { selector: 'input' }),
+      {
+        target: { value: 'USDC' },
+      }
+    );
+    fireEvent.change(
+      screen.getByLabelText(/Destination asset/i, { selector: 'input' }),
+      {
+        target: { value: 'EURC' },
+      }
+    );
     fireEvent.change(getAmountInput(), {
-      target: { value: "1000000" },
+      target: { value: '1000000' },
     });
-    fireEvent.click(screen.getByRole("button", { name: /Get quote/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Get quote/i }));
 
     await waitFor(() => {
-      expect(screen.getByRole("status")).toHaveTextContent(/USDC → EURC/);
+      expect(screen.getByRole('status')).toHaveTextContent(/USDC → EURC/);
     });
     expect(mockFetch).toHaveBeenCalledWith(
-      expect.stringContaining("source_asset=USDC&dest_asset=EURC&amount=1000000"),
-      expect.anything(),
+      expect.stringContaining(
+        'source_asset=USDC&dest_asset=EURC&amount=1000000'
+      ),
+      expect.anything()
     );
   });
 
-  it("ignores rapid duplicate submissions while a request is already in flight", async () => {
+  it('ignores rapid duplicate submissions while a request is already in flight', async () => {
     jest.useFakeTimers();
 
     let resolveRequest: ((value: Response) => void) | undefined;
@@ -78,41 +102,40 @@ describe("QuotePage", () => {
 
     render(<QuotePage />);
     fireEvent.change(getSourceInput(), {
-      target: { value: "USDC" },
+      target: { value: 'USDC' },
     });
     fireEvent.change(getDestinationInput(), {
-      target: { value: "EURC" },
+      target: { value: 'EURC' },
     });
     fireEvent.change(getAmountInput(), {
-      target: { value: "1000000" },
+      target: { value: '1000000' },
     });
 
-    const form = getAmountInput().closest("form")!;
+    const form = getAmountInput().closest('form')!;
     fireEvent.submit(form);
     fireEvent.submit(form);
 
     expect(mockFetch).toHaveBeenCalledTimes(1);
-    expect(screen.getByRole("button", { name: /Quoting…/i })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /Quoting…/i })).toBeDisabled();
 
     resolveRequest?.({
       ok: true,
       text: async () =>
         JSON.stringify({
-          source_asset: "USDC",
-          dest_asset: "EURC",
-          amount: "1000000",
-          estimated_rate: "1.0",
-          route: ["USDC", "EURC"],
+          source_asset: 'USDC',
+          dest_asset: 'EURC',
+          amount: '1000000',
+          estimated_rate: '1.0',
+          route: ['USDC', 'EURC'],
         }),
     } as unknown as Response);
 
     await waitFor(() => {
-      expect(screen.getByRole("status")).toHaveTextContent(/USDC → EURC/);
+      expect(screen.getByRole('status')).toHaveTextContent(/USDC → EURC/);
     });
-
   });
 
-  it("aborts an earlier in-flight request before replacing it after the cooldown", async () => {
+  it('aborts an earlier in-flight request before replacing it after the cooldown', async () => {
     jest.useFakeTimers();
 
     let firstSignal: AbortSignal | null | undefined;
@@ -130,11 +153,11 @@ describe("QuotePage", () => {
           ok: true,
           text: async () =>
             JSON.stringify({
-              source_asset: "USDC",
-              dest_asset: "EURC",
-              amount: "1000000",
-              estimated_rate: "1.0",
-              route: ["USDC", "EURC"],
+              source_asset: 'USDC',
+              dest_asset: 'EURC',
+              amount: '1000000',
+              estimated_rate: '1.0',
+              route: ['USDC', 'EURC'],
             }),
         } as unknown as Response);
       });
@@ -142,16 +165,16 @@ describe("QuotePage", () => {
 
     render(<QuotePage />);
     fireEvent.change(getSourceInput(), {
-      target: { value: "USDC" },
+      target: { value: 'USDC' },
     });
     fireEvent.change(getDestinationInput(), {
-      target: { value: "EURC" },
+      target: { value: 'EURC' },
     });
     fireEvent.change(getAmountInput(), {
-      target: { value: "1000000" },
+      target: { value: '1000000' },
     });
 
-    const form = getAmountInput().closest("form")!;
+    const form = getAmountInput().closest('form')!;
     fireEvent.submit(form);
     expect(mockFetch).toHaveBeenCalledTimes(1);
 
@@ -166,59 +189,70 @@ describe("QuotePage", () => {
     expect(secondSignal).toBeDefined();
 
     await waitFor(() => {
-      expect(screen.getByRole("status")).toHaveTextContent(/USDC → EURC/);
+      expect(screen.getByRole('status')).toHaveTextContent(/USDC → EURC/);
     });
-
   });
 
-  it("formats quote amount and rate while preserving raw values in title", async () => {
+  it('formats quote amount and rate while preserving raw values in title', async () => {
     const mockFetch = jest.fn().mockResolvedValueOnce({
       ok: true,
       text: async () =>
         JSON.stringify({
-        source_asset: "USDC",
-        dest_asset: "EURC",
-        amount: "10000000",
-        estimated_rate: "1234",
-        route: ["USDC", "EURC"],
-      }),
+          source_asset: 'USDC',
+          dest_asset: 'EURC',
+          amount: '10000000',
+          estimated_rate: '1234',
+          route: ['USDC', 'EURC'],
+        }),
     } as unknown as Response);
     globalThis.fetch = mockFetch as unknown as typeof globalThis.fetch;
 
     render(<QuotePage />);
-    fireEvent.change(screen.getByLabelText(/Source asset/i, { selector: "input" }), {
-      target: { value: "USDC" },
-    });
-    fireEvent.change(screen.getByLabelText(/Destination asset/i, { selector: "input" }), {
-      target: { value: "EURC" },
-    });
+    fireEvent.change(
+      screen.getByLabelText(/Source asset/i, { selector: 'input' }),
+      {
+        target: { value: 'USDC' },
+      }
+    );
+    fireEvent.change(
+      screen.getByLabelText(/Destination asset/i, { selector: 'input' }),
+      {
+        target: { value: 'EURC' },
+      }
+    );
     fireEvent.change(getAmountInput(), {
-      target: { value: "10000000" },
+      target: { value: '10000000' },
     });
-    fireEvent.click(screen.getByRole("button", { name: /Get quote/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Get quote/i }));
 
     await waitFor(() => {
-      expect(screen.getByRole("status")).toHaveTextContent(/1\.00 XLM/);
+      expect(screen.getByRole('status')).toHaveTextContent(/1\.00 XLM/);
     });
-    expect(screen.getByText("1.00 XLM")).toHaveAttribute("title", "10000000");
-    expect(screen.getByText("1,234")).toHaveAttribute("title", "1234");
+    expect(screen.getByText('1.00 XLM')).toHaveAttribute('title', '10000000');
+    expect(screen.getByText('1,234')).toHaveAttribute('title', '1234');
   });
 
-  it("blocks submission when source == destination", async () => {
+  it('blocks submission when source == destination', async () => {
     const mockFetch = jest.fn();
     globalThis.fetch = mockFetch as unknown as typeof globalThis.fetch;
     render(<QuotePage />);
 
-    fireEvent.change(screen.getByLabelText(/Source asset/i, { selector: "input" }), {
-      target: { value: "USDC" },
-    });
-    fireEvent.change(screen.getByLabelText(/Destination asset/i, { selector: "input" }), {
-      target: { value: "USDC" },
-    });
+    fireEvent.change(
+      screen.getByLabelText(/Source asset/i, { selector: 'input' }),
+      {
+        target: { value: 'USDC' },
+      }
+    );
+    fireEvent.change(
+      screen.getByLabelText(/Destination asset/i, { selector: 'input' }),
+      {
+        target: { value: 'USDC' },
+      }
+    );
     fireEvent.change(getAmountInput(), {
-      target: { value: "1" },
+      target: { value: '1' },
     });
-    const form = getAmountInput().closest("form")!;
+    const form = getAmountInput().closest('form')!;
     fireEvent.submit(form);
 
     await waitFor(() => {
@@ -227,21 +261,27 @@ describe("QuotePage", () => {
     expect(mockFetch).not.toHaveBeenCalled();
   });
 
-  it("blocks submission when amount is not a positive integer", async () => {
+  it('blocks submission when amount is not a positive integer', async () => {
     const mockFetch = jest.fn();
     globalThis.fetch = mockFetch as unknown as typeof globalThis.fetch;
     render(<QuotePage />);
 
-    fireEvent.change(screen.getByLabelText(/Source asset/i, { selector: "input" }), {
-      target: { value: "USDC" },
-    });
-    fireEvent.change(screen.getByLabelText(/Destination asset/i, { selector: "input" }), {
-      target: { value: "EURC" },
-    });
+    fireEvent.change(
+      screen.getByLabelText(/Source asset/i, { selector: 'input' }),
+      {
+        target: { value: 'USDC' },
+      }
+    );
+    fireEvent.change(
+      screen.getByLabelText(/Destination asset/i, { selector: 'input' }),
+      {
+        target: { value: 'EURC' },
+      }
+    );
     fireEvent.change(getAmountInput(), {
-      target: { value: "1.5" },
+      target: { value: '1.5' },
     });
-    const form = getAmountInput().closest("form")!;
+    const form = getAmountInput().closest('form')!;
     fireEvent.submit(form);
 
     await waitFor(() => {
@@ -250,21 +290,27 @@ describe("QuotePage", () => {
     expect(mockFetch).not.toHaveBeenCalled();
   });
 
-  it("blocks submission when an asset code contains unsafe characters", async () => {
+  it('blocks submission when an asset code contains unsafe characters', async () => {
     const mockFetch = jest.fn();
     globalThis.fetch = mockFetch as unknown as typeof globalThis.fetch;
     render(<QuotePage />);
 
-    fireEvent.change(screen.getByLabelText(/Source asset/i, { selector: "input" }), {
-      target: { value: "US$C" },
-    });
-    fireEvent.change(screen.getByLabelText(/Destination asset/i, { selector: "input" }), {
-      target: { value: "EURC" },
-    });
+    fireEvent.change(
+      screen.getByLabelText(/Source asset/i, { selector: 'input' }),
+      {
+        target: { value: 'US$C' },
+      }
+    );
+    fireEvent.change(
+      screen.getByLabelText(/Destination asset/i, { selector: 'input' }),
+      {
+        target: { value: 'EURC' },
+      }
+    );
     fireEvent.change(getAmountInput(), {
-      target: { value: "100" },
+      target: { value: '100' },
     });
-    fireEvent.submit(getAmountInput().closest("form")!);
+    fireEvent.submit(getAmountInput().closest('form')!);
 
     await waitFor(() => {
       expect(screen.getByText(/1-12 letters or numbers/i)).toBeInTheDocument();
@@ -272,21 +318,27 @@ describe("QuotePage", () => {
     expect(mockFetch).not.toHaveBeenCalled();
   });
 
-  it("blocks submission when an asset code is over length", async () => {
+  it('blocks submission when an asset code is over length', async () => {
     const mockFetch = jest.fn();
     globalThis.fetch = mockFetch as unknown as typeof globalThis.fetch;
     render(<QuotePage />);
 
-    fireEvent.change(screen.getByLabelText(/Source asset/i, { selector: "input" }), {
-      target: { value: "TOO-LONG-ASSET" },
-    });
-    fireEvent.change(screen.getByLabelText(/Destination asset/i, { selector: "input" }), {
-      target: { value: "EURC" },
-    });
+    fireEvent.change(
+      screen.getByLabelText(/Source asset/i, { selector: 'input' }),
+      {
+        target: { value: 'TOO-LONG-ASSET' },
+      }
+    );
+    fireEvent.change(
+      screen.getByLabelText(/Destination asset/i, { selector: 'input' }),
+      {
+        target: { value: 'EURC' },
+      }
+    );
     fireEvent.change(getAmountInput(), {
-      target: { value: "100" },
+      target: { value: '100' },
     });
-    fireEvent.submit(getAmountInput().closest("form")!);
+    fireEvent.submit(getAmountInput().closest('form')!);
 
     await waitFor(() => {
       expect(screen.getByText(/1-12 letters or numbers/i)).toBeInTheDocument();
@@ -294,21 +346,27 @@ describe("QuotePage", () => {
     expect(mockFetch).not.toHaveBeenCalled();
   });
 
-  it("blocks submission when asset codes are whitespace-only", async () => {
+  it('blocks submission when asset codes are whitespace-only', async () => {
     const mockFetch = jest.fn();
     globalThis.fetch = mockFetch as unknown as typeof globalThis.fetch;
     render(<QuotePage />);
 
-    fireEvent.change(screen.getByLabelText(/Source asset/i, { selector: "input" }), {
-      target: { value: "   " },
-    });
-    fireEvent.change(screen.getByLabelText(/Destination asset/i, { selector: "input" }), {
-      target: { value: "EURC" },
-    });
+    fireEvent.change(
+      screen.getByLabelText(/Source asset/i, { selector: 'input' }),
+      {
+        target: { value: '   ' },
+      }
+    );
+    fireEvent.change(
+      screen.getByLabelText(/Destination asset/i, { selector: 'input' }),
+      {
+        target: { value: 'EURC' },
+      }
+    );
     fireEvent.change(getAmountInput(), {
-      target: { value: "100" },
+      target: { value: '100' },
     });
-    fireEvent.submit(getAmountInput().closest("form")!);
+    fireEvent.submit(getAmountInput().closest('form')!);
 
     await waitFor(() => {
       expect(screen.getByText(/1-12 letters or numbers/i)).toBeInTheDocument();
@@ -316,159 +374,193 @@ describe("QuotePage", () => {
     expect(mockFetch).not.toHaveBeenCalled();
   });
 
-  it("trims valid asset codes and amount before issuing the request", async () => {
+  it('trims valid asset codes and amount before issuing the request', async () => {
     const mockFetch = jest.fn().mockResolvedValueOnce({
       ok: true,
       text: async () =>
         JSON.stringify({
-        source_asset: "USDC",
-        dest_asset: "EURC",
-        amount: "100",
-        estimated_rate: "1.0",
-        route: ["USDC", "EURC"],
-      }),
+          source_asset: 'USDC',
+          dest_asset: 'EURC',
+          amount: '100',
+          estimated_rate: '1.0',
+          route: ['USDC', 'EURC'],
+        }),
     } as unknown as Response);
     globalThis.fetch = mockFetch as unknown as typeof globalThis.fetch;
     render(<QuotePage />);
 
-    fireEvent.change(screen.getByLabelText(/Source asset/i, { selector: "input" }), {
-      target: { value: " USDC " },
-    });
-    fireEvent.change(screen.getByLabelText(/Destination asset/i, { selector: "input" }), {
-      target: { value: " EURC " },
-    });
+    fireEvent.change(
+      screen.getByLabelText(/Source asset/i, { selector: 'input' }),
+      {
+        target: { value: ' USDC ' },
+      }
+    );
+    fireEvent.change(
+      screen.getByLabelText(/Destination asset/i, { selector: 'input' }),
+      {
+        target: { value: ' EURC ' },
+      }
+    );
     fireEvent.change(getAmountInput(), {
-      target: { value: " 100 " },
+      target: { value: ' 100 ' },
     });
-    fireEvent.click(screen.getByRole("button", { name: /Get quote/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Get quote/i }));
 
     await waitFor(() => {
-      expect(screen.getByRole("status")).toHaveTextContent(/USDC → EURC/);
+      expect(screen.getByRole('status')).toHaveTextContent(/USDC → EURC/);
     });
     expect(mockFetch).toHaveBeenCalledWith(
-      expect.stringContaining("source_asset=USDC&dest_asset=EURC&amount=100"),
-      expect.anything(),
+      expect.stringContaining('source_asset=USDC&dest_asset=EURC&amount=100'),
+      expect.anything()
     );
   });
 
-  it("associates validation errors with the relevant TextField inputs", async () => {
+  it('associates validation errors with the relevant TextField inputs', async () => {
     const mockFetch = jest.fn();
     globalThis.fetch = mockFetch as unknown as typeof globalThis.fetch;
     render(<QuotePage />);
 
-    fireEvent.change(screen.getByLabelText(/Source asset/i, { selector: "input" }), {
-      target: { value: "USDC" },
-    });
-    fireEvent.change(screen.getByLabelText(/Destination asset/i, { selector: "input" }), {
-      target: { value: "USDC" },
-    });
+    fireEvent.change(
+      screen.getByLabelText(/Source asset/i, { selector: 'input' }),
+      {
+        target: { value: 'USDC' },
+      }
+    );
+    fireEvent.change(
+      screen.getByLabelText(/Destination asset/i, { selector: 'input' }),
+      {
+        target: { value: 'USDC' },
+      }
+    );
     fireEvent.change(getAmountInput(), {
-      target: { value: "100" },
+      target: { value: '100' },
     });
-    fireEvent.submit(getAmountInput().closest("form")!);
+    fireEvent.submit(getAmountInput().closest('form')!);
 
     await waitFor(() => {
-      expect(screen.getByLabelText(/Destination asset/i, { selector: "input" })).toHaveAttribute("aria-invalid", "true");
+      expect(
+        screen.getByLabelText(/Destination asset/i, { selector: 'input' })
+      ).toHaveAttribute('aria-invalid', 'true');
     });
     expect(mockFetch).not.toHaveBeenCalled();
   });
 
-  it("surfaces a backend invalid_request as a role=alert", async () => {
+  it('surfaces a backend invalid_request as a role=alert', async () => {
     globalThis.fetch = jest.fn().mockResolvedValueOnce({
       ok: false,
       status: 400,
       text: async () =>
         JSON.stringify({
-        error: "invalid_request",
-        message: "source_asset and dest_asset must differ",
-      }),
+          error: 'invalid_request',
+          message: 'source_asset and dest_asset must differ',
+        }),
     } as unknown as Response);
 
     render(<QuotePage />);
-    fireEvent.change(screen.getByLabelText(/Source asset/i, { selector: "input" }), {
-      target: { value: "USDC" },
-    });
-    fireEvent.change(screen.getByLabelText(/Destination asset/i, { selector: "input" }), {
-      target: { value: "EURC" },
-    });
+    fireEvent.change(
+      screen.getByLabelText(/Source asset/i, { selector: 'input' }),
+      {
+        target: { value: 'USDC' },
+      }
+    );
+    fireEvent.change(
+      screen.getByLabelText(/Destination asset/i, { selector: 'input' }),
+      {
+        target: { value: 'EURC' },
+      }
+    );
     fireEvent.change(getAmountInput(), {
-      target: { value: "100" },
+      target: { value: '100' },
     });
-    fireEvent.click(screen.getByRole("button", { name: /Get quote/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Get quote/i }));
 
     await waitFor(() => {
       expect(screen.getByText(/must differ/i)).toBeInTheDocument();
     });
   });
 
-  it("shows the requestId when the backend includes one", async () => {
+  it('shows the requestId when the backend includes one', async () => {
     globalThis.fetch = jest.fn().mockResolvedValueOnce({
       ok: false,
       status: 400,
       text: async () =>
         JSON.stringify({
-        error: "invalid_request",
-        message: "source_asset and dest_asset must differ",
-        requestId: "req-abc-123",
-      }),
+          error: 'invalid_request',
+          message: 'source_asset and dest_asset must differ',
+          requestId: 'req-abc-123',
+        }),
     } as unknown as Response);
 
     render(<QuotePage />);
-    fireEvent.change(screen.getByLabelText(/Source asset/i, { selector: "input" }), {
-      target: { value: "USDC" },
-    });
-    fireEvent.change(screen.getByLabelText(/Destination asset/i, { selector: "input" }), {
-      target: { value: "EURC" },
-    });
+    fireEvent.change(
+      screen.getByLabelText(/Source asset/i, { selector: 'input' }),
+      {
+        target: { value: 'USDC' },
+      }
+    );
+    fireEvent.change(
+      screen.getByLabelText(/Destination asset/i, { selector: 'input' }),
+      {
+        target: { value: 'EURC' },
+      }
+    );
     fireEvent.change(getAmountInput(), {
-      target: { value: "100" },
+      target: { value: '100' },
     });
-    fireEvent.click(screen.getByRole("button", { name: /Get quote/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Get quote/i }));
 
     await waitFor(() => {
       expect(screen.getByText(/must differ/i)).toBeInTheDocument();
     });
-    expect(screen.getByRole("alert")).toHaveTextContent(/Request ID: req-abc-123/);
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      /Request ID: req-abc-123/
+    );
   });
 
-  it("omits the requestId line when the backend does not include one", async () => {
+  it('omits the requestId line when the backend does not include one', async () => {
     globalThis.fetch = jest.fn().mockResolvedValueOnce({
       ok: false,
       status: 400,
       text: async () =>
         JSON.stringify({
-        error: "invalid_request",
-        message: "source_asset and dest_asset must differ",
-      }),
+          error: 'invalid_request',
+          message: 'source_asset and dest_asset must differ',
+        }),
     } as unknown as Response);
 
     render(<QuotePage />);
-    fireEvent.change(screen.getByLabelText(/Source asset/i, { selector: "input" }), {
-      target: { value: "USDC" },
-    });
-    fireEvent.change(screen.getByLabelText(/Destination asset/i, { selector: "input" }), {
-      target: { value: "EURC" },
-    });
+    fireEvent.change(
+      screen.getByLabelText(/Source asset/i, { selector: 'input' }),
+      {
+        target: { value: 'USDC' },
+      }
+    );
+    fireEvent.change(
+      screen.getByLabelText(/Destination asset/i, { selector: 'input' }),
+      {
+        target: { value: 'EURC' },
+      }
+    );
     fireEvent.change(getAmountInput(), {
-      target: { value: "100" },
+      target: { value: '100' },
     });
-    fireEvent.click(screen.getByRole("button", { name: /Get quote/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Get quote/i }));
 
     await waitFor(() => {
       expect(screen.getByText(/must differ/i)).toBeInTheDocument();
     });
-    expect(screen.getByRole("alert")).not.toHaveTextContent(/Request ID/);
+    expect(screen.getByRole('alert')).not.toHaveTextContent(/Request ID/);
   });
 });
 
-describe("QuoteError segment boundary", () => {
+describe('QuoteError segment boundary', () => {
   let errorSpy: jest.SpyInstance;
 
   beforeEach(() => {
-    errorSpy = jest.spyOn(console, "error").mockImplementation(() => {});
+    errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
     // jsdom does not implement matchMedia; Header renders ThemeToggle which
     // resolves the effective theme through it on mount.
-    Object.defineProperty(window, "matchMedia", {
+    Object.defineProperty(window, 'matchMedia', {
       configurable: true,
       writable: true,
       value: jest.fn().mockReturnValue({ matches: false }),
@@ -485,7 +577,10 @@ describe("QuoteError segment boundary", () => {
    * children when the fallback's `reset()` fires — mirroring App Router
    * semantics.
    */
-  class SegmentBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
+  class SegmentBoundary extends Component<
+    { children: ReactNode },
+    { error: Error | null }
+  > {
     state: { error: Error | null } = { error: null };
 
     static getDerivedStateFromError(error: Error) {
@@ -495,7 +590,10 @@ describe("QuoteError segment boundary", () => {
     render() {
       if (this.state.error) {
         return (
-          <QuoteError error={this.state.error} reset={() => this.setState({ error: null })} />
+          <QuoteError
+            error={this.state.error}
+            reset={() => this.setState({ error: null })}
+          />
         );
       }
       return this.props.children;
@@ -503,39 +601,45 @@ describe("QuoteError segment boundary", () => {
   }
 
   function CrashingSegment(): ReactNode {
-    throw new Error("quote segment exploded");
+    throw new Error('quote segment exploded');
   }
 
-  it("renders the segment-scoped fallback with the thrown message", () => {
+  it('renders the segment-scoped fallback with the thrown message', () => {
     render(
       <SegmentBoundary>
         <CrashingSegment />
-      </SegmentBoundary>,
+      </SegmentBoundary>
     );
     expect(
-      screen.getByRole("heading", { name: /The quote page hit an error\./i }),
+      screen.getByRole('heading', { name: /The quote page hit an error\./i })
     ).toBeInTheDocument();
-    expect(screen.getByRole("alert")).toHaveTextContent("quote segment exploded");
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'quote segment exploded'
+    );
   });
 
-  it("keeps the header and navigation mounted during the error state", () => {
+  it('keeps the header and navigation mounted during the error state', () => {
     render(
       <>
         <Header />
         <SegmentBoundary>
           <CrashingSegment />
         </SegmentBoundary>
-      </>,
+      </>
     );
-    expect(screen.getByRole("banner")).toBeInTheDocument();
-    expect(screen.getByRole("navigation", { name: /main navigation/i })).toBeInTheDocument();
-    expect(screen.getByRole("alert")).toHaveTextContent("quote segment exploded");
+    expect(screen.getByRole('banner')).toBeInTheDocument();
+    expect(
+      screen.getByRole('navigation', { name: /main navigation/i })
+    ).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'quote segment exploded'
+    );
   });
 
-  it("recovers the segment via reset without a full page reload", () => {
+  it('recovers the segment via reset without a full page reload', () => {
     let crash = true;
     function FlakySegment(): ReactNode {
-      if (crash) throw new Error("quote segment exploded");
+      if (crash) throw new Error('quote segment exploded');
       return <p>quote content</p>;
     }
     render(
@@ -544,26 +648,28 @@ describe("QuoteError segment boundary", () => {
         <SegmentBoundary>
           <FlakySegment />
         </SegmentBoundary>
-      </>,
+      </>
     );
-    const headerEl = screen.getByRole("banner");
-    expect(screen.queryByText("quote content")).not.toBeInTheDocument();
+    const headerEl = screen.getByRole('banner');
+    expect(screen.queryByText('quote content')).not.toBeInTheDocument();
 
     crash = false;
-    fireEvent.click(screen.getByRole("button", { name: /Try again/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Try again/i }));
 
     // Same header DOM node after recovery proves the shell never remounted.
-    expect(screen.getByText("quote content")).toBeInTheDocument();
-    expect(screen.getByRole("banner")).toBe(headerEl);
-    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.getByText('quote content')).toBeInTheDocument();
+    expect(screen.getByRole('banner')).toBe(headerEl);
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
-  it("logs the digest when the thrown error carries one", () => {
-    const error = Object.assign(new Error("boom"), { digest: "digest-quote-1" });
+  it('logs the digest when the thrown error carries one', () => {
+    const error = Object.assign(new Error('boom'), {
+      digest: 'digest-quote-1',
+    });
     render(<QuoteError error={error} reset={() => {}} />);
     expect(errorSpy).toHaveBeenCalledWith(
-      "quote segment error boundary caught:",
-      "digest-quote-1",
+      'quote segment error boundary caught:',
+      'digest-quote-1'
     );
   });
 });

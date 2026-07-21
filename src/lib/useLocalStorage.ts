@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from 'react';
 
 type Validate<T> = (value: unknown) => value is T;
 
@@ -36,9 +36,9 @@ export function readLocalStorageValue<T>(
   key: string,
   defaultValue: T,
   validate?: Validate<T>,
-  serializer: Serializer<T> = jsonSerializer as Serializer<T>,
+  serializer: Serializer<T> = jsonSerializer as Serializer<T>
 ): T {
-  if (typeof window === "undefined") return defaultValue;
+  if (typeof window === 'undefined') return defaultValue;
 
   try {
     const raw = window.localStorage.getItem(key);
@@ -60,9 +60,9 @@ export function readLocalStorageValue<T>(
 export function writeLocalStorageValue<T>(
   key: string,
   value: T,
-  serializer: Serializer<T> = jsonSerializer as Serializer<T>,
+  serializer: Serializer<T> = jsonSerializer as Serializer<T>
 ): boolean {
-  if (typeof window === "undefined") return false;
+  if (typeof window === 'undefined') return false;
 
   try {
     window.localStorage.setItem(key, serializer.write(value));
@@ -92,7 +92,7 @@ export function useLocalStorage<T>(
   key: string,
   defaultValue: T,
   validate?: Validate<T>,
-  serializer: Serializer<T> = jsonSerializer as Serializer<T>,
+  serializer: Serializer<T> = jsonSerializer as Serializer<T>
 ): [T, (value: T | ((prev: T) => T)) => void] {
   const [value, setValue] = useState<T>(defaultValue);
 
@@ -108,12 +108,12 @@ export function useLocalStorage<T>(
     (next: T | ((prev: T) => T)) => {
       setValue((prev) => {
         const resolved =
-          typeof next === "function" ? (next as (prev: T) => T)(prev) : next;
+          typeof next === 'function' ? (next as (prev: T) => T)(prev) : next;
         writeLocalStorageValue(key, resolved, serializer);
         return resolved;
       });
     },
-    [key, serializer],
+    [key, serializer]
   );
 
   return [value, set];

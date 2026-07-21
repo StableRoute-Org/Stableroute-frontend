@@ -4,20 +4,20 @@ import {
   type ButtonHTMLAttributes,
   type ReactElement,
   type ReactNode,
-} from "react";
+} from 'react';
 
-type Variant = "primary" | "secondary" | "danger";
+type Variant = 'primary' | 'secondary' | 'danger';
 
 const variants: Record<Variant, string> = {
   primary:
-    "bg-black text-white hover:bg-neutral-800 dark:bg-white dark:text-black dark:hover:bg-neutral-200",
+    'bg-black text-white hover:bg-neutral-800 dark:bg-white dark:text-black dark:hover:bg-neutral-200',
   secondary:
-    "border border-neutral-300 hover:border-neutral-500 dark:border-neutral-700 dark:hover:border-neutral-500",
-  danger: "bg-rose-600 text-white hover:bg-rose-700",
+    'border border-neutral-300 hover:border-neutral-500 dark:border-neutral-700 dark:hover:border-neutral-500',
+  danger: 'bg-rose-600 text-white hover:bg-rose-700',
 };
 
 const ring =
-  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[var(--focus-ring-offset)] focus-visible:outline-[color:var(--focus-ring-color)]";
+  'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[var(--focus-ring-offset)] focus-visible:outline-[color:var(--focus-ring-color)]';
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: Variant;
@@ -27,8 +27,8 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
 };
 
 export function Button({
-  variant = "primary",
-  className = "",
+  variant = 'primary',
+  className = '',
   asChild = false,
   children,
   ...rest
@@ -39,7 +39,7 @@ export function Button({
     const child = children as ReactElement<{ className?: string }>;
     return cloneElement(child, {
       ...rest,
-      className: `${classes} ${child.props.className ?? ""}`.trim(),
+      className: `${classes} ${child.props.className ?? ''}`.trim(),
     });
   }
 

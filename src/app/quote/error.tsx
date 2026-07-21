@@ -1,6 +1,9 @@
-"use client";
+'use client';
 
-import { SegmentError, type SegmentErrorProps } from "@/components/SegmentError";
+import {
+  SegmentError,
+  type SegmentErrorProps,
+} from '@/components/SegmentError';
 
 /**
  * Segment-level error boundary for `/quote`.
@@ -11,6 +14,6 @@ import { SegmentError, type SegmentErrorProps } from "@/components/SegmentError"
  * mounted; "Try again" calls Next's `reset()` to re-render just this
  * segment without a full page reload.
  */
-export default function QuoteError(props: Omit<SegmentErrorProps, "segment">) {
+export default function QuoteError(props: Omit<SegmentErrorProps, 'segment'>) {
   return <SegmentError segment="quote" {...props} />;
 }

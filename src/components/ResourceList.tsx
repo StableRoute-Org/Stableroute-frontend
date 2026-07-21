@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { useState, type ReactNode } from "react";
-import { ConfirmDialog } from "./ConfirmDialog";
+import { useState, type ReactNode } from 'react';
+import { ConfirmDialog } from './ConfirmDialog';
 
 /** Actions handed to `renderRow` so a row can trigger the shared remove flow. */
 export type ResourceRowActions = {
@@ -31,7 +31,7 @@ export type ResourceListProps<T> = {
   /** Label of the remove-confirmation dialog's confirm button. */
   removeDialogConfirmLabel: string;
   /** Tone of the remove-confirmation dialog. Defaults to `danger`. */
-  removeDialogTone?: "default" | "danger";
+  removeDialogTone?: 'default' | 'danger';
   /** Invoked with the item when removal is confirmed. */
   onRemove: (item: T) => void | Promise<void>;
   /** Loading message, defaults to `Loading…`. */
@@ -52,12 +52,12 @@ export function ResourceList<T>({
   emptyMessage,
   getKey,
   renderRow,
-  rowClassName = "flex items-center justify-between gap-3 py-3",
+  rowClassName = 'flex items-center justify-between gap-3 py-3',
   removeDialogTitle,
   removeDialogConfirmLabel,
-  removeDialogTone = "danger",
+  removeDialogTone = 'danger',
   onRemove,
-  loadingMessage = "Loading…",
+  loadingMessage = 'Loading…',
 }: ResourceListProps<T>) {
   const [pendingRemove, setPendingRemove] = useState<T | null>(null);
 
@@ -78,7 +78,9 @@ export function ResourceList<T>({
           <ul className="divide-y divide-neutral-200 dark:divide-neutral-800">
             {items.map((item) => (
               <li key={getKey(item)} className={rowClassName}>
-                {renderRow(item, { requestRemove: () => setPendingRemove(item) })}
+                {renderRow(item, {
+                  requestRemove: () => setPendingRemove(item),
+                })}
               </li>
             ))}
           </ul>

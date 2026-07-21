@@ -1,12 +1,12 @@
-"use client";
+'use client';
 
-import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
-import { ROUTES } from "@/lib/routes";
+import { usePathname } from 'next/navigation';
+import { useEffect, useRef, useState } from 'react';
+import { ROUTES } from '@/lib/routes';
 
 export function RouteAnnouncer() {
   const pathname = usePathname();
-  const [announcement, setAnnouncement] = useState("");
+  const [announcement, setAnnouncement] = useState('');
   const isInitialLoad = useRef(true);
 
   useEffect(() => {
@@ -20,7 +20,7 @@ export function RouteAnnouncer() {
       setAnnouncement(`${route.title} loaded.`);
 
       // Move focus to main content
-      const mainContent = document.getElementById("main-content");
+      const mainContent = document.getElementById('main-content');
       if (mainContent) {
         mainContent.focus();
       }

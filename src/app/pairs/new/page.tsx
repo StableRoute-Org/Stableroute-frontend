@@ -1,13 +1,13 @@
-"use client";
+'use client';
 
-import { type FormEvent, useState } from "react";
-import { useRouter } from "next/navigation";
-import { TextField } from "@/components/TextField";
-import { apiPost } from "@/lib/apiClient";
-import { assetsDiffer } from "@/lib/quote";
+import { type FormEvent, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { TextField } from '@/components/TextField';
+import { apiPost } from '@/lib/apiClient';
+import { assetsDiffer } from '@/lib/quote';
 
 const ASSET_CODE_RE = /^[A-Za-z0-9]{1,12}$/;
-const ASSET_CODE_ERROR = "Use 1-12 ASCII letters or numbers.";
+const ASSET_CODE_ERROR = 'Use 1-12 ASCII letters or numbers.';
 
 type FormErrors = {
   source?: string;
@@ -26,8 +26,8 @@ function normalizeAssetCode(value: string): string | null {
 
 export default function NewPairPage() {
   const router = useRouter();
-  const [source, setSource] = useState("");
-  const [destination, setDestination] = useState("");
+  const [source, setSource] = useState('');
+  const [destination, setDestination] = useState('');
   const [errors, setErrors] = useState<FormErrors>({});
   const [loading, setLoading] = useState(false);
   const [statusNote, setStatusNote] = useState<string | null>(null);
@@ -49,10 +49,14 @@ export default function NewPairPage() {
       normalizedDestination &&
       normalizedSource === normalizedDestination
     ) {
-      nextErrors.destination = "Source and destination must differ.";
+      nextErrors.destination = 'Source and destination must differ.';
     }
 
-    if (Object.keys(nextErrors).length > 0 || !normalizedSource || !normalizedDestination) {
+    if (
+      Object.keys(nextErrors).length > 0 ||
+      !normalizedSource ||
+      !normalizedDestination
+    ) {
       setErrors(nextErrors);
       return;
     }
@@ -61,14 +65,14 @@ export default function NewPairPage() {
     setSource(normalizedSource);
     setDestination(normalizedDestination);
     setLoading(true);
-    setStatusNote("Registering pair…");
+    setStatusNote('Registering pair…');
     try {
-      await apiPost("/api/v1/pairs", {
+      await apiPost('/api/v1/pairs', {
         source: normalizedSource,
         destination: normalizedDestination,
       });
-      setStatusNote("Pair registered. Redirecting…");
-      router.push("/pairs");
+      setStatusNote('Pair registered. Redirecting…');
+      router.push('/pairs');
     } catch (err) {
       setErrors({ form: (err as Error).message });
       setStatusNote(null);
@@ -96,7 +100,7 @@ export default function NewPairPage() {
               ...current,
               source: undefined,
               destination:
-                current.destination === "Source and destination must differ."
+                current.destination === 'Source and destination must differ.'
                   ? undefined
                   : current.destination,
               form: undefined,
@@ -126,10 +130,10 @@ export default function NewPairPage() {
           disabled={loading}
           className="self-start rounded-full bg-black px-5 py-2 text-sm font-medium text-white disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[var(--focus-ring-offset)] focus-visible:outline-[color:var(--focus-ring-color)]"
         >
-          {loading ? "Saving…" : "Register pair"}
+          {loading ? 'Saving…' : 'Register pair'}
         </button>
         <p role="status" aria-live="polite" className="sr-only">
-          {statusNote ?? ""}
+          {statusNote ?? ''}
         </p>
         {errors.form && (
           <p role="alert" className="text-sm text-rose-600">

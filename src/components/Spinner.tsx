@@ -1,6 +1,6 @@
 type Props = { label?: string };
 
-export function Spinner({ label = "Loading" }: Props) {
+export function Spinner({ label = 'Loading' }: Props) {
   return (
     <span role="status" className="inline-flex items-center gap-2 text-sm">
       <svg

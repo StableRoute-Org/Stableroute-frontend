@@ -4,12 +4,12 @@ describe('check-bundle-size evaluateBudget', () => {
   it('passes when all routes are under budget', () => {
     const sizes = [
       { route: '/', sizeInKb: 100 },
-      { route: '/about', sizeInKb: 140 }
+      { route: '/about', sizeInKb: 140 },
     ];
     const budget = { maxFirstLoadJsKb: 150 };
-    
+
     const result = evaluateBudget(sizes, budget);
-    
+
     expect(result.exitCode).toBe(0);
     expect(result.failed).toBe(false);
     expect(result.results).toHaveLength(2);
@@ -20,9 +20,9 @@ describe('check-bundle-size evaluateBudget', () => {
   it('passes when exactly at budget', () => {
     const sizes = [{ route: '/dashboard', sizeInKb: 150 }];
     const budget = { maxFirstLoadJsKb: 150 };
-    
+
     const result = evaluateBudget(sizes, budget);
-    
+
     expect(result.exitCode).toBe(0);
     expect(result.failed).toBe(false);
     expect(result.results[0].passed).toBe(true);
@@ -31,12 +31,12 @@ describe('check-bundle-size evaluateBudget', () => {
   it('fails when a route is over budget', () => {
     const sizes = [
       { route: '/', sizeInKb: 100 },
-      { route: '/dashboard', sizeInKb: 200 }
+      { route: '/dashboard', sizeInKb: 200 },
     ];
     const budget = { maxFirstLoadJsKb: 150 };
-    
+
     const result = evaluateBudget(sizes, budget);
-    
+
     expect(result.exitCode).toBe(1);
     expect(result.failed).toBe(true);
     expect(result.results[0].passed).toBe(true);
@@ -47,17 +47,17 @@ describe('check-bundle-size evaluateBudget', () => {
   it('uses route-specific budget (missing-entry uses default)', () => {
     const sizes = [
       { route: '/heavy', sizeInKb: 300 }, // Over default, but under custom
-      { route: '/normal', sizeInKb: 160 } // Over default
+      { route: '/normal', sizeInKb: 160 }, // Over default
     ];
     const budget = {
       maxFirstLoadJsKb: 150,
       routes: {
-        '/heavy': 500
-      }
+        '/heavy': 500,
+      },
     };
-    
+
     const result = evaluateBudget(sizes, budget);
-    
+
     expect(result.exitCode).toBe(1);
     expect(result.failed).toBe(true);
     expect(result.results[0].passed).toBe(true); // /heavy allowed 500
@@ -67,9 +67,9 @@ describe('check-bundle-size evaluateBudget', () => {
   it('handles malformed budget file (invalid JSON string)', () => {
     const sizes = [{ route: '/', sizeInKb: 100 }];
     const budgetString = '{ invalid json ';
-    
+
     const result = evaluateBudget(sizes, budgetString);
-    
+
     expect(result.exitCode).toBe(1);
     expect(result.failed).toBe(true);
     expect(result.error).toBe('Malformed budget file');
@@ -78,12 +78,12 @@ describe('check-bundle-size evaluateBudget', () => {
   it('skips API routes', () => {
     const sizes = [
       { route: '/api/users', sizeInKb: 500 }, // Should be skipped even if over budget
-      { route: '/', sizeInKb: 100 }
+      { route: '/', sizeInKb: 100 },
     ];
     const budget = { maxFirstLoadJsKb: 150 };
-    
+
     const result = evaluateBudget(sizes, budget);
-    
+
     expect(result.exitCode).toBe(0);
     expect(result.failed).toBe(false);
     expect(result.results).toHaveLength(1); // Only '/' is evaluated
@@ -93,7 +93,7 @@ describe('check-bundle-size evaluateBudget', () => {
   it('handles empty or missing budget gracefully', () => {
     const sizes = [{ route: '/', sizeInKb: 100 }];
     const result = evaluateBudget(sizes, null); // Falls back to defaults
-    
+
     expect(result.exitCode).toBe(0);
     expect(result.failed).toBe(false);
     expect(result.results[0].allowedLimit).toBe(150); // default limit

@@ -8,7 +8,7 @@ snapshot of the router metrics shown in its `StatTile` grid, as JSON or CSV.
 ```ts
 type StatsSnapshotMetric = {
   label: string;
-  value: number;   // raw numeric value
+  value: number; // raw numeric value
   display: string; // human-readable value, via src/lib/format.ts helpers
 };
 
@@ -24,10 +24,10 @@ API payload (`{ totalPairs, paused }`). `capturedAt` defaults to
 tests. Each metric carries both the raw numeric value and its formatted
 display string:
 
-| Metric   | `value`                    | `display`                        |
-|----------|-----------------------------|-----------------------------------|
-| Pairs    | `totalPairs`                 | `formatNumber(totalPairs)`         |
-| Status   | `1` if paused, else `0`      | `"Paused"` or `"Live"`             |
+| Metric | `value`                 | `display`                  |
+| ------ | ----------------------- | -------------------------- |
+| Pairs  | `totalPairs`            | `formatNumber(totalPairs)` |
+| Status | `1` if paused, else `0` | `"Paused"` or `"Live"`     |
 
 ## Serialisation
 

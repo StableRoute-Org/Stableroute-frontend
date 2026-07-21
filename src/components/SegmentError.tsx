@@ -1,6 +1,6 @@
-"use client";
+'use client';
 
-import { useEffect } from "react";
+import { useEffect } from 'react';
 
 export type SegmentErrorProps = {
   /** Human-readable segment name (e.g. "quote"); used in the heading and log line. */
@@ -21,7 +21,10 @@ export type SegmentErrorProps = {
  */
 export function SegmentError({ segment, error, reset }: SegmentErrorProps) {
   useEffect(() => {
-    console.error(`${segment} segment error boundary caught:`, error.digest ?? error.message);
+    console.error(
+      `${segment} segment error boundary caught:`,
+      error.digest ?? error.message
+    );
   }, [segment, error]);
 
   return (
@@ -30,9 +33,14 @@ export function SegmentError({ segment, error, reset }: SegmentErrorProps) {
       tabIndex={-1}
       className="mx-auto flex min-h-[60vh] max-w-xl flex-col items-center justify-center gap-4 p-8 text-center focus:outline-none"
     >
-      <h1 className="text-2xl font-semibold">The {segment} page hit an error.</h1>
-      <div role="alert" className="text-sm text-neutral-600 dark:text-neutral-400">
-        <p>{error.message || "Unexpected error."}</p>
+      <h1 className="text-2xl font-semibold">
+        The {segment} page hit an error.
+      </h1>
+      <div
+        role="alert"
+        className="text-sm text-neutral-600 dark:text-neutral-400"
+      >
+        <p>{error.message || 'Unexpected error.'}</p>
         {error.requestId && (
           <p className="mt-1 text-xs">
             Request ID: <code>{error.requestId}</code>

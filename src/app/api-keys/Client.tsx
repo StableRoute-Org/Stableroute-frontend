@@ -8,6 +8,8 @@ import { TimeAgo } from '@/components/TimeAgo';
 import { Badge } from '@/components/Badge';
 import { apiDelete, apiGet, apiPost } from '@/lib/apiClient';
 import { useList } from '@/lib/useList';
+import { writeToClipboard } from '@/lib/clipboard';
+import { useToast } from '@/components/ToastProvider';
 
 type Item = { prefix: string; label: string; createdAt: number };
 
@@ -24,6 +26,8 @@ export default function ApiKeysClient() {
   /** The prefix of the most recently created API key, used to mark its row with a "New" badge. Persists until page reload or navigation. */
   const [recentPrefix, setRecentPrefix] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [copyFailed, setCopyFailed] = useState(false);
+  const { push } = useToast();
   const items = itemsResult.status === 'success' ? itemsResult.data : null;
   const loading =
     itemsResult.status === 'idle' || itemsResult.status === 'loading';
@@ -59,7 +63,7 @@ export default function ApiKeysClient() {
     // Keep the secret on screen and expose a selectable fallback field so the
     // key can still be copied manually after an automatic copy fails.
     setCopyFailed(true);
-    push("Couldn't copy the API key to the clipboard.", "error");
+    push("Couldn't copy the API key to the clipboard.", 'error');
   };
 
   const secretVisible =
@@ -112,6 +116,19 @@ export default function ApiKeysClient() {
             ⧉
           </IconButton>
         </div>
+      )}
+      {created && copyFailed && (
+        <label className="block text-sm">
+          <span className="mb-1 block">
+            Automatic copy failed — select and copy the key manually:
+          </span>
+          <input
+            readOnly
+            value={created}
+            onFocus={(event) => event.currentTarget.select()}
+            className="w-full rounded border p-2 font-mono text-xs"
+          />
+        </label>
       )}
       {itemsResult.status === 'error' && (
         <p role="alert" className="text-sm text-rose-600">

@@ -1,8 +1,8 @@
-import { type HTMLAttributes, type ReactNode } from "react";
+import { type HTMLAttributes, type ReactNode } from 'react';
 
 // Omit the DOM `title` (a string tooltip attribute) so our richer ReactNode
 // title isn't narrowed to string by the intersection.
-type CardProps = Omit<HTMLAttributes<HTMLDivElement>, "title"> & {
+type CardProps = Omit<HTMLAttributes<HTMLDivElement>, 'title'> & {
   title?: ReactNode;
   footer?: ReactNode;
 };
@@ -14,7 +14,13 @@ type CardProps = Omit<HTMLAttributes<HTMLDivElement>, "title"> & {
  * `@media (forced-colors: active)` block in globals.css to re-assert borders
  * that would otherwise be dropped in Windows High Contrast mode.
  */
-export function Card({ title, footer, children, className = "", ...rest }: CardProps) {
+export function Card({
+  title,
+  footer,
+  children,
+  className = '',
+  ...rest
+}: CardProps) {
   return (
     <section
       data-card

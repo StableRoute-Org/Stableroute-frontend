@@ -40,7 +40,7 @@ constant in [`src/components/Button.tsx`](../src/components/Button.tsx):
 
 ```tsx
 const ring =
-  "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[var(--focus-ring-offset)] focus-visible:outline-[color:var(--focus-ring-color)]";
+  'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[var(--focus-ring-offset)] focus-visible:outline-[color:var(--focus-ring-color)]';
 ```
 
 Use this exact class string on every `<button>`, `<a>`, and form control —
@@ -58,11 +58,11 @@ which a single static color can't do.
 that matches the action's intent; do not override the colors with extra
 classes.
 
-| Variant | When to use | Visual |
-|---|---|---|
-| `primary` (default) | The page's main action (Submit, Save, Connect). One per page. | Solid black in light mode, solid white in dark mode. |
-| `secondary` | A supporting action next to a primary one (Cancel, Reset). | Outlined, neutral border that darkens on hover. |
-| `danger` | A destructive or irreversible action (Revoke key, Delete webhook). | Solid rose-600 / rose-700 hover. Confirm with a dialog before using. |
+| Variant             | When to use                                                        | Visual                                                               |
+| ------------------- | ------------------------------------------------------------------ | -------------------------------------------------------------------- |
+| `primary` (default) | The page's main action (Submit, Save, Connect). One per page.      | Solid black in light mode, solid white in dark mode.                 |
+| `secondary`         | A supporting action next to a primary one (Cancel, Reset).         | Outlined, neutral border that darkens on hover.                      |
+| `danger`            | A destructive or irreversible action (Revoke key, Delete webhook). | Solid rose-600 / rose-700 hover. Confirm with a dialog before using. |
 
 All buttons share `rounded-full px-5 py-2 text-sm font-medium`, are
 disabled-friendly via `disabled:opacity-50 disabled:cursor-not-allowed`, and
@@ -74,12 +74,12 @@ inherit the focus ring from above.
 table rows, and detail headers. Variants map to semantic state, not raw
 color:
 
-| Variant | When to use | Pair (light) | Pair (dark) |
-|---|---|---|---|
-| `neutral` (default) | Static metadata, version strings, non-actionable labels. | `bg-neutral-100 text-neutral-700` | `dark:bg-neutral-800 dark:text-neutral-300` |
-| `ok` | Success states — `active`, `connected`, `healthy`. | `bg-emerald-100 text-emerald-800` | `dark:bg-emerald-950 dark:text-emerald-300` |
-| `warning` | Degraded or attention-needed states — `paused`, `pending`, `retrying`. | `bg-amber-100 text-amber-800` | `dark:bg-amber-950 dark:text-amber-300` |
-| `danger` | Failure or destructive states — `revoked`, `error`, `expired`. | `bg-rose-100 text-rose-800` | `dark:bg-rose-950 dark:text-rose-300` |
+| Variant             | When to use                                                            | Pair (light)                      | Pair (dark)                                 |
+| ------------------- | ---------------------------------------------------------------------- | --------------------------------- | ------------------------------------------- |
+| `neutral` (default) | Static metadata, version strings, non-actionable labels.               | `bg-neutral-100 text-neutral-700` | `dark:bg-neutral-800 dark:text-neutral-300` |
+| `ok`                | Success states — `active`, `connected`, `healthy`.                     | `bg-emerald-100 text-emerald-800` | `dark:bg-emerald-950 dark:text-emerald-300` |
+| `warning`           | Degraded or attention-needed states — `paused`, `pending`, `retrying`. | `bg-amber-100 text-amber-800`     | `dark:bg-amber-950 dark:text-amber-300`     |
+| `danger`            | Failure or destructive states — `revoked`, `error`, `expired`.         | `bg-rose-100 text-rose-800`       | `dark:bg-rose-950 dark:text-rose-300`       |
 
 The base shape is `inline-flex items-center rounded-full px-2 py-0.5 text-xs
 font-medium` and is applied automatically. Do not wrap a `Badge` inside a
@@ -110,16 +110,16 @@ It is responsible for, and standardises:
 
 ### Required props
 
-| Prop | Purpose |
-|---|---|
-| `items` | Loaded items, or `null` before the first load. |
-| `loading` | Whether a (re)load is in flight. |
-| `emptyMessage` | Copy shown when the list is empty. |
-| `getKey` | Stable key for each item (used as the `<li>` React key). |
-| `renderRow` | `(item, { requestRemove }) => ReactNode` — the inner content of a row. |
-| `onRemove` | `(item) => void \| Promise<void>` — run when removal is confirmed. |
-| `removeDialogTitle` | Title of the remove-confirmation dialog. |
-| `removeDialogConfirmLabel` | Label of the dialog's confirm button. |
+| Prop                       | Purpose                                                                |
+| -------------------------- | ---------------------------------------------------------------------- |
+| `items`                    | Loaded items, or `null` before the first load.                         |
+| `loading`                  | Whether a (re)load is in flight.                                       |
+| `emptyMessage`             | Copy shown when the list is empty.                                     |
+| `getKey`                   | Stable key for each item (used as the `<li>` React key).               |
+| `renderRow`                | `(item, { requestRemove }) => ReactNode` — the inner content of a row. |
+| `onRemove`                 | `(item) => void \| Promise<void>` — run when removal is confirmed.     |
+| `removeDialogTitle`        | Title of the remove-confirmation dialog.                               |
+| `removeDialogConfirmLabel` | Label of the dialog's confirm button.                                  |
 
 Optional: `rowClassName` (defaults to the shared
 `flex items-center justify-between gap-3 py-3` layout), `removeDialogTone`
@@ -177,11 +177,11 @@ When a data table must be operator-sortable, follow the pattern from
 
    ```tsx
    const ring =
-     "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500";
+     'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500';
    ```
 
 3. **Direction cycles:** first click → `ascending`, second click on the same
-   column → `descending`. Clicking a *different* column always resets to
+   column → `descending`. Clicking a _different_ column always resets to
    `ascending`.
 
 4. **Sort is stable.** Use `[...array].sort(compareFn)` (spread to avoid
@@ -201,12 +201,14 @@ When a data table must be operator-sortable, follow the pattern from
 ### Minimal reference implementation
 
 ```tsx
-type SortKey = "source" | "destination";
-type SortDir = "ascending" | "descending";
+type SortKey = 'source' | 'destination';
+type SortDir = 'ascending' | 'descending';
 
 function SortHeader({ label, sortKey, activeSortKey, sortDir, onSort }) {
   const isActive = activeSortKey === sortKey;
-  const ariaSort: React.AriaAttributes["aria-sort"] = isActive ? sortDir : "none";
+  const ariaSort: React.AriaAttributes['aria-sort'] = isActive
+    ? sortDir
+    : 'none';
 
   return (
     <th scope="col" aria-sort={ariaSort}>
@@ -214,10 +216,12 @@ function SortHeader({ label, sortKey, activeSortKey, sortDir, onSort }) {
         type="button"
         onClick={() => onSort(sortKey)}
         className={ring}
-        aria-label={`Sort by ${label}${isActive ? `, currently ${sortDir}` : ""}`}
+        aria-label={`Sort by ${label}${isActive ? `, currently ${sortDir}` : ''}`}
       >
         {label}
-        <span aria-hidden="true">{isActive ? (sortDir === "ascending" ? " ▲" : " ▼") : ""}</span>
+        <span aria-hidden="true">
+          {isActive ? (sortDir === 'ascending' ? ' ▲' : ' ▼') : ''}
+        </span>
       </button>
     </th>
   );
@@ -229,7 +233,6 @@ function SortHeader({ label, sortKey, activeSortKey, sortDir, onSort }) {
 - [`README.md`](../README.md) — overview, routes, scripts.
 - [`docs/theme-storage.md`](./theme-storage.md) — light/dark toggle and the
   `localStorage` contract that backs it.
-
 
 ## IconButton accessible-label contract
 

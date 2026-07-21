@@ -4,15 +4,15 @@ StableRoute frontend uses Tailwind with CSS variables defined in `src/app/global
 
 ## Color variables
 
-| Token | Light | Dark (`.dark`) |
-|-------|-------|----------------|
-| `--foreground` | `#0a0a0a` | `#f5f5f5` |
-| `--background` | `#fafafa` | `#0a0a0a` |
-| `--muted` | `#525252` | `#a3a3a3` |
-| `--border` | `#e5e5e5` | `#262626` |
-| `--card` | `#ffffff` | `#171717` |
-| `--focus-ring-color` | `#2563eb` (blue-600) | `#60a5fa` (blue-400) |
-| `--focus-ring-offset` | `2px` | `2px` |
+| Token                 | Light                | Dark (`.dark`)       |
+| --------------------- | -------------------- | -------------------- |
+| `--foreground`        | `#0a0a0a`            | `#f5f5f5`            |
+| `--background`        | `#fafafa`            | `#0a0a0a`            |
+| `--muted`             | `#525252`            | `#a3a3a3`            |
+| `--border`            | `#e5e5e5`            | `#262626`            |
+| `--card`              | `#ffffff`            | `#171717`            |
+| `--focus-ring-color`  | `#2563eb` (blue-600) | `#60a5fa` (blue-400) |
+| `--focus-ring-offset` | `2px`                | `2px`                |
 
 `--focus-ring-color` switches shade between themes because a single blue
 holds acceptable contrast against only one of the two `--background` values:
@@ -41,11 +41,11 @@ two token values above — there is no separate "system" CSS state to handle.
 
 ## Badge variants
 
-| Variant | Usage |
-|---------|--------|
-| `neutral` | Default tags |
-| `ok` | Success / live status |
-| `warning` | Paused / caution |
-| `danger` | Destructive actions |
+| Variant   | Usage                 |
+| --------- | --------------------- |
+| `neutral` | Default tags          |
+| `ok`      | Success / live status |
+| `warning` | Paused / caution      |
+| `danger`  | Destructive actions   |
 
 See `src/components/Badge.tsx` for class mappings.
