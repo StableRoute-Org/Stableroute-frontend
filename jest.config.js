@@ -11,11 +11,13 @@ const config = {
     "**/__tests__/**/*.test.tsx",
     "**/*.test.ts",
     "**/*.test.tsx",
+    "**/__tests__/**/*.test.js",
+    "**/*.test.js"
   ],
   moduleNameMapper: {
     "^@/(.*)$": "<rootDir>/src/$1",
   },
-  collectCoverageFrom: ["src/**/*.{ts,tsx}", "!src/**/*.d.ts"],
+  collectCoverageFrom: ["src/**/*.{ts,tsx}", "!src/**/*.d.ts", "scripts/**/*.js"],
 };
 
 module.exports = createJestConfig(config);

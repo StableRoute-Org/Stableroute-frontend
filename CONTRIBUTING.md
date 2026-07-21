@@ -55,6 +55,7 @@ If you see errors, fix them before pushing. Common issues:
 ### Test coverage
 
 New code should maintain a minimum of **95% coverage** for impacted modules.
+This includes build scripts in the `scripts/` directory.
 Run coverage locally with:
 
 ```bash
