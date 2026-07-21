@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/Button';
 import { EmptyState } from '@/components/EmptyState';
 import { TimeAgo } from '@/components/TimeAgo';
@@ -43,9 +43,20 @@ export default function EventsClient() {
     () => (response === null ? null : parseEventsResponse(response)),
     [response]
   );
-  const items: DisplayEvent[] | null = parsed?.events ?? null;
-  const totalValid = parsed?.totalValid ?? 0;
-  const capped = parsed?.capped ?? false;
+
+  // Retain the last successfully-parsed response so a failed background refresh
+  // surfaces the error without blanking the list the user is already reading.
+  // Writing the ref during render is safe here: it only caches a value derived
+  // from this render's own inputs.
+  const lastParsedRef = useRef<typeof parsed>(null);
+  if (parsed !== null) {
+    lastParsedRef.current = parsed;
+  }
+  const effectiveParsed = parsed ?? lastParsedRef.current;
+
+  const items: DisplayEvent[] | null = effectiveParsed?.events ?? null;
+  const totalValid = effectiveParsed?.totalValid ?? 0;
+  const capped = effectiveParsed?.capped ?? false;
   const error = eventsApi.status === 'error' ? eventsApi.error : null;
 
   const filteredItems = useMemo(() => {

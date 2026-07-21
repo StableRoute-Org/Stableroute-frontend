@@ -120,9 +120,10 @@ export default function ApiKeysClient() {
       {created && copyFailed && (
         <label className="block text-sm">
           <span className="mb-1 block">
-            Automatic copy failed — select and copy the key manually:
+            Couldn&apos;t copy automatically. Select and copy the key below.
           </span>
           <input
+            aria-label="API key secret"
             readOnly
             value={created}
             onFocus={(event) => event.currentTarget.select()}

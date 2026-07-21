@@ -29,6 +29,13 @@ export type DisplayEvent = {
 export const MAX_RENDERED_EVENTS = 200;
 export const MAX_PAYLOAD_PREVIEW_LENGTH = 4_000;
 
+/**
+ * Marker rendered in place of a payload that threw during serialisation (e.g. a
+ * `BigInt` value or a throwing `toJSON`). The record is kept with this marker
+ * rather than dropped, so the event still appears in the log.
+ */
+export const UNSERIALIZABLE_PAYLOAD_FALLBACK = '[Unserializable payload]';
+
 type EventsResponse = {
   items: unknown[];
 };
@@ -172,10 +179,14 @@ export function downloadCsv(content: string, filename: string): void {
  * - **Circular references** → replaced with the string `"[Circular]"`.
  * - **Oversized payloads** → the output is truncated at
  *   `MAX_PAYLOAD_PREVIEW_LENGTH` chars and appended with `"… truncated"`.
- * - **Unexpected errors** during serialisation → the function returns `null`.
+ * - **Serialisation throws** (e.g. `BigInt`, a throwing `toJSON`) → the record
+ *   is kept with `UNSERIALIZABLE_PAYLOAD_FALLBACK` as its preview and full text.
+ * - **Serialises to a non-string** (e.g. `toJSON` → `undefined`) → the function
+ *   returns `null` so the caller drops the record.
  *
  * @returns An object with `preview` (possibly truncated) and `full` (complete)
- *          serialised strings, or `null` if the payload cannot be serialised.
+ *          serialised strings, or `null` if the payload serialises to a
+ *          non-string value.
  */
 function safeStringifyPayload(payload: unknown): {
   preview: string;
@@ -183,8 +194,9 @@ function safeStringifyPayload(payload: unknown): {
 } | null {
   const seen = new WeakSet<object>();
 
+  let serialized: string | undefined;
   try {
-    const serialized = JSON.stringify(
+    serialized = JSON.stringify(
       payload,
       (_key, value) => {
         if (typeof value === 'object' && value !== null) {
@@ -197,20 +209,25 @@ function safeStringifyPayload(payload: unknown): {
       },
       2
     );
-
-    if (typeof serialized !== 'string') {
-      return null;
-    }
-
-    if (serialized.length <= MAX_PAYLOAD_PREVIEW_LENGTH) {
-      return { preview: serialized, full: serialized };
-    }
-
-    return {
-      preview: `${serialized.slice(0, MAX_PAYLOAD_PREVIEW_LENGTH)}\n… truncated`,
-      full: serialized,
-    };
   } catch {
+    // The payload threw during serialisation. Keep the record but mark the
+    // payload as unserialisable rather than dropping the event entirely.
+    return {
+      preview: UNSERIALIZABLE_PAYLOAD_FALLBACK,
+      full: UNSERIALIZABLE_PAYLOAD_FALLBACK,
+    };
+  }
+
+  if (typeof serialized !== 'string') {
     return null;
   }
+
+  if (serialized.length <= MAX_PAYLOAD_PREVIEW_LENGTH) {
+    return { preview: serialized, full: serialized };
+  }
+
+  return {
+    preview: `${serialized.slice(0, MAX_PAYLOAD_PREVIEW_LENGTH)}\n… truncated`,
+    full: serialized,
+  };
 }
