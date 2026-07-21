@@ -2,7 +2,7 @@ import EventsClient from './Client';
 
 /** Server wrapper for `EventsClient`. */
 export const metadata = {
-  title: 'Events | StableRoute',
+  title: 'Events',
   description: 'Chronological event log emitted by the StableRoute backend.',
 };
 

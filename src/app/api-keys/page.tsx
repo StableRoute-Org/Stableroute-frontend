@@ -2,7 +2,7 @@ import ApiKeysClient from './Client';
 
 /** Server wrapper for `ApiKeysClient`. */
 export const metadata = {
-  title: 'API keys | StableRoute',
+  title: 'API keys',
   description:
     'Create, view and revoke API keys for programmatic access to StableRoute.',
 };

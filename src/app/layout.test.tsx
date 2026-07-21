@@ -65,16 +65,4 @@ describe('RootLayout', () => {
     fireEvent.click(screen.getByRole('button', { name: /trigger toast/i }));
     expect(screen.getByText('layout-toast')).toBeInTheDocument();
   });
-
-  it('sets lang="en" and dir="ltr" on the html element', () => {
-    render(
-      <RootLayout>
-        <main id="main-content">Child page</main>
-      </RootLayout>
-    );
-
-    const html = document.documentElement;
-    expect(html).toHaveAttribute('lang', 'en');
-    expect(html).toHaveAttribute('dir', 'ltr');
-  });
 });

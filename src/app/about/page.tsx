@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'About | StableRoute',
+  title: 'About',
   description:
     'About StableRoute: a liquidity router for stablecoin and fiat-backed token pairs on Stellar.',
 };
