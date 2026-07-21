@@ -17,6 +17,14 @@ export default function StatsClient() {
   const status = result.status;
   const error = status === "error" ? result.error : null;
   const data = status === "ok" ? result.data : null;
+  const { refetch } = result;
+
+  // Poll for fresh router metrics on a fixed cadence (see ARCHITECTURE.md,
+  // "Data flow").
+  useEffect(() => {
+    const timer = setInterval(refetch, POLL_MS);
+    return () => clearInterval(timer);
+  }, [refetch]);
 
   return (
     <main
@@ -25,29 +33,29 @@ export default function StatsClient() {
       className="mx-auto flex min-h-[60vh] max-w-3xl flex-col gap-6 p-8 focus:outline-none"
     >
       <h1 className="text-3xl font-semibold tracking-tight">Stats</h1>
-      {api.status === "error" && (
+      {status === "error" && (
         <p role="alert" className="text-sm text-rose-600">
-          {api.error}
+          {error}
         </p>
       )}
-      {api.status === "loading" && (
+      {status === "loading" && (
         <div className="flex items-center gap-2 text-sm">
           <Spinner label="Loading stats" />
           Loading…
         </div>
       )}
-      {api.status === "ok" && (
+      {status === "ok" && data && (
         <section aria-labelledby="stats-metrics-heading">
           <h2 id="stats-metrics-heading" className="sr-only">
             Router metrics
           </h2>
           <dl className="grid grid-cols-2 gap-4">
-            <StatTile label="Pairs" value={formatNumber(api.data.totalPairs)} />
-            <StatTile label="Status" value={api.data.paused ? "Paused" : "Live"} />
+            <StatTile label="Pairs" value={formatNumber(data.totalPairs)} />
+            <StatTile label="Status" value={data.paused ? "Paused" : "Live"} />
           </dl>
         </section>
       )}
-      {api.status === "ok" && api.data.totalPairs === 0 && (
+      {status === "ok" && data && data.totalPairs === 0 && (
         <EmptyState title="No pairs yet" description="Register a pair to see metrics." />
       )}
     </main>

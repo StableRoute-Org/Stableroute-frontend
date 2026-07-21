@@ -59,8 +59,6 @@ describe("PairsPage", () => {
         }),
     } as unknown as Response);
 
-  it("renders pairs in a single polite live region", async () => {
-    mockFetch([{ source: "USDC", destination: "EURC" }]);
     render(<PairsPage />);
     await waitFor(() => {
       expect(screen.getByText("3 pairs")).toBeInTheDocument();

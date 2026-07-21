@@ -19,6 +19,15 @@ export type ApiFetchOptions = {
 type AuthErrorHandler = (status: 401 | 403) => void;
 let _authErrorHandler: AuthErrorHandler | null = null;
 
+/**
+ * Reachability callbacks: `onError` fires on a network-level failure (the
+ * request never got a response — offline, DNS, timeout), `onSuccess` fires
+ * whenever a request does complete. HTTP error statuses (4xx/5xx) are not
+ * connectivity failures, so they count as `onSuccess` for this purpose.
+ */
+type ConnectionHandler = { onError: () => void; onSuccess: () => void };
+let _connectionHandler: ConnectionHandler | null = null;
+
 const DEFAULT_TIMEOUT_MS = 15_000;
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -28,6 +37,14 @@ export function registerAuthErrorHandler(handler: AuthErrorHandler): () => void 
   _authErrorHandler = handler;
   return () => {
     if (_authErrorHandler === handler) _authErrorHandler = null;
+  };
+}
+
+/** Called once by <ConnectionBanner> when it mounts, to observe reachability. */
+export function registerConnectionHandler(handler: ConnectionHandler): () => void {
+  _connectionHandler = handler;
+  return () => {
+    if (_connectionHandler === handler) _connectionHandler = null;
   };
 }
 
@@ -131,6 +148,8 @@ export async function apiFetch<T>(
         await sleep(baseDelayMs * 2 ** (attempt - 1));
         continue;
       }
+      // Reached the server (any HTTP status), so the network is up.
+      _connectionHandler?.onSuccess();
       return await parseResponse<T>(res);
     } catch (err) {
       if (
@@ -139,6 +158,8 @@ export async function apiFetch<T>(
           err.message === "Invalid JSON response" ||
           err.message.startsWith("HTTP "))
       ) {
+        // An HTTP-level error still means the request reached the server.
+        _connectionHandler?.onSuccess();
         throw err;
       }
       lastError = err;
@@ -150,6 +171,7 @@ export async function apiFetch<T>(
         await sleep(baseDelayMs * 2 ** (attempt - 1));
         continue;
       }
+      _connectionHandler?.onError();
       throw new Error(message);
     } finally {
       clearTimeout(timer);

@@ -1,8 +1,10 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { Component, type ReactNode } from "react";
 import EventsPage from "./page";
+import EventsError from "./error";
+import { Header } from "@/components/Header";
 import { ToastProvider } from "@/components/ToastProvider";
-import { MAX_RENDERED_EVENTS } from "@/lib/events";
+import { MAX_RENDERED_EVENTS, MAX_PAYLOAD_PREVIEW_LENGTH } from "@/lib/events";
 
 const okEventsResponse = (items: unknown[]) =>
   ({
