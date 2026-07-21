@@ -4,8 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ROUTES } from "@/lib/routes";
 
-const allRoutes = Object.values(ROUTES);
-
 /**
  * Registers a global keydown listener that opens/closes the command palette
  * on ⌘/Ctrl+K and closes it on Escape. Does not interfere with native
@@ -17,7 +15,6 @@ export function CommandPalette() {
   const [query, setQuery] = useState("");
   const [activeIndex, setActiveIndex] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
-  const listRef = useRef<HTMLUListElement>(null);
 
   const matches = Object.values(ROUTES).filter((route) =>
     route.title.toLowerCase().includes(query.toLowerCase()),
@@ -28,35 +25,7 @@ export function CommandPalette() {
       ? `command-palette-option-${matches[activeIndex].href}`
       : undefined;
 
-  const matches = allRoutes.filter((route) =>
-    route.title.toLowerCase().includes(query.toLowerCase()),
-  );
-
-  const reset = useCallback(() => {
-    setQuery("");
-    setSelectedIndex(0);
-  }, []);
-
-  const close = useCallback(() => {
-    setOpen(false);
-    reset();
-  }, [reset]);
-
-  const navigate = useCallback(
-    (href: string) => {
-      close();
-      router.push(href);
-    },
-    [close, router],
-  );
-
-  // Open/close via keyboard shortcut
   useEffect(() => {
-    /**
-     * Handles the global keydown for the command palette:
-     * - ⌘/Ctrl+K opens the palette (saves current focus) or closes if already open.
-     * - Escape closes the palette (only when open).
-     */
     const onKeyDown = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
         event.preventDefault();
@@ -70,68 +39,9 @@ export function CommandPalette() {
         setActiveIndex(-1);
       }
     };
-
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [close]);
-
-  // Move focus to input on open, restore on close
-  useEffect(() => {
-    if (open) {
-      requestAnimationFrame(() => inputRef.current?.focus());
-    } else {
-      previousFocusRef.current?.focus();
-      previousFocusRef.current = null;
-    }
-  }, [open]);
-
-  // Reset selected index when query changes
-  useEffect(() => {
-    setSelectedIndex(0);
-  }, [query]);
-
-  // Handle keyboard navigation within the palette
-  useEffect(() => {
-    if (!open) return;
-
-    const onKeyDown = (event: KeyboardEvent) => {
-      switch (event.key) {
-        case "ArrowDown": {
-          event.preventDefault();
-          setSelectedIndex((prev) =>
-            prev >= matches.length - 1 ? 0 : prev + 1,
-          );
-          break;
-        }
-        case "ArrowUp": {
-          event.preventDefault();
-          setSelectedIndex((prev) =>
-            prev <= 0 ? matches.length - 1 : prev - 1,
-          );
-          break;
-        }
-        case "Enter": {
-          event.preventDefault();
-          if (matches.length > 0 && matches[selectedIndex]) {
-            navigate(matches[selectedIndex].href);
-          }
-          break;
-        }
-        default:
-          break;
-      }
-    };
-
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [open, matches, selectedIndex, navigate]);
-
-  // Scroll the selected item into view
-  useEffect(() => {
-    if (!open || matches.length === 0) return;
-    const items = listRef.current?.querySelectorAll<HTMLElement>("[role=option]");
-    items?.[selectedIndex]?.scrollIntoView({ block: "nearest" });
-  }, [open, matches.length, selectedIndex]);
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -176,17 +86,14 @@ export function CommandPalette() {
     <div
       role="dialog"
       aria-modal="true"
-      aria-labelledby="command-palette-title"
-      className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-8 pt-[20vh]"
-      onClick={close}
+      aria-label="Command palette"
+      className="fixed inset-0 z-50 flex items-start justify-center bg-black/40 p-8"
+      onClick={() => setOpen(false)}
     >
       <div
         className="w-full max-w-lg rounded-lg bg-white p-4 shadow-xl dark:bg-neutral-900"
         onClick={(event) => event.stopPropagation()}
       >
-        <h2 id="command-palette-title" className="sr-only">
-          Command palette
-        </h2>
         <input
           ref={inputRef}
           role="combobox"
