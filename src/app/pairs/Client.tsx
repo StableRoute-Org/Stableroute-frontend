@@ -7,14 +7,19 @@ import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { EmptyState } from '@/components/EmptyState';
 import { PageHeading } from '@/components/PageHeading';
 import { Spinner } from '@/components/Spinner';
+import { useToast } from '@/components/ToastProvider';
 import { apiDelete } from '@/lib/apiClient';
+import { writeToClipboard } from '@/lib/clipboard';
 import { useApi } from '@/lib/useApi';
 import { filterPairs, groupBySource, type Pair } from './pairsUtils';
 
 export default function PairsClient() {
+  const { push } = useToast();
   const api = useApi<{ pairs: Pair[] }>('/api/v1/pairs');
   const [query, setQuery] = useState('');
   const [pendingDelete, setPendingDelete] = useState<Pair | null>(null);
+  const [copyingSymbol, setCopyingSymbol] = useState<string | null>(null);
+  const [copyFallback, setCopyFallback] = useState<string | null>(null);
 
   const pairs = api.status === 'success' ? api.data.pairs : null;
 
@@ -33,6 +38,26 @@ export default function PairsClient() {
     () => (filtered ? groupBySource(filtered) : []),
     [filtered]
   );
+
+  const copyPairSymbol = async (symbol: string) => {
+    if (copyingSymbol === symbol) return;
+    setCopyingSymbol(symbol);
+    try {
+      const result = await writeToClipboard(symbol);
+      if (result.ok) {
+        setCopyFallback(null);
+        push(`Copied ${symbol}.`);
+        return;
+      }
+      setCopyFallback(symbol);
+      push(
+        `Couldn't copy ${symbol} automatically. Select it below to copy it.`,
+        'error'
+      );
+    } finally {
+      setCopyingSymbol(null);
+    }
+  };
 
   return (
     <main
@@ -107,28 +132,53 @@ export default function PairsClient() {
                 </h2>
                 <ul className="divide-y divide-neutral-200 rounded-lg border border-neutral-200 dark:divide-neutral-800 dark:border-neutral-800">
                   {destinations.map((dest) => (
-                    <li
-                      key={`${source}::${dest}`}
-                      className="flex items-center justify-between gap-3 px-4 py-3"
-                    >
-                      <span className="font-mono text-sm">{dest}</span>
-                      <div className="flex gap-2">
-                        <Link
-                          href={`/quote?source=${encodeURIComponent(source)}&dest=${encodeURIComponent(dest)}`}
-                          className="rounded border px-3 py-1 text-xs dark:border-neutral-700"
-                        >
-                          Quote
-                        </Link>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setPendingDelete({ source, destination: dest })
-                          }
-                          className="rounded border px-3 py-1 text-xs"
-                        >
-                          Delete
-                        </button>
+                    <li key={`${source}::${dest}`} className="px-4 py-3">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="font-mono text-sm">{dest}</span>
+                        <div className="flex gap-2">
+                          <Link
+                            href={`/quote?source=${encodeURIComponent(source)}&dest=${encodeURIComponent(dest)}`}
+                            className="rounded border px-3 py-1 text-xs dark:border-neutral-700"
+                          >
+                            Quote
+                          </Link>
+                          <button
+                            type="button"
+                            aria-label={`Copy pair symbol ${source}/${dest}`}
+                            disabled={copyingSymbol === `${source}/${dest}`}
+                            onClick={() =>
+                              void copyPairSymbol(`${source}/${dest}`)
+                            }
+                            className="rounded border px-3 py-1 text-xs disabled:opacity-50 dark:border-neutral-700"
+                          >
+                            Copy
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setPendingDelete({ source, destination: dest })
+                            }
+                            className="rounded border px-3 py-1 text-xs"
+                          >
+                            Delete
+                          </button>
+                        </div>
                       </div>
+                      {copyFallback === `${source}/${dest}` && (
+                        <label className="mt-3 block text-xs">
+                          <span className="mb-1 block">
+                            Select and copy the pair symbol:
+                          </span>
+                          <textarea
+                            aria-label={`Pair symbol ${source}/${dest}`}
+                            readOnly
+                            rows={1}
+                            value={`${source}/${dest}`}
+                            onFocus={(event) => event.currentTarget.select()}
+                            className="w-full resize-none rounded border border-neutral-300 px-2 py-1 font-mono dark:border-neutral-700 dark:bg-neutral-900"
+                          />
+                        </label>
+                      )}
                     </li>
                   ))}
                 </ul>
