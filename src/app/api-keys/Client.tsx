@@ -63,7 +63,10 @@ export default function ApiKeysClient() {
     // Keep the secret on screen and expose a selectable fallback field so the
     // key can still be copied manually after an automatic copy fails.
     setCopyFailed(true);
-    push("Couldn't copy the API key to the clipboard.", 'error');
+    push(
+      "Couldn't copy automatically. Select and copy the key below.",
+      'error'
+    );
   };
 
   const secretVisible =
@@ -118,17 +121,13 @@ export default function ApiKeysClient() {
         </div>
       )}
       {created && copyFailed && (
-        <label className="block text-sm">
-          <span className="mb-1 block">
-            Automatic copy failed — select and copy the key manually:
-          </span>
-          <input
-            readOnly
-            value={created}
-            onFocus={(event) => event.currentTarget.select()}
-            className="w-full rounded border p-2 font-mono text-xs"
-          />
-        </label>
+        <input
+          readOnly
+          aria-label="API key secret"
+          value={created}
+          onFocus={(event) => event.currentTarget.select()}
+          className="w-full rounded border p-2 font-mono text-xs"
+        />
       )}
       {itemsResult.status === 'error' && (
         <p role="alert" className="text-sm text-rose-600">

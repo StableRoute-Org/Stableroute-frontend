@@ -9,37 +9,7 @@ import { PageHeading } from '@/components/PageHeading';
 import { Spinner } from '@/components/Spinner';
 import { apiDelete } from '@/lib/apiClient';
 import { useApi } from '@/lib/useApi';
-
-type Pair = { source: string; destination: string };
-
-/**
- * Groups an array of pairs by their source asset.
- *
- * Returns a deterministically-sorted array of tuples, each pairing a source
- * with its sorted destination list. The original `pairs` array is never
- * mutated and iteration order across sources is stable.
- *
- * @param pairs - The raw pairs array returned by the API.
- * @returns An array of `[source, destinations[]]` tuples sorted
- *          alphabetically by source, with destinations also sorted.
- */
-function groupBySource(pairs: Pair[]): [string, string[]][] {
-  const map = new Map<string, string[]>();
-  for (const { source, destination } of pairs) {
-    const entry = map.get(source);
-    if (entry) {
-      entry.push(destination);
-    } else {
-      map.set(source, [destination]);
-    }
-  }
-  return [...map.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([source, destinations]) => [
-      source,
-      destinations.sort((a, b) => a.localeCompare(b)),
-    ]);
-}
+import { filterPairs, groupBySource, type Pair } from '@/lib/pairsTransforms';
 
 export default function PairsClient() {
   const api = useApi<{ pairs: Pair[] }>('/api/v1/pairs');
@@ -47,16 +17,14 @@ export default function PairsClient() {
   const [pendingDelete, setPendingDelete] = useState<Pair | null>(null);
 
   const pairs = api.status === 'success' ? api.data.pairs : null;
-  const filtered = useMemo(() => {
-    if (!pairs) return null;
-    const needle = query.trim().toLowerCase();
-    if (!needle) return pairs;
-    return pairs.filter(
-      (pair) =>
-        pair.source.toLowerCase().includes(needle) ||
-        pair.destination.toLowerCase().includes(needle)
-    );
-  }, [pairs, query]);
+  const filtered = useMemo(
+    () => (pairs ? filterPairs(pairs, query) : null),
+    [pairs, query]
+  );
+  const grouped = useMemo(
+    () => (filtered ? groupBySource(filtered) : []),
+    [filtered]
+  );
 
   return (
     <main
@@ -124,7 +92,7 @@ export default function PairsClient() {
         )}
         {filtered && filtered.length > 0 && (
           <div className="flex flex-col gap-6">
-            {groupBySource(filtered).map(([source, destinations]) => (
+            {grouped.map(([source, destinations]) => (
               <section key={source}>
                 <h2 className="mb-2 text-lg font-semibold tracking-tight">
                   {source}

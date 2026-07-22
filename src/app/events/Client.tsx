@@ -39,10 +39,18 @@ export default function EventsClient() {
   const [showFull, setShowFull] = useState<Record<string, boolean>>({});
   const refetchEvents = eventsApi.refetch;
   const response = eventsApi.status === 'success' ? eventsApi.data : null;
-  const parsed = useMemo(
+  const freshParsed = useMemo(
     () => (response === null ? null : parseEventsResponse(response)),
     [response]
   );
+  // Retain the last successful parse so a failed live refresh keeps the list on
+  // screen (the error is still surfaced separately below).
+  const [parsed, setParsed] = useState<ReturnType<
+    typeof parseEventsResponse
+  > | null>(null);
+  useEffect(() => {
+    if (freshParsed !== null) setParsed(freshParsed);
+  }, [freshParsed]);
   const items: DisplayEvent[] | null = parsed?.events ?? null;
   const totalValid = parsed?.totalValid ?? 0;
   const capped = parsed?.capped ?? false;
@@ -56,8 +64,8 @@ export default function EventsClient() {
   }, [items, typeFilter]);
 
   useEffect(() => {
-    if (response !== null) setLastUpdatedAt(Date.now());
-  }, [response]);
+    if (freshParsed !== null) setLastUpdatedAt(Date.now());
+  }, [freshParsed]);
 
   useEffect(() => {
     const handleVisibilityChange = () => {

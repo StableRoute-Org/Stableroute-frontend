@@ -41,6 +41,9 @@ type EventsResponse = {
  * (safe for inline rendering) as well as a `fullPayload` (for clipboard copy
  * or the "show full" expander).
  */
+/** Sentinel used when an event payload cannot be JSON-serialised. */
+export const UNSERIALIZABLE_PAYLOAD_FALLBACK = '[Unserializable payload]';
+
 export function parseEventsResponse(raw: unknown): {
   events: DisplayEvent[];
   totalValid: number;
@@ -211,6 +214,9 @@ function safeStringifyPayload(payload: unknown): {
       full: serialized,
     };
   } catch {
-    return null;
+    return {
+      preview: UNSERIALIZABLE_PAYLOAD_FALLBACK,
+      full: UNSERIALIZABLE_PAYLOAD_FALLBACK,
+    };
   }
 }

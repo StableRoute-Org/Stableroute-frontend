@@ -1,5 +1,21 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import PairsPage from './page';
+import { filterPairs, groupBySource } from '@/lib/pairsTransforms';
+
+jest.mock('@/lib/pairsTransforms', () => {
+  const actual = jest.requireActual('@/lib/pairsTransforms');
+  return {
+    ...actual,
+    filterPairs: jest.fn(actual.filterPairs),
+    groupBySource: jest.fn(actual.groupBySource),
+  };
+});
 
 // ---------------------------------------------------------------------------
 // Helpers
