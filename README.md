@@ -7,6 +7,13 @@ Next.js frontend application for [StableRoute](https://github.com/StableRoute-Or
 - **Next.js 15** (App Router) with **React 19**
 - **TailwindCSS** for styling
 - A comprehensive set of routing, management, and audit log pages integrated with the StableRoute backend.
+- **Per-page metadata** for SEO and accessibility, with unique titles and descriptions for each route.
+
+The `<html>` element in `src/app/layout.tsx` includes `lang="en" dir="ltr"` for accessibility and to make the document direction explicit. While the app is currently only available in English, right-to-left (RTL) language support could be added by dynamically setting `dir="rtl"` on the `<html>` tag based on the user's locale or language preference.
+
+## Route metadata
+
+Each route exports a `metadata` object from `src/app/<route>/page.tsx`. This keeps the default title template in `src/app/layout.tsx` intact while supplying unique titles and descriptions for search engines and assistive technologies. Interactive pages such as `/pairs`, `/quote`, `/stats`, `/admin`, `/api-keys`, `/events`, and `/webhooks` use a small server wrapper page that exports metadata and then renders a client component.
 
 ## Routes
 
@@ -24,6 +31,12 @@ Each route is defined under `src/app` and connects to its respective UI page:
 - **`/settings`** ([settings/page.tsx](src/app/settings/page.tsx)): User settings interface hosting the light/dark appearance toggle.
 - **`/docs`** ([docs/page.tsx](src/app/docs/page.tsx)): Documentation page describing the API endpoints and usage. The **OpenAPI spec link** is resolved from `NEXT_PUBLIC_STABLEROUTE_API_BASE` so it always points at the configured backend rather than the frontend origin. It opens in a new tab with `rel="noopener noreferrer"` and includes an accessible hint that it leaves the dashboard.
 - **`/about`** ([about/page.tsx](src/app/about/page.tsx)): Static about page describing the protocol.
+
+### Metadata Strategy
+
+Each route's `page.tsx` is a Server Component that exports a `metadata` object. This allows Next.js to set a unique `<title>` and `<meta name="description">` for each page at build time or during server rendering, which is essential for both SEO and providing context to users of assistive technologies. The title is combined with the site name using the `title.template` from the root layout.
+
+For pages with heavy client-side interactivity (e.g., `/pairs`, `/quote`), the `page.tsx` acts as a thin server wrapper. It exports the metadata and then imports and renders a corresponding `Client.tsx` component which contains the interactive logic and UI. This pattern combines the benefits of Server Components (metadata, static rendering) with Client Components (state, effects, event listeners).
 
 ## Shared UI components
 

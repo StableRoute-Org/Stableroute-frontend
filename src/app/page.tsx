@@ -1,5 +1,12 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Card } from '@/components/Card';
+
+// It sets a page description so the homepage has route-specific metadata.
+export const metadata: Metadata = {
+  description:
+    'StableRoute dashboard for managing liquidity routing pairs, quotes, API keys, webhooks, and audit logs on Stellar.',
+};
 
 const routes = [
   {
