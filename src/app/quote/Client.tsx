@@ -5,14 +5,7 @@ import { TextField } from '@/components/TextField';
 import { apiFetch, type ApiError } from '@/lib/apiClient';
 import { formatQuoteAmountDisplay, formatQuoteRateDisplay } from '@/lib/format';
 import { useLocalStorage } from '@/lib/useLocalStorage';
-
-type Quote = {
-  source_asset: string;
-  dest_asset: string;
-  amount: string;
-  estimated_rate: string;
-  route: string[];
-};
+import type { Quote } from '@/lib/types';
 
 type FieldErrors = {
   source?: string;

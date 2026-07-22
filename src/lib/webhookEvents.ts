@@ -1,3 +1,5 @@
+export type { Webhook } from '@/lib/types';
+
 /** Documented webhook event types accepted by the router. */
 export const WEBHOOK_EVENT_OPTIONS = [
   'pair.registered',

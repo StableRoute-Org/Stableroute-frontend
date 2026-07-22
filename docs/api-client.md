@@ -7,6 +7,55 @@ The shared HTTP client lives in `src/lib/apiClient.ts`.
 Requests are sent to `${getApiBase()}${path}` where `getApiBase()` reads
 `NEXT_PUBLIC_STABLEROUTE_API_BASE` (see `src/lib/config.ts`).
 
+## API Response Types
+
+All API response type definitions are centralized in `src/lib/types.ts` to
+maintain a single source of truth and prevent type drift between pages.
+
+### Available Types
+
+- **`Pair`** — Routing pair response: `{ source, destination }`
+- **`Quote`** — Quote response: `{ source_asset, dest_asset, amount, estimated_rate, route[] }`
+- **`AppEvent`** — Raw event from API: `{ id, ts, type, payload }`
+- **`DisplayEvent`** — Rendered event with serialized payloads: `{ id, ts, type, payloadPreview, fullPayload }`
+- **`ApiKey`** — API key metadata: `{ prefix, label, createdAt }`
+- **`CreateApiKeyResponse`** — API key creation response: `{ key, prefix? }`
+- **`Webhook`** — Webhook subscription: `{ id, url, events[], createdAt }`
+
+### Importing Types
+
+Types are exported directly from `src/lib/types.ts`:
+
+```ts
+import type { Quote, Pair, ApiKey } from '@/lib/types';
+```
+
+For backward compatibility, types are also re-exported from their validation/utility modules:
+
+```ts
+// Both work:
+import type { Quote } from '@/lib/types';
+import type { Quote } from '@/lib/quote';
+
+// Both work:
+import type { AppEvent, DisplayEvent } from '@/lib/types';
+import type { AppEvent, DisplayEvent } from '@/lib/events';
+
+// Both work:
+import type { Pair } from '@/lib/types';
+import { type Pair } from '@/app/pairs/pairsUtils';
+```
+
+### Validation Functions
+
+Validation logic remains in their respective modules:
+
+- `quote.ts` — `isValidAmount()`, `assetsDiffer()`, `normalizeAsset()`
+- `events.ts` — `parseEventsResponse()`, `escapeCsvCell()`, `buildEventsCsv()`
+- `webhookEvents.ts` — `isWebhookEventType()`
+
+These validators continue to use the centralized types, ensuring all validation is type-safe and consistent.
+
 ## Error shape
 
 Failed responses parse JSON bodies matching:

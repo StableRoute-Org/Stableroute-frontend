@@ -10,13 +10,12 @@ import { apiDelete, apiGet, apiPost } from '@/lib/apiClient';
 import { useList } from '@/lib/useList';
 import { writeToClipboard } from '@/lib/clipboard';
 import { useToast } from '@/components/ToastProvider';
-
-type Item = { prefix: string; label: string; createdAt: number };
+import type { ApiKey, CreateApiKeyResponse } from '@/lib/types';
 
 export default function ApiKeysClient() {
   const loadItems = useCallback(
     () =>
-      apiGet<{ items: Item[] }>('/api/v1/api-keys').then((body) => body.items),
+      apiGet<{ items: ApiKey[] }>('/api/v1/api-keys').then((body) => body.items),
     []
   );
   const itemsResult = useList(loadItems);
@@ -36,7 +35,7 @@ export default function ApiKeysClient() {
     event.preventDefault();
     setSubmitting(true);
     try {
-      const response = await apiPost<{ key: string; prefix?: string }>(
+      const response = await apiPost<CreateApiKeyResponse>(
         '/api/v1/api-keys',
         { label }
       );

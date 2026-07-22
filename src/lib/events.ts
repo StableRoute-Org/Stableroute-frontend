@@ -1,30 +1,5 @@
-export type AppEvent = {
-  id: string;
-  ts: number;
-  type: string;
-  payload: unknown;
-};
-
-export type DisplayEvent = {
-  id: string;
-  ts: number;
-  type: string;
-  /**
-   * Truncated (at MAX_PAYLOAD_PREVIEW_LENGTH) JSON preview of the event
-   * payload, safe to render inside a `<pre>`. Never throws during
-   * serialisation — circular references are replaced with "[Circular]"
-   * and unexpected errors return the fallback `"[Unserializable payload]"`.
-   */
-  payloadPreview: string;
-  /**
-   * The complete, safe-serialised JSON of the payload (never truncated).
-   * Only populated when the payload exceeds MAX_PAYLOAD_PREVIEW_LENGTH;
-   * otherwise `fullPayload` is the same string as `payloadPreview`.
-   * Use this for clipboard copy or when the user opts to view the
-   * full payload.
-   */
-  fullPayload: string;
-};
+export type { AppEvent, DisplayEvent } from '@/lib/types';
+import type { AppEvent, DisplayEvent } from '@/lib/types';
 
 export const MAX_RENDERED_EVENTS = 200;
 export const MAX_PAYLOAD_PREVIEW_LENGTH = 4_000;

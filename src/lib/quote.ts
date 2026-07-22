@@ -1,10 +1,4 @@
-export type Quote = {
-  source_asset: string;
-  dest_asset: string;
-  amount: string;
-  estimated_rate: string;
-  route: string[];
-};
+export type { Quote } from '@/lib/types';
 
 const AMOUNT_PATTERN = /^[1-9][0-9]{0,38}$/;
 
