@@ -16,6 +16,13 @@
   `role="presentation"` separator so arrow-key navigation only ever lands
   on an actual result, never the heading.
 
+## Static Route Prerendering
+
+Pure informational routes (`src/app/about/page.tsx` and `src/app/docs/page.tsx`) export `dynamic = 'force-static'` so Next.js statically prerenders them to HTML at build time.
+
+- Any interactive or runtime environment-dependent elements on static pages (such as dynamic API base link resolution) are isolated into small dedicated client components (`src/app/docs/OpenApiLink.tsx`).
+- This ensures page shells stay fully server-rendered static HTML without re-evaluating page routes per request.
+
 ## Error handling
 
 Errors are contained at the narrowest boundary that can recover them:

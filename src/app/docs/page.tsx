@@ -1,6 +1,9 @@
-import { getApiBase } from '@/lib/config';
+import type { Metadata } from 'next';
+import { OpenApiLink } from './OpenApiLink';
 
-export const metadata = {
+export const dynamic = 'force-static';
+
+export const metadata: Metadata = {
   title: 'Docs',
   description: 'Short reference for the StableRoute HTTP API common endpoints.',
 };
@@ -36,16 +39,8 @@ export default function DocsPage() {
         API documentation
       </h1>
       <p className="text-sm text-neutral-600 dark:text-neutral-400">
-        Companion to{' '}
-        <a
-          className="underline"
-          href={`${getApiBase()}/api/v1/openapi.json`}
-          rel="noopener noreferrer"
-          target="_blank"
-        >
-          GET /api/v1/openapi.json
-        </a>{' '}
-        (opens external API spec) — short prose for the most common endpoints.
+        Companion to <OpenApiLink /> (opens external API spec) — short prose
+        for the most common endpoints.
       </p>
       <dl className="space-y-4">
         {sections.map((s) => (
