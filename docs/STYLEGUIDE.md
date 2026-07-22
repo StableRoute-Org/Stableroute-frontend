@@ -228,6 +228,18 @@ function SortHeader({ label, sortKey, activeSortKey, sortDir, onSort }) {
 }
 ```
 
+## App shell overlay composition
+
+`AppShellExtras` mounts the app-wide overlay components used by the root
+layout: `CommandPalette` and `KeyboardShortcutsHelp`.
+
+- Both overlays are present in the DOM only through `AppShellExtras`.
+- `⌘/Ctrl+K` opens the command palette, and `?` opens the keyboard shortcuts
+  help sheet.
+- The overlays must not both render open at the same time.
+- Shortcut handling must ignore editable fields (`<input>`, `<textarea>`, and
+  contenteditable regions).
+
 ## Related
 
 - [`README.md`](../README.md) — overview, routes, scripts.
