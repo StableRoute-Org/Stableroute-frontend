@@ -23,7 +23,9 @@ function isHttpsUrl(value: string): boolean {
 export default function WebhooksClient() {
   const loadHooks = useCallback(
     () =>
-      apiGet<{ items: Webhook[] }>('/api/v1/webhooks').then((body) => body.items),
+      apiGet<{ items: Webhook[] }>('/api/v1/webhooks').then(
+        (body) => body.items
+      ),
     []
   );
   const hooks = useList(loadHooks);

@@ -15,7 +15,9 @@ import type { ApiKey, CreateApiKeyResponse } from '@/lib/types';
 export default function ApiKeysClient() {
   const loadItems = useCallback(
     () =>
-      apiGet<{ items: ApiKey[] }>('/api/v1/api-keys').then((body) => body.items),
+      apiGet<{ items: ApiKey[] }>('/api/v1/api-keys').then(
+        (body) => body.items
+      ),
     []
   );
   const itemsResult = useList(loadItems);
@@ -35,10 +37,9 @@ export default function ApiKeysClient() {
     event.preventDefault();
     setSubmitting(true);
     try {
-      const response = await apiPost<CreateApiKeyResponse>(
-        '/api/v1/api-keys',
-        { label }
-      );
+      const response = await apiPost<CreateApiKeyResponse>('/api/v1/api-keys', {
+        label,
+      });
       setCreated(response.key);
       setCopyFailed(false);
       setRecentPrefix(response.prefix ?? response.key.slice(0, 8));

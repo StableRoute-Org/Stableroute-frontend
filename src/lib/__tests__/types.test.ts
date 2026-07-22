@@ -209,9 +209,13 @@ describe('API Response Types', () => {
     });
 
     it('should support truncated preview with full payload', () => {
-      const longPayload = JSON.stringify(Object.fromEntries(
-        Array.from({ length: 1000 }, (_, i) => [`key_${i}`, `value_${i}`])
-      ), null, 2);
+      const longPayload = JSON.stringify(
+        Object.fromEntries(
+          Array.from({ length: 1000 }, (_, i) => [`key_${i}`, `value_${i}`])
+        ),
+        null,
+        2
+      );
 
       const displayEvent: DisplayEvent = {
         id: 'evt_large',
