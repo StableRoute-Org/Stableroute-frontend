@@ -190,6 +190,8 @@ The client reads this value in [`src/lib/apiClient.ts`](src/lib/apiClient.ts). R
 
 ## Accessibility
 
+StableRoute aims for **WCAG 2.1 Level AA** compliance. For full details on our target conformance level, tested assistive-technology and browser matrix, built-in accessibility features, feedback channel, and known-gaps register, see our official [Accessibility Conformance Statement](docs/ACCESSIBILITY.md).
+
 ### Reduced Motion (Issue #309)
 
 Users who enable "Reduce Motion" in their OS or browser accessibility settings are automatically served a version of the UI with all animations and transitions collapsed to a near-zero duration. This is handled by a single `@media (prefers-reduced-motion: reduce)` rule in [`src/app/globals.css`](src/app/globals.css) that overrides every CSS animation and transition across the application.
