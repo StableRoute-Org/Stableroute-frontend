@@ -122,9 +122,7 @@ export default function ApiKeysClient() {
       )}
       {created && copyFailed && (
         <label className="block text-sm">
-          <span className="mb-1 block">
-            Couldn&apos;t copy automatically. Select and copy the key below.
-          </span>
+          <span className="mb-1 block">Select and copy your API key:</span>
           <input
             aria-label="API key secret"
             readOnly
