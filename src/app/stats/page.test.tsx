@@ -9,9 +9,11 @@ import StatsPage from './page';
 import {
   buildStatsSnapshot,
   downloadStatsSnapshot,
+  formatRelativeTime,
   statsSnapshotToCsv,
   statsSnapshotToJson,
 } from './Client';
+import { formatTimestamp } from '@/lib/format';
 
 const mockFetch = (data: unknown) => {
   global.fetch = jest.fn().mockResolvedValue({
@@ -74,6 +76,20 @@ describe('StatsPage', () => {
     expect(status).toBeInTheDocument();
   });
 
+  it('shows a relative last-updated label with the absolute timestamp in the title', async () => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-07-22T10:00:00.000Z'));
+    mockFetch({ totalPairs: 3, paused: false });
+    render(<StatsPage />);
+
+    const time = await screen.findByText('updated just now');
+    expect(time.tagName).toBe('TIME');
+    expect(time).toHaveAttribute('dateTime');
+    expect(time).toHaveAttribute(
+      'title',
+      formatTimestamp(Date.parse(time.getAttribute('dateTime')!))
+    );
+  });
+
   it('renders error message on fetch failure', async () => {
     global.fetch = jest.fn().mockRejectedValue(new Error('Network error'));
     render(<StatsPage />);
@@ -84,7 +100,7 @@ describe('StatsPage', () => {
   });
 
   it('keeps the existing 5 second polling update behavior', async () => {
-    jest.useFakeTimers();
+    jest.useFakeTimers().setSystemTime(new Date('2026-07-22T10:00:00.000Z'));
     global.fetch = jest
       .fn()
       .mockResolvedValueOnce({
@@ -102,6 +118,7 @@ describe('StatsPage', () => {
 
     expect(await screen.findByText('1')).toBeInTheDocument();
     expect(await screen.findByText('Live')).toBeInTheDocument();
+    expect(screen.getByText('updated just now')).toBeInTheDocument();
 
     await act(async () => {
       jest.advanceTimersByTime(5000);
@@ -109,6 +126,7 @@ describe('StatsPage', () => {
 
     expect(await screen.findByText('2,000')).toBeInTheDocument();
     expect(await screen.findByText('Paused')).toBeInTheDocument();
+    expect(screen.getByText('updated just now')).toBeInTheDocument();
     expect(global.fetch).toHaveBeenCalledTimes(2);
   });
 
@@ -131,6 +149,38 @@ describe('StatsPage', () => {
     });
 
     expect(global.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('resets the last-updated label after a successful polling refresh', async () => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-07-22T10:00:00.000Z'));
+    global.fetch = jest
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        text: () =>
+          Promise.resolve(JSON.stringify({ totalPairs: 1, paused: false })),
+      } as unknown as Response)
+      .mockResolvedValueOnce({
+        ok: true,
+        text: () =>
+          Promise.resolve(JSON.stringify({ totalPairs: 2, paused: false })),
+      } as unknown as Response);
+
+    render(<StatsPage />);
+
+    await screen.findByText('updated just now');
+
+    await act(async () => {
+      jest.advanceTimersByTime(4_000);
+    });
+    expect(screen.getByText('updated 4s ago')).toBeInTheDocument();
+
+    await act(async () => {
+      jest.advanceTimersByTime(1_000);
+    });
+
+    expect(await screen.findByText('2')).toBeInTheDocument();
+    expect(screen.getByText('updated just now')).toBeInTheDocument();
   });
 });
 
@@ -165,6 +215,17 @@ describe('buildStatsSnapshot', () => {
     jest.useFakeTimers().setSystemTime(new Date('2026-01-01T12:00:00.000Z'));
     const snapshot = buildStatsSnapshot({ totalPairs: 5, paused: false });
     expect(snapshot.capturedAt).toBe('2026-01-01T12:00:00.000Z');
+  });
+});
+
+describe('formatRelativeTime', () => {
+  it('formats relative stats freshness across second, minute, and hour boundaries', () => {
+    const base = Date.parse('2026-07-22T10:00:00.000Z');
+
+    expect(formatRelativeTime(base, base)).toBe('updated just now');
+    expect(formatRelativeTime(base, base + 12_000)).toBe('updated 12s ago');
+    expect(formatRelativeTime(base, base + 60_000)).toBe('updated 1m ago');
+    expect(formatRelativeTime(base, base + 3_600_000)).toBe('updated 1h ago');
   });
 });
 
