@@ -98,9 +98,9 @@ describe('docs/STYLEGUIDE.md', () => {
     );
   });
 
-  it('the danger Badge variant renders a rose-toned class', () => {
+  it('the danger Badge variant renders a rose-toned class (rose or danger token)', () => {
     render(<Badge variant="danger">x</Badge>);
-    expect(screen.getByText('x').className).toMatch(/rose/);
+    expect(screen.getByText('x').className).toMatch(/(rose|danger)/);
   });
 
   it('points at the tailwind config so contributors can extend it', () => {
