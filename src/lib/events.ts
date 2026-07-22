@@ -49,7 +49,6 @@ type EventsResponse = {
  * or the "show full" expander).
  */
 /** Sentinel used when an event payload cannot be JSON-serialised. */
-export const UNSERIALIZABLE_PAYLOAD_FALLBACK = '[Unserializable payload]';
 
 export function parseEventsResponse(raw: unknown): {
   events: DisplayEvent[];

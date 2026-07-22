@@ -49,11 +49,11 @@ export default function EventsClient() {
   // surfaces the error without blanking the list the user is already reading.
   // Writing the ref during render is safe here: it only caches a value derived
   // from this render's own inputs.
-  const lastParsedRef = useRef<typeof parsed>(null);
-  if (parsed !== null) {
-    lastParsedRef.current = parsed;
+  const lastParsedRef = useRef<typeof freshParsed>(null);
+  if (freshParsed !== null) {
+    lastParsedRef.current = freshParsed;
   }
-  const effectiveParsed = parsed ?? lastParsedRef.current;
+  const effectiveParsed = freshParsed ?? lastParsedRef.current;
 
   const items: DisplayEvent[] | null = effectiveParsed?.events ?? null;
   const totalValid = effectiveParsed?.totalValid ?? 0;

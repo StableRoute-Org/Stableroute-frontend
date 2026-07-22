@@ -129,7 +129,7 @@ describe('parseEventsResponse — non-serialisable payloads', () => {
 
   it('falls back to [Unserializable payload] when serialisation throws (BigInt)', () => {
     // JSON.stringify throws a TypeError on BigInt values.
-    const { events } = parseEventsResponse(wrap({ amount: 10n }));
+    const { events } = parseEventsResponse(wrap({ amount: BigInt(10) }));
     const [event] = events;
 
     expect(events).toHaveLength(1);
