@@ -841,6 +841,240 @@ describe('EventsPage', () => {
     removeEventListenerSpy.mockRestore();
   });
 
+  describe('filter controls grouping', () => {
+    const filterableEvents = [
+      eventRecord('alpha', 'pair.registered'),
+      eventRecord('beta', 'pair.updated'),
+      eventRecord('gamma', 'quote.requested'),
+    ];
+
+    async function renderWithEvents() {
+      global.fetch = jest
+        .fn()
+        .mockResolvedValue(okEventsResponse(filterableEvents));
+      renderPage();
+      expect(await screen.findByText('pair.registered')).toBeInTheDocument();
+    }
+
+    it('groups the filter controls in a labelled fieldset', async () => {
+      await renderWithEvents();
+
+      const group = screen.getByRole('group', { name: /event log filters/i });
+      expect(group.tagName).toBe('FIELDSET');
+      expect(group).toContainElement(
+        screen.getByLabelText(/filter by event type/i)
+      );
+      expect(group).toContainElement(
+        screen.getByRole('button', { name: 'Live off' })
+      );
+      expect(group).toContainElement(
+        screen.getByRole('button', { name: /export csv/i })
+      );
+      expect(group).toContainElement(
+        screen.getByRole('button', { name: /refresh now/i })
+      );
+      expect(group).toContainElement(
+        screen.getByRole('button', { name: /clear filters/i })
+      );
+    });
+
+    it('exposes the group name through a visible legend', async () => {
+      await renderWithEvents();
+
+      const legend = document.querySelector('fieldset > legend');
+      expect(legend).toHaveTextContent('Event log filters');
+      expect(legend).not.toHaveClass('sr-only');
+    });
+
+    it('disables clear-all while no filter is active', async () => {
+      await renderWithEvents();
+
+      expect(
+        screen.getByRole('button', { name: /clear filters/i })
+      ).toBeDisabled();
+    });
+
+    it('enables clear-all once the type filter has a value', async () => {
+      await renderWithEvents();
+
+      fireEvent.change(screen.getByLabelText(/filter by event type/i), {
+        target: { value: 'pair' },
+      });
+
+      expect(
+        screen.getByRole('button', { name: /clear filters/i })
+      ).toBeEnabled();
+    });
+
+    it('treats a whitespace-only filter as inactive', async () => {
+      await renderWithEvents();
+
+      fireEvent.change(screen.getByLabelText(/filter by event type/i), {
+        target: { value: '   ' },
+      });
+
+      expect(
+        screen.getByRole('button', { name: /clear filters/i })
+      ).toBeDisabled();
+      // Whitespace must not narrow the list either.
+      expect(screen.getAllByRole('listitem')).toHaveLength(3);
+    });
+
+    it('narrows the list to matching event types', async () => {
+      await renderWithEvents();
+
+      fireEvent.change(screen.getByLabelText(/filter by event type/i), {
+        target: { value: 'pair' },
+      });
+
+      expect(screen.getAllByRole('listitem')).toHaveLength(2);
+      expect(screen.queryByText('quote.requested')).not.toBeInTheDocument();
+    });
+
+    it('matches event types case-insensitively', async () => {
+      await renderWithEvents();
+
+      fireEvent.change(screen.getByLabelText(/filter by event type/i), {
+        target: { value: 'PAIR.REGISTERED' },
+      });
+
+      expect(screen.getAllByRole('listitem')).toHaveLength(1);
+      expect(screen.getByText('pair.registered')).toBeInTheDocument();
+    });
+
+    it('restores every event and disables itself after clear-all', async () => {
+      await renderWithEvents();
+
+      const input = screen.getByLabelText(/filter by event type/i);
+      fireEvent.change(input, { target: { value: 'pair' } });
+      expect(screen.getAllByRole('listitem')).toHaveLength(2);
+
+      fireEvent.click(screen.getByRole('button', { name: /clear filters/i }));
+
+      expect(input).toHaveValue('');
+      expect(screen.getAllByRole('listitem')).toHaveLength(3);
+      expect(
+        screen.getByRole('button', { name: /clear filters/i })
+      ).toBeDisabled();
+    });
+
+    it('announces the reset inside the existing polite live region', async () => {
+      await renderWithEvents();
+
+      fireEvent.change(screen.getByLabelText(/filter by event type/i), {
+        target: { value: 'pair' },
+      });
+      fireEvent.click(screen.getByRole('button', { name: /clear filters/i }));
+
+      const announcement = await screen.findByText(/filters cleared/i);
+      expect(announcement).toBeInTheDocument();
+      // The reset must reuse the one polite region, not introduce a second one.
+      const regions = document.querySelectorAll('main [aria-live=polite]');
+      expect(regions).toHaveLength(1);
+      expect(regions[0]).toContainElement(announcement);
+    });
+
+    it('clears a stale reset announcement when filtering resumes', async () => {
+      await renderWithEvents();
+
+      const input = screen.getByLabelText(/filter by event type/i);
+      fireEvent.change(input, { target: { value: 'pair' } });
+      fireEvent.click(screen.getByRole('button', { name: /clear filters/i }));
+      expect(await screen.findByText(/filters cleared/i)).toBeInTheDocument();
+
+      fireEvent.change(input, { target: { value: 'quote' } });
+
+      expect(screen.queryByText(/filters cleared/i)).not.toBeInTheDocument();
+    });
+
+    it('renders no announcement before any reset happens', async () => {
+      await renderWithEvents();
+
+      expect(screen.queryByText(/filters cleared/i)).not.toBeInTheDocument();
+    });
+
+    it('keeps the live toggle working from inside the fieldset', async () => {
+      jest.useFakeTimers();
+      global.fetch = jest
+        .fn()
+        .mockResolvedValueOnce(okEventsResponse([eventRecord('initial')]))
+        .mockResolvedValueOnce(okEventsResponse([eventRecord('live')]));
+
+      renderPage();
+      expect(await screen.findByText('event.initial')).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Live off' }));
+
+      expect(await screen.findByText('event.live')).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: 'Live on' })).toHaveAttribute(
+        'aria-pressed',
+        'true'
+      );
+    });
+
+    it('keeps refresh-now working from inside the fieldset', async () => {
+      global.fetch = jest
+        .fn()
+        .mockResolvedValue(okEventsResponse([eventRecord('initial')]));
+      renderPage();
+      expect(await screen.findByText('event.initial')).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: /refresh now/i }));
+
+      await waitFor(() => {
+        expect(global.fetch).toHaveBeenCalledTimes(2);
+      });
+    });
+
+    it('leaves the filter value untouched across a live refresh', async () => {
+      jest.useFakeTimers();
+      global.fetch = jest
+        .fn()
+        .mockResolvedValue(okEventsResponse(filterableEvents));
+
+      renderPage();
+      expect(await screen.findByText('pair.registered')).toBeInTheDocument();
+
+      const input = screen.getByLabelText(/filter by event type/i);
+      fireEvent.change(input, { target: { value: 'quote' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Live off' }));
+
+      await act(async () => {
+        jest.advanceTimersByTime(10_000);
+      });
+
+      expect(input).toHaveValue('quote');
+      expect(screen.getAllByRole('listitem')).toHaveLength(1);
+    });
+
+    it('hides the list when the filter matches nothing', async () => {
+      await renderWithEvents();
+
+      fireEvent.change(screen.getByLabelText(/filter by event type/i), {
+        target: { value: 'no-such-type' },
+      });
+
+      expect(screen.queryByRole('listitem')).not.toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: /clear filters/i })
+      ).toBeEnabled();
+    });
+
+    it('offers the filter controls before any events load', () => {
+      global.fetch = jest.fn(
+        () => new Promise(() => {})
+      ) as unknown as typeof global.fetch;
+      renderPage();
+
+      expect(
+        screen.getByRole('group', { name: /event log filters/i })
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: /clear filters/i })
+      ).toBeDisabled();
+    });
+  });
+
   describe('payload safety', () => {
     it('handles deeply nested payloads without crashing', async () => {
       let deep: Record<string, unknown> = {};

@@ -9,7 +9,7 @@ import { PageHeading } from '@/components/PageHeading';
 import { Spinner } from '@/components/Spinner';
 import { apiDelete } from '@/lib/apiClient';
 import { useApi } from '@/lib/useApi';
-import { filterPairs, groupBySource, type Pair } from '@/lib/pairsTransforms';
+import { filterPairs, groupBySource, type Pair } from './pairsUtils';
 
 export default function PairsClient() {
   const api = useApi<{ pairs: Pair[] }>('/api/v1/pairs');
@@ -17,10 +17,18 @@ export default function PairsClient() {
   const [pendingDelete, setPendingDelete] = useState<Pair | null>(null);
 
   const pairs = api.status === 'success' ? api.data.pairs : null;
+
+  // Keyed on [pairs, query]: only recomputes when the loaded rows or the
+  // search text actually change, not on unrelated state (e.g. opening the
+  // delete confirmation dialog).
   const filtered = useMemo(
     () => (pairs ? filterPairs(pairs, query) : null),
     [pairs, query]
   );
+
+  // Grouping is a second, separate derivation from `filtered`. Without its own
+  // memo it would still re-run on every render (e.g. toggling the delete
+  // dialog) even though `filtered` itself was already stable.
   const grouped = useMemo(
     () => (filtered ? groupBySource(filtered) : []),
     [filtered]

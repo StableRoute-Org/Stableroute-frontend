@@ -121,13 +121,18 @@ export default function ApiKeysClient() {
         </div>
       )}
       {created && copyFailed && (
-        <input
-          readOnly
-          aria-label="API key secret"
-          value={created}
-          onFocus={(event) => event.currentTarget.select()}
-          className="w-full rounded border p-2 font-mono text-xs"
-        />
+        <label className="block text-sm">
+          <span className="mb-1 block">
+            Couldn&apos;t copy automatically. Select and copy the key below.
+          </span>
+          <input
+            aria-label="API key secret"
+            readOnly
+            value={created}
+            onFocus={(event) => event.currentTarget.select()}
+            className="w-full rounded border p-2 font-mono text-xs"
+          />
+        </label>
       )}
       {itemsResult.status === 'error' && (
         <p role="alert" className="text-sm text-rose-600">

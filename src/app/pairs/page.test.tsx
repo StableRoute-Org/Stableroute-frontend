@@ -6,10 +6,14 @@ import {
   within,
 } from '@testing-library/react';
 import PairsPage from './page';
-import { filterPairs, groupBySource } from '@/lib/pairsTransforms';
+import { filterPairs, groupBySource } from './pairsUtils';
 
-jest.mock('@/lib/pairsTransforms', () => {
-  const actual = jest.requireActual('@/lib/pairsTransforms');
+// filterPairs/groupBySource are wrapped in jest.fn() around their real
+// implementations so the memoization tests can assert how often each
+// derivation runs, while the component still renders real output. The mock is
+// shared with the copy that Client.tsx imports.
+jest.mock('./pairsUtils', () => {
+  const actual = jest.requireActual('./pairsUtils');
   return {
     ...actual,
     filterPairs: jest.fn(actual.filterPairs),

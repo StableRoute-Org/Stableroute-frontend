@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/Button';
 import { EmptyState } from '@/components/EmptyState';
 import { TimeAgo } from '@/components/TimeAgo';
@@ -35,6 +35,7 @@ export default function EventsClient() {
       typeof document === 'undefined' || document.visibilityState === 'visible'
   );
   const [typeFilter, setTypeFilter] = useState('');
+  const [filterAnnouncement, setFilterAnnouncement] = useState('');
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [showFull, setShowFull] = useState<Record<string, boolean>>({});
   const refetchEvents = eventsApi.refetch;
@@ -43,18 +44,25 @@ export default function EventsClient() {
     () => (response === null ? null : parseEventsResponse(response)),
     [response]
   );
-  // Retain the last successful parse so a failed live refresh keeps the list on
-  // screen (the error is still surfaced separately below).
-  const [parsed, setParsed] = useState<ReturnType<
-    typeof parseEventsResponse
-  > | null>(null);
-  useEffect(() => {
-    if (freshParsed !== null) setParsed(freshParsed);
-  }, [freshParsed]);
-  const items: DisplayEvent[] | null = parsed?.events ?? null;
-  const totalValid = parsed?.totalValid ?? 0;
-  const capped = parsed?.capped ?? false;
+
+  // Retain the last successfully-parsed response so a failed background refresh
+  // surfaces the error without blanking the list the user is already reading.
+  // Writing the ref during render is safe here: it only caches a value derived
+  // from this render's own inputs.
+  const lastParsedRef = useRef<typeof parsed>(null);
+  if (parsed !== null) {
+    lastParsedRef.current = parsed;
+  }
+  const effectiveParsed = parsed ?? lastParsedRef.current;
+
+  const items: DisplayEvent[] | null = effectiveParsed?.events ?? null;
+  const totalValid = effectiveParsed?.totalValid ?? 0;
+  const capped = effectiveParsed?.capped ?? false;
   const error = eventsApi.status === 'error' ? eventsApi.error : null;
+
+  // The type filter is the only control that narrows the list, so it alone
+  // decides whether "Clear filters" has anything to reset.
+  const hasActiveFilters = typeFilter.trim().length > 0;
 
   const filteredItems = useMemo(() => {
     if (!items) return null;
@@ -102,6 +110,17 @@ export default function EventsClient() {
       : `${items.length} events`;
   }, [items, capped, totalValid]);
 
+  const handleTypeFilterChange = useCallback((value: string) => {
+    setTypeFilter(value);
+    // Drop a stale "filters cleared" message as soon as the user filters again.
+    setFilterAnnouncement('');
+  }, []);
+
+  const handleClearFilters = useCallback(() => {
+    setTypeFilter('');
+    setFilterAnnouncement('Filters cleared. Showing all events.');
+  }, []);
+
   const handleCopyPayload = useCallback(
     async (eventId: string, payloadJson: string) => {
       const result = await writeToClipboard(payloadJson);
@@ -131,7 +150,24 @@ export default function EventsClient() {
     >
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-3xl font-semibold tracking-tight">Event log</h1>
-        <div className="flex items-center gap-2">
+      </div>
+      {lastUpdatedAt && (
+        <p className="text-sm text-neutral-600 dark:text-neutral-400">
+          Last updated <TimeAgo ts={lastUpdatedAt} />
+        </p>
+      )}
+      <fieldset className="flex flex-wrap items-end justify-between gap-3 border-0 p-0">
+        <legend className="mb-2 text-sm font-medium">Event log filters</legend>
+        <label className="flex max-w-sm flex-col gap-1 text-sm">
+          <span>Filter by event type</span>
+          <input
+            value={typeFilter}
+            onChange={(event) => handleTypeFilterChange(event.target.value)}
+            placeholder="pair.registered"
+            className="rounded-md border border-neutral-300 px-3 py-2 dark:border-neutral-700 dark:bg-neutral-900"
+          />
+        </label>
+        <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={refetchEvents}
@@ -155,22 +191,16 @@ export default function EventsClient() {
           >
             Export CSV
           </button>
+          <button
+            type="button"
+            disabled={!hasActiveFilters}
+            onClick={handleClearFilters}
+            className="rounded-full border border-neutral-300 px-4 py-1.5 text-sm disabled:cursor-not-allowed disabled:opacity-50 dark:border-neutral-700"
+          >
+            Clear filters
+          </button>
         </div>
-      </div>
-      {lastUpdatedAt && (
-        <p className="text-sm text-neutral-600 dark:text-neutral-400">
-          Last updated <TimeAgo ts={lastUpdatedAt} />
-        </p>
-      )}
-      <label className="flex max-w-sm flex-col gap-1 text-sm">
-        <span>Filter by event type</span>
-        <input
-          value={typeFilter}
-          onChange={(event) => setTypeFilter(event.target.value)}
-          placeholder="pair.registered"
-          className="rounded-md border border-neutral-300 px-3 py-2 dark:border-neutral-700 dark:bg-neutral-900"
-        />
-      </label>
+      </fieldset>
       {error && (
         <p role="alert" className="text-sm text-rose-600">
           {error}
@@ -185,6 +215,7 @@ export default function EventsClient() {
         <h2 id="events-log-heading" className="sr-only">
           Event log entries
         </h2>
+        {filterAnnouncement && <p className="sr-only">{filterAnnouncement}</p>}
         {(eventsApi.status === 'idle' || eventsApi.status === 'loading') && (
           <p>Loading…</p>
         )}
