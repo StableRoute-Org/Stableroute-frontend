@@ -351,8 +351,12 @@ describe('PairsPage', () => {
       const fallback = await screen.findByRole('textbox', {
         name: 'Pair symbol USDC/EURC',
       });
+      const select = jest.spyOn(fallback, 'select');
+      fireEvent.focus(fallback);
+
       expect(fallback).toHaveValue('USDC/EURC');
       expect(fallback).toHaveAttribute('readonly');
+      expect(select).toHaveBeenCalledTimes(1);
       expect(mockPush).toHaveBeenCalledWith(
         "Couldn't copy USDC/EURC automatically. Select it below to copy it.",
         'error'

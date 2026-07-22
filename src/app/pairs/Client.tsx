@@ -40,7 +40,6 @@ export default function PairsClient() {
   );
 
   const copyPairSymbol = async (symbol: string) => {
-    if (copyingSymbol === symbol) return;
     setCopyingSymbol(symbol);
     try {
       const result = await writeToClipboard(symbol);
