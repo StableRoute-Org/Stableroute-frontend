@@ -1,5 +1,8 @@
-import { WEBHOOK_EVENT_OPTIONS, isWebhookEventType } from '../webhookEvents';
-import type { WebhookEventType } from '../webhookEvents';
+import {
+  WEBHOOK_EVENT_OPTIONS,
+  isWebhookEventType,
+  type WebhookEventType,
+} from '../webhookEvents';
 
 describe('webhook events catalogue', () => {
   it('matches the documented set of webhook event identifiers', () => {

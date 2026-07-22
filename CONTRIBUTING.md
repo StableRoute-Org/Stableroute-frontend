@@ -49,6 +49,7 @@ npm run lint
 If you see errors, fix them before pushing. Common issues:
 
 - Unused imports or variables (`no-unused-vars`)
+- Multiple import declarations from the same module (`no-duplicate-imports`)
 - Missing `key` props in lists (`react/jsx-key`)
 - `<img>` instead of Next.js `<Image>` (`@next/next/no-img-element`)
 
