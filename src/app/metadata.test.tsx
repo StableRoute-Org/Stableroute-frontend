@@ -1,7 +1,6 @@
 import { render } from '@testing-library/react';
 import RootLayout from './layout';
 
-
 jest.mock('next/navigation');
 
 import { metadata as homeMetadata } from './page';
