@@ -171,6 +171,8 @@ The client reads this value in [`src/lib/apiClient.ts`](src/lib/apiClient.ts). R
 
 ### Troubleshooting
 
+For a focused guide covering misconfigured API bases, CORS failures, timeouts, and 401/403 responses, see [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md).
+
 | Symptom                              | Fix                                                                     |
 | ------------------------------------ | ----------------------------------------------------------------------- |
 | API calls fail with `ECONNREFUSED`   | Start the StableRoute backend or set `NEXT_PUBLIC_STABLEROUTE_API_BASE` |
