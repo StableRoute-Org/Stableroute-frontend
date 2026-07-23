@@ -706,4 +706,60 @@ describe('WebhooksPage', () => {
     expect(timeEls.length).toBeGreaterThanOrEqual(2);
     timeEls.forEach((el) => expect(el).toHaveAttribute('dateTime'));
   });
+
+  // -------------------------------------------------------------------------
+  // A11Y: TABLE SEMANTICS
+  // -------------------------------------------------------------------------
+
+  it('renders a <caption> inside the webhooks table', async () => {
+    mockFetchSequence({ ok: true, body: { items: [HOOK_1] } });
+    render(<WebhooksPage />);
+    await waitFor(() =>
+      expect(screen.getByText('https://example.com/hook')).toBeInTheDocument()
+    );
+    const caption = document.querySelector('table caption');
+    expect(caption).toBeInTheDocument();
+    expect(caption).toHaveTextContent(/webhooks/i);
+  });
+
+  it('renders column headers with scope="col"', async () => {
+    mockFetchSequence({ ok: true, body: { items: [HOOK_1] } });
+    render(<WebhooksPage />);
+    await waitFor(() =>
+      expect(screen.getByText('https://example.com/hook')).toBeInTheDocument()
+    );
+    const colHeaders = document.querySelectorAll('thead th[scope="col"]');
+    expect(colHeaders.length).toBeGreaterThanOrEqual(1);
+    colHeaders.forEach((th) => expect(th).toHaveAttribute('scope', 'col'));
+  });
+
+  it('renders row header cells with scope="row"', async () => {
+    mockFetchSequence({ ok: true, body: { items: [HOOK_1] } });
+    render(<WebhooksPage />);
+    await waitFor(() =>
+      expect(screen.getByText('https://example.com/hook')).toBeInTheDocument()
+    );
+    const rowHeaders = document.querySelectorAll('tbody th[scope="row"]');
+    expect(rowHeaders.length).toBeGreaterThanOrEqual(1);
+    rowHeaders.forEach((th) => expect(th).toHaveAttribute('scope', 'row'));
+  });
+
+  it('does not render a <table> when there are no webhooks', async () => {
+    mockFetchSequence({ ok: true, body: { items: [] } });
+    render(<WebhooksPage />);
+    await waitFor(() =>
+      expect(screen.getByText(/No webhooks registered/i)).toBeInTheDocument()
+    );
+    expect(document.querySelector('table')).not.toBeInTheDocument();
+  });
+
+  it('renders the caption as visually hidden (sr-only)', async () => {
+    mockFetchSequence({ ok: true, body: { items: [HOOK_1] } });
+    render(<WebhooksPage />);
+    await waitFor(() =>
+      expect(screen.getByText('https://example.com/hook')).toBeInTheDocument()
+    );
+    const caption = document.querySelector('table caption');
+    expect(caption).toHaveClass('sr-only');
+  });
 });
