@@ -9,6 +9,7 @@ import StatsPage from './page';
 import {
   buildStatsSnapshot,
   downloadStatsSnapshot,
+  formatStatsAge,
   statsSnapshotToCsv,
   statsSnapshotToJson,
 } from './Client';
@@ -131,6 +132,69 @@ describe('StatsPage', () => {
     });
 
     expect(global.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows when the latest successful response was received and updates the age', async () => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-07-22T12:00:00.000Z'));
+    mockFetch({ totalPairs: 42, paused: false });
+
+    render(<StatsPage />);
+
+    const timestamp = await screen.findByText('just now');
+    expect(timestamp.tagName).toBe('TIME');
+    expect(timestamp.getAttribute('datetime')).toMatch(
+      /^2026-07-22T12:00:00\.\d{3}Z$/
+    );
+    expect(timestamp).toHaveAttribute('title');
+
+    await act(async () => {
+      jest.advanceTimersByTime(1_000);
+    });
+
+    expect(screen.getByText('1s ago')).toBeInTheDocument();
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it('resets the age after the next successful polling response', async () => {
+    jest.useFakeTimers().setSystemTime(new Date('2026-07-22T12:00:00.000Z'));
+    mockFetch({ totalPairs: 42, paused: false });
+
+    render(<StatsPage />);
+    expect(await screen.findByText('just now')).toBeInTheDocument();
+
+    await act(async () => {
+      jest.advanceTimersByTime(5_000);
+    });
+
+    expect(await screen.findByText('just now')).toBeInTheDocument();
+    expect(global.fetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('clears both polling and freshness intervals on unmount', async () => {
+    jest.useFakeTimers();
+    mockFetch({ totalPairs: 42, paused: false });
+
+    const { unmount } = render(<StatsPage />);
+    expect(await screen.findByText('just now')).toBeInTheDocument();
+    expect(jest.getTimerCount()).toBe(2);
+
+    unmount();
+
+    expect(jest.getTimerCount()).toBe(0);
+  });
+});
+
+describe('formatStatsAge', () => {
+  it.each([
+    [-1_000, 'just now'],
+    [0, 'just now'],
+    [59_999, '59s ago'],
+    [60_000, '1m ago'],
+    [3_599_999, '59m ago'],
+    [3_600_000, '1h ago'],
+    [86_400_000, '1d ago'],
+  ])('formats %i milliseconds as %s', (deltaMs, expected) => {
+    expect(formatStatsAge(deltaMs)).toBe(expected);
   });
 });
 

@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useApi } from '@/lib/useApi';
-import { formatNumber } from '@/lib/format';
+import { formatNumber, formatTimestamp } from '@/lib/format';
 import { Button } from '@/components/Button';
 import { EmptyState } from '@/components/EmptyState';
 import { Spinner } from '@/components/Spinner';
@@ -12,6 +12,44 @@ type Stats = { totalPairs: number; paused: boolean };
 
 /** Poll cadence for the stats dashboard (see ARCHITECTURE.md, "Data flow"). */
 const POLL_MS = 5_000;
+const LAST_UPDATED_TICK_MS = 1_000;
+
+/** Format elapsed time for the stats freshness label. */
+export function formatStatsAge(deltaMs: number): string {
+  const elapsedSeconds = Math.max(0, Math.floor(deltaMs / 1_000));
+  if (elapsedSeconds === 0) return 'just now';
+  if (elapsedSeconds < 60) return `${elapsedSeconds}s ago`;
+
+  const elapsedMinutes = Math.floor(elapsedSeconds / 60);
+  if (elapsedMinutes < 60) return `${elapsedMinutes}m ago`;
+
+  const elapsedHours = Math.floor(elapsedMinutes / 60);
+  if (elapsedHours < 24) return `${elapsedHours}h ago`;
+
+  return `${Math.floor(elapsedHours / 24)}d ago`;
+}
+
+function LastUpdated({ timestamp }: { timestamp: number }) {
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    setNow(Date.now());
+    const id = setInterval(() => setNow(Date.now()), LAST_UPDATED_TICK_MS);
+    return () => clearInterval(id);
+  }, [timestamp]);
+
+  return (
+    <p className="mt-3 text-xs text-slate-500">
+      Updated{' '}
+      <time
+        dateTime={new Date(timestamp).toISOString()}
+        title={formatTimestamp(timestamp)}
+      >
+        {formatStatsAge(now - timestamp)}
+      </time>
+    </p>
+  );
+}
 
 export type StatsSnapshotMetric = {
   label: string;
@@ -115,6 +153,7 @@ export function downloadStatsSnapshot(
 
 export default function StatsClient() {
   const result = useApi<Stats>('/api/v1/stats');
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null);
   const { refetch } = result;
   const status = result.status;
   const error = status === 'error' ? result.error : null;
@@ -124,6 +163,10 @@ export default function StatsClient() {
     const id = setInterval(refetch, POLL_MS);
     return () => clearInterval(id);
   }, [refetch]);
+
+  useEffect(() => {
+    if (status === 'success' && data) setLastUpdatedAt(Date.now());
+  }, [status, data]);
 
   return (
     <main
@@ -152,6 +195,7 @@ export default function StatsClient() {
             <StatTile label="Pairs" value={formatNumber(data.totalPairs)} />
             <StatTile label="Status" value={data.paused ? 'Paused' : 'Live'} />
           </dl>
+          {lastUpdatedAt !== null && <LastUpdated timestamp={lastUpdatedAt} />}
           <div className="mt-4 flex gap-2">
             <Button
               type="button"
