@@ -1,6 +1,10 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import DocsPage, { dynamic } from './page';
 import { OpenApiLink } from './OpenApiLink';
+
+jest.mock('@/components/ToastProvider', () => ({
+  useToast: () => ({ push: jest.fn() }),
+}));
 
 describe('DocsPage', () => {
   const originalEnv = process.env.NEXT_PUBLIC_STABLEROUTE_API_BASE;
@@ -47,6 +51,29 @@ describe('DocsPage', () => {
       'href',
       'http://localhost:3001/api/v1/openapi.json'
     );
+  });
+
+  it('renders code samples for each endpoint', () => {
+    render(<DocsPage />);
+    // Default language is cURL — check samples are rendered
+    expect(
+      screen.getByText(/curl -X POST http:\/\/localhost:3001\/api\/v1\/pairs/)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/curl http:\/\/localhost:3001\/api\/v1\/pairs/)
+    ).toBeInTheDocument();
+  });
+
+  it('renders language selector radio groups for each endpoint', () => {
+    render(<DocsPage />);
+    const radioGroups = screen.getAllByRole('radiogroup', { name: 'Language' });
+    expect(radioGroups.length).toBe(5);
+  });
+
+  it('renders copy buttons for each endpoint', () => {
+    render(<DocsPage />);
+    const copyButtons = screen.getAllByRole('button', { name: /Copy .* code for/ });
+    expect(copyButtons.length).toBe(5);
   });
 });
 
