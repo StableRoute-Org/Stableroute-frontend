@@ -1,10 +1,11 @@
 import type { Metadata } from 'next';
 import { OpenApiLink } from './OpenApiLink';
+import { DocsSection } from "./Section";
 
 export const dynamic = 'force-static';
 
 export const metadata: Metadata = {
-  title: 'Docs',
+  title: 'Docs — StableRoute',
   description: 'Short reference for the StableRoute HTTP API common endpoints.',
 };
 
@@ -42,16 +43,13 @@ export default function DocsPage() {
         Companion to <OpenApiLink /> (opens external API spec) — short prose for
         the most common endpoints.
       </p>
-      <dl className="space-y-4">
+      <div className="space-y-4">
         {sections.map((s) => (
-          <div key={s.h}>
-            <dt className="font-mono text-sm font-medium">{s.h}</dt>
-            <dd className="mt-1 text-sm text-neutral-700 dark:text-neutral-300">
-              {s.p}
-            </dd>
-          </div>
+          <DocsSection key={s.h} heading={s.h}>
+            <p>{s.p}</p>
+          </DocsSection>
         ))}
-      </dl>
+      </div>
     </main>
   );
 }
