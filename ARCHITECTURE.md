@@ -8,6 +8,7 @@
 - `src/lib/config.ts` — API base resolution and validation.
 - `src/lib/useApi.ts` / `src/lib/useList.ts` — client data-loading helpers.
 - `src/lib/clipboard.ts` — secure-context/permission-guarded clipboard writes (see `docs/clipboard.md`).
+- `src/lib/endpointRegistry.ts` — typed registry of API endpoints for the docs page.
 - `src/lib/routes.ts` — the app's route table. Each entry carries a `group`
   ("Routing" | "Operations" | "Reference"); `getRoutesByGroup()` returns
   routes grouped for `Header` and `CommandPalette`, preserving both the
