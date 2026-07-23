@@ -8,6 +8,12 @@ import {
 import PairsPage from './page';
 import { filterPairs, groupBySource } from './pairsUtils';
 
+const mockPush = jest.fn();
+
+jest.mock('@/components/ToastProvider', () => ({
+  useToast: () => ({ push: mockPush }),
+}));
+
 // filterPairs/groupBySource are wrapped in jest.fn() around their real
 // implementations so the memoization tests can assert how often each
 // derivation runs, while the component still renders real output. The mock is
@@ -49,13 +55,26 @@ function mockFetchError(message: string) {
 
 describe('PairsPage', () => {
   let originalFetch: typeof global.fetch;
+  let originalClipboard: Clipboard;
+  let originalSecureContext: boolean;
 
   beforeEach(() => {
     originalFetch = global.fetch;
+    originalClipboard = navigator.clipboard;
+    originalSecureContext = window.isSecureContext;
+    mockPush.mockClear();
   });
 
   afterEach(() => {
     global.fetch = originalFetch;
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: originalClipboard,
+    });
+    Object.defineProperty(window, 'isSecureContext', {
+      configurable: true,
+      value: originalSecureContext,
+    });
   });
 
   // -------------------------------------------------------------------------
@@ -284,6 +303,115 @@ describe('PairsPage', () => {
 
     const quoteLink = screen.getByText('Quote').closest('a')!;
     expect(quoteLink).toHaveAttribute('href', '/quote?source=USDC&dest=EURC');
+  });
+
+  describe('copy pair symbol', () => {
+    function enableClipboard(writeText: jest.Mock) {
+      Object.defineProperty(window, 'isSecureContext', {
+        configurable: true,
+        value: true,
+      });
+      Object.defineProperty(navigator, 'clipboard', {
+        configurable: true,
+        value: { writeText },
+      });
+    }
+
+    it('copies the canonical pair symbol and confirms it', async () => {
+      const writeText = jest.fn().mockResolvedValue(undefined);
+      enableClipboard(writeText);
+      mockFetch([{ source: 'USDC', destination: 'EURC' }]);
+
+      render(<PairsPage />);
+      const copyButton = await screen.findByRole('button', {
+        name: 'Copy pair symbol USDC/EURC',
+      });
+      fireEvent.click(copyButton);
+
+      await waitFor(() => {
+        expect(writeText).toHaveBeenCalledWith('USDC/EURC');
+        expect(mockPush).toHaveBeenCalledWith('Copied USDC/EURC.');
+      });
+      expect(
+        screen.queryByRole('textbox', { name: 'Pair symbol USDC/EURC' })
+      ).not.toBeInTheDocument();
+    });
+
+    it('shows a selectable fallback when clipboard writing fails', async () => {
+      enableClipboard(jest.fn().mockRejectedValue(new Error('denied')));
+      mockFetch([{ source: 'USDC', destination: 'EURC' }]);
+
+      render(<PairsPage />);
+      fireEvent.click(
+        await screen.findByRole('button', {
+          name: 'Copy pair symbol USDC/EURC',
+        })
+      );
+
+      const fallback = await screen.findByRole('textbox', {
+        name: 'Pair symbol USDC/EURC',
+      });
+      const select = jest.spyOn(fallback, 'select');
+      fireEvent.focus(fallback);
+
+      expect(fallback).toHaveValue('USDC/EURC');
+      expect(fallback).toHaveAttribute('readonly');
+      expect(select).toHaveBeenCalledTimes(1);
+      expect(mockPush).toHaveBeenCalledWith(
+        "Couldn't copy USDC/EURC automatically. Select it below to copy it.",
+        'error'
+      );
+    });
+
+    it('uses the fallback without attempting a write when clipboard is unavailable', async () => {
+      Object.defineProperty(window, 'isSecureContext', {
+        configurable: true,
+        value: false,
+      });
+      Object.defineProperty(navigator, 'clipboard', {
+        configurable: true,
+        value: undefined,
+      });
+      mockFetch([{ source: 'USDC', destination: 'EURC' }]);
+
+      render(<PairsPage />);
+      fireEvent.click(
+        await screen.findByRole('button', {
+          name: 'Copy pair symbol USDC/EURC',
+        })
+      );
+
+      expect(
+        await screen.findByRole('textbox', {
+          name: 'Pair symbol USDC/EURC',
+        })
+      ).toHaveValue('USDC/EURC');
+    });
+
+    it('blocks rapid repeated clicks while a copy is pending', async () => {
+      let resolveWrite!: () => void;
+      const writeText = jest.fn(
+        () =>
+          new Promise<void>((resolve) => {
+            resolveWrite = resolve;
+          })
+      );
+      enableClipboard(writeText);
+      mockFetch([{ source: 'USDC', destination: 'EURC' }]);
+
+      render(<PairsPage />);
+      const copyButton = await screen.findByRole('button', {
+        name: 'Copy pair symbol USDC/EURC',
+      });
+      fireEvent.click(copyButton);
+      fireEvent.click(copyButton);
+
+      expect(writeText).toHaveBeenCalledTimes(1);
+      expect(copyButton).toBeDisabled();
+
+      resolveWrite();
+      await waitFor(() => expect(copyButton).not.toBeDisabled());
+    });
   });
 
   // -------------------------------------------------------------------------
