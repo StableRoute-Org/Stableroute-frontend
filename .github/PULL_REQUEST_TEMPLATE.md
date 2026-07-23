@@ -26,7 +26,7 @@
 - [ ] Branch name follows `type/area-slug` where possible.
 - [ ] Tests were added or updated for new UI or behaviour.
 - [ ] Documentation was updated for visible or API-facing changes.
-- [ ] Accessibility was considered for keyboard, screen-reader, color contrast, and responsive states.
+- [ ] Accessibility was considered according to the [Accessibility Conformance Statement](docs/ACCESSIBILITY.md) (keyboard, screen-reader, color contrast, and reduced motion).
 - [ ] No unrelated CI workflow changes are included.
 
 ## Notes For Reviewers

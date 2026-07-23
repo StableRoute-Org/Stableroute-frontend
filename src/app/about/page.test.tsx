@@ -1,7 +1,10 @@
 import { render, screen } from '@testing-library/react';
-import AboutPage from './page';
+import AboutPage, { dynamic } from './page';
 
 describe('AboutPage', () => {
+  it('exports force-static dynamic route directive', () => {
+    expect(dynamic).toBe('force-static');
+  });
   it('renders the about heading and descriptive copy', () => {
     render(<AboutPage />);
     expect(
