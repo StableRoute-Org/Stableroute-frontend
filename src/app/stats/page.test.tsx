@@ -5,6 +5,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import { ToastProvider } from '@/components/ToastProvider';
 import StatsPage from './page';
 import {
   buildStatsSnapshot,
@@ -12,6 +13,7 @@ import {
   formatStatsAge,
   statsSnapshotToCsv,
   statsSnapshotToJson,
+  statsSnapshotToText,
 } from './Client';
 
 const mockFetch = (data: unknown) => {
@@ -21,6 +23,13 @@ const mockFetch = (data: unknown) => {
   } as unknown as Response);
 };
 
+const renderStatsPage = () =>
+  render(
+    <ToastProvider>
+      <StatsPage />
+    </ToastProvider>
+  );
+
 afterEach(() => {
   jest.useRealTimers();
   jest.restoreAllMocks();
@@ -29,14 +38,14 @@ afterEach(() => {
 describe('StatsPage', () => {
   it('renders the heading', async () => {
     mockFetch({ totalPairs: 0, paused: false });
-    render(<StatsPage />);
+    renderStatsPage();
     expect(screen.getByRole('heading', { name: /stats/i })).toBeInTheDocument();
     await screen.findByText('Live');
   });
 
   it('renders one canonical stats page region and heading', async () => {
     mockFetch({ totalPairs: 0, paused: false });
-    render(<StatsPage />);
+    renderStatsPage();
 
     expect(screen.getAllByRole('heading', { name: /stats/i })).toHaveLength(1);
     expect(document.querySelectorAll('#main-content')).toHaveLength(1);
@@ -45,7 +54,7 @@ describe('StatsPage', () => {
 
   it('names the metrics panel with an accessible region', async () => {
     mockFetch({ totalPairs: 12, paused: false });
-    render(<StatsPage />);
+    renderStatsPage();
 
     await waitFor(() => {
       expect(
@@ -56,28 +65,28 @@ describe('StatsPage', () => {
 
   it('formats totalPairs with thousands separators via formatNumber', async () => {
     mockFetch({ totalPairs: 1234567, paused: false });
-    render(<StatsPage />);
+    renderStatsPage();
     const pairs = await screen.findByText('1,234,567');
     expect(pairs).toBeInTheDocument();
   });
 
   it('renders Live when paused is false', async () => {
     mockFetch({ totalPairs: 0, paused: false });
-    render(<StatsPage />);
+    renderStatsPage();
     const status = await screen.findByText('Live');
     expect(status).toBeInTheDocument();
   });
 
   it('renders Paused when paused is true', async () => {
     mockFetch({ totalPairs: 0, paused: true });
-    render(<StatsPage />);
+    renderStatsPage();
     const status = await screen.findByText('Paused');
     expect(status).toBeInTheDocument();
   });
 
   it('renders error message on fetch failure', async () => {
     global.fetch = jest.fn().mockRejectedValue(new Error('Network error'));
-    render(<StatsPage />);
+    renderStatsPage();
     await waitFor(() => {
       const alert = screen.getByRole('alert');
       expect(alert).toHaveTextContent(/network request failed/i);
@@ -99,7 +108,7 @@ describe('StatsPage', () => {
           Promise.resolve(JSON.stringify({ totalPairs: 2000, paused: true })),
       } as unknown as Response);
 
-    render(<StatsPage />);
+    renderStatsPage();
 
     expect(await screen.findByText('1')).toBeInTheDocument();
     expect(await screen.findByText('Live')).toBeInTheDocument();
@@ -121,7 +130,7 @@ describe('StatsPage', () => {
         Promise.resolve(JSON.stringify({ totalPairs: 42, paused: false })),
     } as unknown as Response);
 
-    const { unmount } = render(<StatsPage />);
+    const { unmount } = renderStatsPage();
     expect(await screen.findByText('42')).toBeInTheDocument();
     expect(global.fetch).toHaveBeenCalledTimes(1);
 
@@ -138,7 +147,7 @@ describe('StatsPage', () => {
     jest.useFakeTimers().setSystemTime(new Date('2026-07-22T12:00:00.000Z'));
     mockFetch({ totalPairs: 42, paused: false });
 
-    render(<StatsPage />);
+    renderStatsPage();
 
     const timestamp = await screen.findByText('just now');
     expect(timestamp.tagName).toBe('TIME');
@@ -159,7 +168,7 @@ describe('StatsPage', () => {
     jest.useFakeTimers().setSystemTime(new Date('2026-07-22T12:00:00.000Z'));
     mockFetch({ totalPairs: 42, paused: false });
 
-    render(<StatsPage />);
+    renderStatsPage();
     expect(await screen.findByText('just now')).toBeInTheDocument();
 
     await act(async () => {
@@ -174,7 +183,7 @@ describe('StatsPage', () => {
     jest.useFakeTimers();
     mockFetch({ totalPairs: 42, paused: false });
 
-    const { unmount } = render(<StatsPage />);
+    const { unmount } = renderStatsPage();
     expect(await screen.findByText('just now')).toBeInTheDocument();
     expect(jest.getTimerCount()).toBe(2);
 
@@ -242,6 +251,24 @@ describe('statsSnapshotToJson', () => {
 
     expect(JSON.parse(json)).toEqual(snapshot);
     expect(json).toContain('\n');
+  });
+});
+
+describe('statsSnapshotToText', () => {
+  it('serialises the displayed metric values into a concise snapshot', () => {
+    const snapshot = buildStatsSnapshot(
+      { totalPairs: 1234567, paused: true },
+      '2026-07-23T05:30:00.000Z'
+    );
+
+    expect(statsSnapshotToText(snapshot)).toBe(
+      [
+        'StableRoute stats snapshot',
+        'Pairs: 1,234,567',
+        'Status: Paused',
+        'Captured: 2026-07-23T05:30:00.000Z',
+      ].join('\n')
+    );
   });
 });
 
@@ -353,7 +380,7 @@ describe('StatsPage download controls', () => {
 
   it('renders Download JSON and Download CSV controls once stats load', async () => {
     mockFetch({ totalPairs: 7, paused: false });
-    render(<StatsPage />);
+    renderStatsPage();
 
     expect(
       await screen.findByRole('button', { name: /download json/i })
@@ -365,17 +392,20 @@ describe('StatsPage download controls', () => {
 
   it('does not render download controls while loading or on error', async () => {
     global.fetch = jest.fn().mockRejectedValue(new Error('Network error'));
-    render(<StatsPage />);
+    renderStatsPage();
 
     await waitFor(() => expect(screen.getByRole('alert')).toBeInTheDocument());
     expect(
       screen.queryByRole('button', { name: /download json/i })
     ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Copy stats snapshot' })
+    ).not.toBeInTheDocument();
   });
 
   it('triggers a JSON blob download when Download JSON is clicked', async () => {
     mockFetch({ totalPairs: 7, paused: true });
-    render(<StatsPage />);
+    renderStatsPage();
 
     const button = await screen.findByRole('button', {
       name: /download json/i,
@@ -389,7 +419,7 @@ describe('StatsPage download controls', () => {
 
   it('triggers a CSV blob download when Download CSV is clicked', async () => {
     mockFetch({ totalPairs: 7, paused: false });
-    render(<StatsPage />);
+    renderStatsPage();
 
     const button = await screen.findByRole('button', { name: /download csv/i });
     fireEvent.click(button);
@@ -397,5 +427,129 @@ describe('StatsPage download controls', () => {
     expect(URL.createObjectURL).toHaveBeenCalledTimes(1);
     const blob = (URL.createObjectURL as jest.Mock).mock.calls[0][0] as Blob;
     expect(blob.type).toBe('text/csv');
+  });
+});
+
+describe('StatsPage copy control', () => {
+  const originalSecureContext = window.isSecureContext;
+  const originalClipboard = navigator.clipboard;
+
+  function setClipboard(value: unknown) {
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value,
+    });
+  }
+
+  function setSecureContext(value: boolean) {
+    Object.defineProperty(window, 'isSecureContext', {
+      configurable: true,
+      value,
+    });
+  }
+
+  afterEach(() => {
+    setSecureContext(originalSecureContext);
+    setClipboard(originalClipboard);
+  });
+
+  it('copies a snapshot using the current displayed values and confirms it', async () => {
+    const writeText = jest.fn().mockResolvedValue(undefined);
+    setSecureContext(true);
+    setClipboard({ writeText });
+    mockFetch({ totalPairs: 1234567, paused: true });
+
+    renderStatsPage();
+
+    expect(await screen.findByText('1,234,567')).toBeInTheDocument();
+    expect(screen.getByText('Paused')).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Copy stats snapshot' })
+    );
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledTimes(1));
+    const copiedText = writeText.mock.calls[0][0] as string;
+    expect(copiedText).toContain('Pairs: 1,234,567');
+    expect(copiedText).toContain('Status: Paused');
+    expect(copiedText).toMatch(
+      /Captured: \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z/
+    );
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'Stats snapshot copied.'
+    );
+  });
+
+  it('shows a selectable fallback with empty stats when clipboard writing fails', async () => {
+    setSecureContext(true);
+    setClipboard({
+      writeText: jest.fn().mockRejectedValue(new Error('denied')),
+    });
+    mockFetch({ totalPairs: 0, paused: false });
+
+    renderStatsPage();
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Copy stats snapshot' })
+    );
+
+    const fallback = await screen.findByRole('textbox', {
+      name: 'Stats snapshot text',
+    });
+    expect((fallback as HTMLTextAreaElement).value).toContain('Pairs: 0');
+    expect((fallback as HTMLTextAreaElement).value).toContain('Status: Live');
+    expect(fallback).toHaveAttribute('readonly');
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      "Couldn't copy automatically. Select the snapshot below to copy it."
+    );
+
+    const select = jest.spyOn(fallback, 'select');
+    fireEvent.focus(fallback);
+    expect(select).toHaveBeenCalledTimes(1);
+  });
+
+  it('blocks repeated clicks while a clipboard write is pending', async () => {
+    let resolveWrite!: () => void;
+    const writeText = jest.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveWrite = resolve;
+        })
+    );
+    setSecureContext(true);
+    setClipboard({ writeText });
+    mockFetch({ totalPairs: 7, paused: false });
+
+    renderStatsPage();
+
+    const button = await screen.findByRole('button', {
+      name: 'Copy stats snapshot',
+    });
+    fireEvent.click(button);
+    fireEvent.click(button);
+
+    expect(writeText).toHaveBeenCalledTimes(1);
+    expect(button).toBeDisabled();
+
+    resolveWrite();
+    await waitFor(() => expect(button).not.toBeDisabled());
+  });
+
+  it('uses the fallback when the Clipboard API is unavailable', async () => {
+    setSecureContext(true);
+    setClipboard(undefined);
+    mockFetch({ totalPairs: 42, paused: false });
+
+    renderStatsPage();
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Copy stats snapshot' })
+    );
+
+    const fallback = await screen.findByRole('textbox', {
+      name: 'Stats snapshot text',
+    });
+    expect((fallback as HTMLTextAreaElement).value).toContain('Pairs: 42');
+    expect(await screen.findByRole('alert')).toBeInTheDocument();
   });
 });
