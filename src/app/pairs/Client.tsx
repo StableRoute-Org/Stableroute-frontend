@@ -9,7 +9,8 @@ import { PageHeading } from '@/components/PageHeading';
 import { Spinner } from '@/components/Spinner';
 import { apiDelete } from '@/lib/apiClient';
 import { useApi } from '@/lib/useApi';
-import { filterPairs, groupBySource, type Pair } from './pairsUtils';
+import { filterPairs, groupBySource } from './pairsUtils';
+import { type Pair } from '@/lib/types';
 
 export default function PairsClient() {
   const api = useApi<{ pairs: Pair[] }>('/api/v1/pairs');

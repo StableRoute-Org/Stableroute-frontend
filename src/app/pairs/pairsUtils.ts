@@ -1,4 +1,4 @@
-export type Pair = { source: string; destination: string };
+import type { Pair } from '@/lib/types';
 
 /**
  * Filters pairs whose source or destination contains the query text
