@@ -8,6 +8,12 @@ const securityHeaders = [
   },
   { key: 'X-Content-Type-Options', value: 'nosniff' },
   { key: 'X-Frame-Options', value: 'DENY' },
+  // Prevents the page from sharing a browsing-context group with cross-origin
+  // openers, closing cross-origin window-reference attacks.
+  { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
+  // Prevents other origins from loading this resource in a no-cors request,
+  // required for full cross-origin isolation.
+  { key: 'Cross-Origin-Resource-Policy', value: 'same-origin' },
   {
     key: 'Content-Security-Policy',
     value:

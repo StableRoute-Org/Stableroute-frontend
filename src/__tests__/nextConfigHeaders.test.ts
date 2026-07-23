@@ -48,6 +48,51 @@ describe('next.config security headers', () => {
     expect(csp).toMatch(/connect-src 'self'/);
   });
 
+  it('sets Cross-Origin-Opener-Policy to same-origin', async () => {
+    const rules = await nextConfig.headers!();
+    const headers = rules[0].headers;
+    const coop = headers.filter((h) => h.key === 'Cross-Origin-Opener-Policy');
+    // Must appear exactly once — duplicate headers would send conflicting values.
+    expect(coop).toHaveLength(1);
+    expect(coop[0].value).toBe('same-origin');
+  });
+
+  it('sets Cross-Origin-Resource-Policy to same-origin', async () => {
+    const rules = await nextConfig.headers!();
+    const headers = rules[0].headers;
+    const corp = headers.filter(
+      (h) => h.key === 'Cross-Origin-Resource-Policy'
+    );
+    // Must appear exactly once.
+    expect(corp).toHaveLength(1);
+    expect(corp[0].value).toBe('same-origin');
+  });
+
+  it('CSP contains frame-ancestors exactly once', async () => {
+    const rules = await nextConfig.headers!();
+    const csp =
+      rules[0].headers.find((h) => h.key === 'Content-Security-Policy')
+        ?.value ?? '';
+    const matches = csp.match(/frame-ancestors/g);
+    // Duplicate directives would let a lenient parser use the weaker one.
+    expect(matches).not.toBeNull();
+    expect(matches!.length).toBe(1);
+    expect(csp).toMatch(/frame-ancestors 'none'/);
+  });
+
+  it('COOP and CORP headers each appear exactly once in the header list', async () => {
+    const rules = await nextConfig.headers!();
+    const keys = rules[0].headers.map((h) => h.key);
+    const coopCount = keys.filter(
+      (k) => k === 'Cross-Origin-Opener-Policy'
+    ).length;
+    const corpCount = keys.filter(
+      (k) => k === 'Cross-Origin-Resource-Policy'
+    ).length;
+    expect(coopCount).toBe(1);
+    expect(corpCount).toBe(1);
+  });
+
   it('returns consistent headers across multiple invocations', async () => {
     const first = await nextConfig.headers!();
     const second = await nextConfig.headers!();
