@@ -7,6 +7,7 @@ import {
 } from '@testing-library/react';
 import PairsPage from './page';
 import { filterPairs, groupBySource } from './pairsUtils';
+import { STORAGE_KEY } from '@/lib/columnVisibility';
 
 const mockPush = jest.fn();
 
@@ -576,6 +577,176 @@ describe('PairsPage', () => {
       expect(calls).toHaveLength(3);
       expect(String(calls[1][1]?.method)).toBe('DELETE');
       expect(String(calls[1][0])).toContain('/api/v1/pairs/USDC/EURC');
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Column visibility toggle
+  // -------------------------------------------------------------------------
+
+  describe('column visibility toggle', () => {
+    beforeEach(() => {
+      window.localStorage.clear();
+    });
+
+    it('renders the Columns toggle button', async () => {
+      mockFetch([{ source: 'USDC', destination: 'EURC' }]);
+      render(<PairsPage />);
+      await waitFor(() => {
+        expect(screen.getByText('1 pair')).toBeInTheDocument();
+      });
+      expect(
+        screen.getByRole('button', { name: /Columns/ })
+      ).toBeInTheDocument();
+    });
+
+    it('shows all columns by default', async () => {
+      mockFetch([{ source: 'USDC', destination: 'EURC' }]);
+      render(<PairsPage />);
+      await waitFor(() => {
+        expect(screen.getByText('1 pair')).toBeInTheDocument();
+      });
+
+      // Source heading, destination text, and action buttons should all be present.
+      expect(screen.getByText('USDC')).toBeInTheDocument();
+      expect(screen.getByText('EURC')).toBeInTheDocument();
+      expect(screen.getByText('Quote')).toBeInTheDocument();
+    });
+
+    it('hides the source column when toggled off', async () => {
+      mockFetch([
+        { source: 'USDC', destination: 'EURC' },
+        { source: 'BTC', destination: 'USDC' },
+      ]);
+      render(<PairsPage />);
+      await waitFor(() => {
+        expect(screen.getByText('2 pairs')).toBeInTheDocument();
+      });
+
+      // Open the menu and uncheck Source.
+      fireEvent.click(screen.getByRole('button', { name: /Columns/ }));
+      fireEvent.click(screen.getByLabelText('Source'));
+
+      // Source headings should be hidden, destinations still visible.
+      expect(screen.queryByText('USDC', { selector: 'h2' })).toBeNull();
+      expect(screen.queryByText('BTC', { selector: 'h2' })).toBeNull();
+      expect(screen.getByText('EURC')).toBeInTheDocument();
+      expect(screen.getByText('USDC', { selector: 'span' })).toBeInTheDocument();
+    });
+
+    it('hides the destination column when toggled off', async () => {
+      mockFetch([{ source: 'USDC', destination: 'EURC' }]);
+      render(<PairsPage />);
+      await waitFor(() => {
+        expect(screen.getByText('1 pair')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: /Columns/ }));
+      fireEvent.click(screen.getByLabelText('Destination'));
+
+      // Destination text should be hidden, source heading still visible.
+      expect(screen.queryByText('EURC')).toBeNull();
+      expect(screen.getByText('USDC', { selector: 'h2' })).toBeInTheDocument();
+    });
+
+    it('hides the actions column when toggled off', async () => {
+      mockFetch([{ source: 'USDC', destination: 'EURC' }]);
+      render(<PairsPage />);
+      await waitFor(() => {
+        expect(screen.getByText('1 pair')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: /Columns/ }));
+      fireEvent.click(screen.getByLabelText('Actions'));
+
+      // Quote, Copy, Delete buttons should be hidden.
+      expect(screen.queryByText('Quote')).toBeNull();
+      expect(screen.queryByText('Copy')).toBeNull();
+      expect(screen.queryByText('Delete')).toBeNull();
+      // Source and destination should still be visible.
+      expect(screen.getByText('USDC')).toBeInTheDocument();
+      expect(screen.getByText('EURC')).toBeInTheDocument();
+    });
+
+    it('persists column visibility to localStorage', async () => {
+      mockFetch([{ source: 'USDC', destination: 'EURC' }]);
+      render(<PairsPage />);
+      await waitFor(() => {
+        expect(screen.getByText('1 pair')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: /Columns/ }));
+      fireEvent.click(screen.getByLabelText('Source'));
+
+      const stored = JSON.parse(
+        window.localStorage.getItem(STORAGE_KEY) as string
+      );
+      expect(stored.source).toBe(false);
+      expect(stored.destination).toBe(true);
+      expect(stored.actions).toBe(true);
+    });
+
+    it('restores persisted visibility on mount', async () => {
+      window.localStorage.setItem(
+        STORAGE_KEY,
+        JSON.stringify({ source: false, destination: true, actions: true })
+      );
+
+      mockFetch([{ source: 'USDC', destination: 'EURC' }]);
+      render(<PairsPage />);
+      await waitFor(() => {
+        expect(screen.getByText('1 pair')).toBeInTheDocument();
+      });
+
+      // Source should be hidden because of persisted state.
+      expect(screen.queryByText('USDC', { selector: 'h2' })).toBeNull();
+      expect(screen.getByText('EURC')).toBeInTheDocument();
+    });
+
+    it('falls back to defaults for corrupt stored value', async () => {
+      window.localStorage.setItem(STORAGE_KEY, 'not-valid-json{{');
+
+      mockFetch([{ source: 'USDC', destination: 'EURC' }]);
+      render(<PairsPage />);
+      await waitFor(() => {
+        expect(screen.getByText('1 pair')).toBeInTheDocument();
+      });
+
+      // Should fall back to all columns visible.
+      expect(screen.getByText('USDC', { selector: 'h2' })).toBeInTheDocument();
+      expect(screen.getByText('EURC')).toBeInTheDocument();
+      expect(screen.getByText('Quote')).toBeInTheDocument();
+    });
+
+    it('prevents hiding the last visible column', async () => {
+      mockFetch([{ source: 'USDC', destination: 'EURC' }]);
+      render(<PairsPage />);
+      await waitFor(() => {
+        expect(screen.getByText('1 pair')).toBeInTheDocument();
+      });
+
+      // Open menu and hide destination and actions first.
+      fireEvent.click(screen.getByRole('button', { name: /Columns/ }));
+      fireEvent.click(screen.getByLabelText('Destination'));
+      fireEvent.click(screen.getByLabelText('Actions'));
+
+      // Now source is the only visible column – its checkbox should be disabled.
+      expect(screen.getByLabelText('Source')).toBeDisabled();
+    });
+
+    it('displays source/destination combo when both source and destination are hidden', async () => {
+      mockFetch([{ source: 'USDC', destination: 'EURC' }]);
+      render(<PairsPage />);
+      await waitFor(() => {
+        expect(screen.getByText('1 pair')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: /Columns/ }));
+      fireEvent.click(screen.getByLabelText('Source'));
+      fireEvent.click(screen.getByLabelText('Destination'));
+
+      // Should show the combined pair symbol.
+      expect(screen.getByText('USDC/EURC')).toBeInTheDocument();
     });
   });
 });

@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Badge } from '@/components/Badge';
+import { ColumnVisibilityToggle } from '@/components/ColumnVisibilityToggle';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { EmptyState } from '@/components/EmptyState';
 import { PageHeading } from '@/components/PageHeading';
@@ -11,6 +12,7 @@ import { useToast } from '@/components/ToastProvider';
 import { apiDelete } from '@/lib/apiClient';
 import { writeToClipboard } from '@/lib/clipboard';
 import { useApi } from '@/lib/useApi';
+import { useColumnVisibility } from '@/lib/useColumnVisibility';
 import { filterPairs, groupBySource } from './pairsUtils';
 import { type Pair } from '@/lib/types';
 
@@ -21,6 +23,7 @@ export default function PairsClient() {
   const [pendingDelete, setPendingDelete] = useState<Pair | null>(null);
   const [copyingSymbol, setCopyingSymbol] = useState<string | null>(null);
   const [copyFallback, setCopyFallback] = useState<string | null>(null);
+  const { visibility, toggle, isColumnVisible } = useColumnVisibility();
 
   const pairs = api.status === 'success' ? api.data.pairs : null;
 
@@ -86,15 +89,18 @@ export default function PairsClient() {
           </Link>
         }
       />
-      <label className="flex flex-col gap-1 text-sm">
-        <span>Filter pairs</span>
-        <input
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Search by asset code"
-          className="rounded-md border border-neutral-300 px-3 py-2 dark:border-neutral-700 dark:bg-neutral-900"
-        />
-      </label>
+      <div className="flex items-end gap-3">
+        <label className="flex flex-1 flex-col gap-1 text-sm">
+          <span>Filter pairs</span>
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search by asset code"
+            className="rounded-md border border-neutral-300 px-3 py-2 dark:border-neutral-700 dark:bg-neutral-900"
+          />
+        </label>
+        <ColumnVisibilityToggle visibility={visibility} onToggle={toggle} />
+      </div>
       {api.status === 'error' && (
         <p role="alert" className="text-sm text-rose-600">
           {api.error}
@@ -127,42 +133,58 @@ export default function PairsClient() {
           <div className="flex flex-col gap-6">
             {grouped.map(([source, destinations]) => (
               <section key={source}>
-                <h2 className="mb-2 text-lg font-semibold tracking-tight">
-                  {source}
-                </h2>
+                {isColumnVisible('source') && (
+                  <h2 className="mb-2 text-lg font-semibold tracking-tight">
+                    {source}
+                  </h2>
+                )}
                 <ul className="divide-y divide-neutral-200 rounded-lg border border-neutral-200 dark:divide-neutral-800 dark:border-neutral-800">
                   {destinations.map((dest) => (
                     <li key={`${source}::${dest}`} className="px-4 py-3">
                       <div className="flex items-center justify-between gap-3">
-                        <span className="font-mono text-sm">{dest}</span>
-                        <div className="flex gap-2">
-                          <Link
-                            href={`/quote?source=${encodeURIComponent(source)}&dest=${encodeURIComponent(dest)}`}
-                            className="rounded border px-3 py-1 text-xs dark:border-neutral-700"
-                          >
-                            Quote
-                          </Link>
-                          <button
-                            type="button"
-                            aria-label={`Copy pair symbol ${source}/${dest}`}
-                            disabled={copyingSymbol === `${source}/${dest}`}
-                            onClick={() =>
-                              void copyPairSymbol(`${source}/${dest}`)
-                            }
-                            className="rounded border px-3 py-1 text-xs disabled:opacity-50 dark:border-neutral-700"
-                          >
-                            Copy
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setPendingDelete({ source, destination: dest })
-                            }
-                            className="rounded border px-3 py-1 text-xs"
-                          >
-                            Delete
-                          </button>
-                        </div>
+                        {isColumnVisible('destination') && (
+                          <span className="font-mono text-sm">{dest}</span>
+                        )}
+                        {isColumnVisible('source') &&
+                          !isColumnVisible('destination') && (
+                            <span className="font-mono text-sm">{source}</span>
+                          )}
+                        {!isColumnVisible('source') &&
+                          !isColumnVisible('destination') && (
+                            <span className="font-mono text-sm">
+                              {source}/{dest}
+                            </span>
+                          )}
+                        {isColumnVisible('actions') && (
+                          <div className="flex gap-2">
+                            <Link
+                              href={`/quote?source=${encodeURIComponent(source)}&dest=${encodeURIComponent(dest)}`}
+                              className="rounded border px-3 py-1 text-xs dark:border-neutral-700"
+                            >
+                              Quote
+                            </Link>
+                            <button
+                              type="button"
+                              aria-label={`Copy pair symbol ${source}/${dest}`}
+                              disabled={copyingSymbol === `${source}/${dest}`}
+                              onClick={() =>
+                                void copyPairSymbol(`${source}/${dest}`)
+                              }
+                              className="rounded border px-3 py-1 text-xs disabled:opacity-50 dark:border-neutral-700"
+                            >
+                              Copy
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setPendingDelete({ source, destination: dest })
+                              }
+                              className="rounded border px-3 py-1 text-xs"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        )}
                       </div>
                       {copyFallback === `${source}/${dest}` && (
                         <label className="mt-3 block text-xs">
