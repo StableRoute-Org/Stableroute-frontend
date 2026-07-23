@@ -126,14 +126,8 @@ export default function WebhooksClient() {
         loading={loading}
         emptyMessage="No webhooks registered."
         getKey={(hook) => hook.id}
-        rowClassName="flex items-center justify-between gap-3 py-3"
-        removeDialogTitle="Remove webhook?"
-        removeDialogConfirmLabel="Remove"
-        onRemove={(hook) =>
-          void apiDelete(`/api/v1/webhooks/${hook.id}`).then(() =>
-            hooks.refetch()
-          )
-        }
+        caption="Registered webhooks"
+        tableHeaders={['URL', 'Events', 'Registered', 'Actions']}
         renderRow={(hook, { requestRemove }) => (
           <>
             <div>
@@ -152,6 +146,29 @@ export default function WebhooksClient() {
             </IconButton>
           </>
         )}
+        renderCells={(hook, { requestRemove }) => [
+          <span key="url" className="break-all text-sm font-medium">
+            {hook.url}
+          </span>,
+          <div key="events" className="flex flex-wrap gap-1">
+            {hook.events.map((event) => (
+              <Badge key={event}>{event}</Badge>
+            ))}
+          </div>,
+          <span key="registered" className="text-xs text-neutral-500">
+            <TimeAgo ts={hook.createdAt} />
+          </span>,
+          <IconButton key="actions" label="Remove webhook" onClick={requestRemove}>
+            ×
+          </IconButton>,
+        ]}
+        removeDialogTitle="Remove webhook?"
+        removeDialogConfirmLabel="Remove"
+        onRemove={(hook) =>
+          void apiDelete(`/api/v1/webhooks/${hook.id}`).then(() =>
+            hooks.refetch()
+          )
+        }
       />
       <ConfirmDialog
         open={confirmRegister}
