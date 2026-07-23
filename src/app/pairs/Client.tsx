@@ -13,12 +13,14 @@ import { writeToClipboard } from '@/lib/clipboard';
 import { useApi } from '@/lib/useApi';
 import { filterPairs, groupBySource } from './pairsUtils';
 import { type Pair } from '@/lib/types';
+import { PairsDrawer } from './PairsDrawer';
 
 export default function PairsClient() {
   const { push } = useToast();
   const api = useApi<{ pairs: Pair[] }>('/api/v1/pairs');
   const [query, setQuery] = useState('');
   const [pendingDelete, setPendingDelete] = useState<Pair | null>(null);
+  const [activePair, setActivePair] = useState<Pair | null>(null);
   const [copyingSymbol, setCopyingSymbol] = useState<string | null>(null);
   const [copyFallback, setCopyFallback] = useState<string | null>(null);
 
@@ -144,6 +146,13 @@ export default function PairsClient() {
                           </Link>
                           <button
                             type="button"
+                            onClick={() => setActivePair({ source, destination: dest })}
+                            className="rounded border px-3 py-1 text-xs dark:border-neutral-700"
+                          >
+                            Details
+                          </button>
+                          <button
+                            type="button"
                             aria-label={`Copy pair symbol ${source}/${dest}`}
                             disabled={copyingSymbol === `${source}/${dest}`}
                             onClick={() =>
@@ -201,6 +210,10 @@ export default function PairsClient() {
           ).then(() => api.refetch());
         }}
         onCancel={() => setPendingDelete(null)}
+      />
+      <PairsDrawer
+        pair={activePair}
+        onClose={() => setActivePair(null)}
       />
     </main>
   );
