@@ -8,9 +8,10 @@ type Props = {
   trendDirection?: 'up' | 'down' | 'neutral';
 };
 
+// Semantic color tokens mapped to the tailwind.config.ts theme extension
 const trendClass: Record<NonNullable<Props['trendDirection']>, string> = {
-  up: 'text-emerald-600 dark:text-emerald-400',
-  down: 'text-rose-600 dark:text-rose-400',
+  up: 'text-success-600 dark:text-success-400',
+  down: 'text-danger-600 dark:text-danger-400',
   neutral: 'text-neutral-500',
 };
 
@@ -21,15 +22,12 @@ export function StatTile({
   trendDirection = 'neutral',
 }: Props) {
   return (
-    <div
-      data-stattile
-      className="rounded-lg border border-neutral-200 p-4 text-center dark:border-neutral-800"
-    >
+    <div className="rounded-lg border border-neutral-200 p-4 text-center dark:border-neutral-800">
       <dt className="text-xs uppercase tracking-wide text-neutral-500">
         {label}
       </dt>
       <dd className="mt-1 flex items-baseline justify-center gap-2 text-2xl font-semibold">
-        <span>{value}</span>
+        {value}
         {trend !== undefined && (
           <span className={`text-sm font-medium ${trendClass[trendDirection]}`}>
             {trend}
