@@ -16,6 +16,7 @@ describe('routes catalogue', () => {
       'events',
       'webhooks',
       'apiKeys',
+      'status',
       'settings',
       'docs',
     ]);
