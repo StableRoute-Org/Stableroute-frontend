@@ -242,7 +242,9 @@ describe('.lighthouserc.json', () => {
           expect(typeof value[1]).toBe('object');
           // Provide a useful failure message
           if (!Array.isArray(value) || value.length !== 2) {
-            throw new Error(`Assertion "${key}" is malformed: ${JSON.stringify(value)}`);
+            throw new Error(
+              `Assertion "${key}" is malformed: ${JSON.stringify(value)}`
+            );
           }
         }
       });

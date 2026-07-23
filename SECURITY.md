@@ -55,10 +55,10 @@ Security-relevant response headers are set for every route in `next.config.ts`.
 The following headers collectively enforce cross-origin isolation, preventing the
 dashboard from being embedded or window-opened by untrusted origins:
 
-| Header | Value | Purpose |
-|---|---|---|
-| `Cross-Origin-Opener-Policy` | `same-origin` | Prevents cross-origin pages from retaining a reference to the dashboard's browsing-context group, closing opener-based side-channel attacks. |
-| `Cross-Origin-Resource-Policy` | `same-origin` | Prevents other origins from loading dashboard resources via no-cors fetch/XHR requests. |
+| Header                                | Value                    | Purpose                                                                                                                                                                    |
+| ------------------------------------- | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Cross-Origin-Opener-Policy`          | `same-origin`            | Prevents cross-origin pages from retaining a reference to the dashboard's browsing-context group, closing opener-based side-channel attacks.                               |
+| `Cross-Origin-Resource-Policy`        | `same-origin`            | Prevents other origins from loading dashboard resources via no-cors fetch/XHR requests.                                                                                    |
 | `Content-Security-Policy` (directive) | `frame-ancestors 'none'` | Blocks the page from being embedded in any `<iframe>`, `<frame>`, `<embed>`, or `<object>`, defending against clickjacking even in browsers that ignore `X-Frame-Options`. |
 
 `X-Frame-Options: DENY` is also set as a defence-in-depth fallback for older
@@ -66,10 +66,10 @@ browsers that do not support the CSP `frame-ancestors` directive.
 
 ### Other hardening headers
 
-| Header | Value |
-|---|---|
-| `X-Content-Type-Options` | `nosniff` |
-| `Referrer-Policy` | `strict-origin-when-cross-origin` |
-| `Permissions-Policy` | camera, microphone, geolocation, and interest-cohort all disabled |
+| Header                   | Value                                                             |
+| ------------------------ | ----------------------------------------------------------------- |
+| `X-Content-Type-Options` | `nosniff`                                                         |
+| `Referrer-Policy`        | `strict-origin-when-cross-origin`                                 |
+| `Permissions-Policy`     | camera, microphone, geolocation, and interest-cohort all disabled |
 
 All header assertions are covered by `src/__tests__/nextConfigHeaders.test.ts`.

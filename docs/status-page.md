@@ -23,9 +23,9 @@ reads `NEXT_PUBLIC_STABLEROUTE_API_BASE` or falls back to `http://localhost:3001
 
 ## Files
 
-| File | Purpose |
-|------|---------|
-| `src/app/status/page.tsx` | Server wrapper, exports metadata |
-| `src/app/status/Client.tsx` | Client component with probe logic |
-| `src/app/status/page.test.tsx` | Integration tests |
-| `src/lib/routes.ts` | Route registration (key `status`, group `Operations`) |
+| File                           | Purpose                                               |
+| ------------------------------ | ----------------------------------------------------- |
+| `src/app/status/page.tsx`      | Server wrapper, exports metadata                      |
+| `src/app/status/Client.tsx`    | Client component with probe logic                     |
+| `src/app/status/page.test.tsx` | Integration tests                                     |
+| `src/lib/routes.ts`            | Route registration (key `status`, group `Operations`) |

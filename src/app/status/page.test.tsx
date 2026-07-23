@@ -23,7 +23,10 @@ function mockFetchErrorOnce() {
 
 function mockFetchPending() {
   mockFetch.mockImplementationOnce(
-    () => new Promise(() => { /* never settles */ })
+    () =>
+      new Promise(() => {
+        /* never settles */
+      })
   );
 }
 
@@ -113,7 +116,9 @@ describe('StatusPage', () => {
     mockFetchPending();
     render(<StatusPage />);
     expect(screen.getByRole('button', { name: /probing/i })).toBeDisabled();
-    expect(screen.getAllByText('Probing\u2026').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('Probing\u2026').length).toBeGreaterThanOrEqual(
+      1
+    );
   });
 
   it('re-probes when the "Probe again" button is clicked', async () => {

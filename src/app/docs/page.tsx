@@ -39,8 +39,8 @@ export default function DocsPage() {
         API documentation
       </h1>
       <p className="text-sm text-neutral-600 dark:text-neutral-400">
-        Companion to <OpenApiLink /> (opens external API spec) — short prose
-        for the most common endpoints.
+        Companion to <OpenApiLink /> (opens external API spec) — short prose for
+        the most common endpoints.
       </p>
       <dl className="space-y-4">
         {sections.map((s) => (

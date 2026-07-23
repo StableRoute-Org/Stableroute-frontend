@@ -5,7 +5,9 @@ describe('Accessibility Conformance Statement & Documentation Tests', () => {
   const rootDir = path.resolve(__dirname, '../..');
   const accessibilityDocPath = path.join(rootDir, 'docs', 'ACCESSIBILITY.md');
   const readmePath = path.join(rootDir, 'README.md');
-  const prTemplatePath = fs.existsSync(path.join(rootDir, '.github', 'PULL_REQUEST_TEMPLATE.md'))
+  const prTemplatePath = fs.existsSync(
+    path.join(rootDir, '.github', 'PULL_REQUEST_TEMPLATE.md')
+  )
     ? path.join(rootDir, '.github', 'PULL_REQUEST_TEMPLATE.md')
     : path.join(rootDir, '.github', 'pull_request_template.md');
 
@@ -83,7 +85,9 @@ describe('Accessibility Conformance Statement & Documentation Tests', () => {
   describe('README.md integration', () => {
     it('links to docs/ACCESSIBILITY.md under Accessibility section', () => {
       expect(readmeDoc).toMatch(/## Accessibility/);
-      expect(readmeDoc).toMatch(/\[Accessibility Conformance Statement\]\(docs\/ACCESSIBILITY\.md\)/);
+      expect(readmeDoc).toMatch(
+        /\[Accessibility Conformance Statement\]\(docs\/ACCESSIBILITY\.md\)/
+      );
       expect(readmeDoc).toMatch(/WCAG 2\.1 Level AA/);
     });
   });
@@ -91,7 +95,9 @@ describe('Accessibility Conformance Statement & Documentation Tests', () => {
   describe('.github/PULL_REQUEST_TEMPLATE.md integration', () => {
     it('links to docs/ACCESSIBILITY.md in Contributor Checklist', () => {
       expect(prTemplateDoc).toMatch(/## Contributor Checklist/);
-      expect(prTemplateDoc).toMatch(/\[Accessibility Conformance Statement\]\(docs\/ACCESSIBILITY\.md\)/);
+      expect(prTemplateDoc).toMatch(
+        /\[Accessibility Conformance Statement\]\(docs\/ACCESSIBILITY\.md\)/
+      );
     });
   });
 });

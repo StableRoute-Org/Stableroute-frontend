@@ -26,11 +26,11 @@ See `ARCHITECTURE.md` for module layout and `README.md` for local setup via `.en
 Every pull request targeting `main` must pass **all three** of the following GitHub Actions
 jobs before it can be merged:
 
-| Job               | Command                                    | What it enforces                                                              |
-| ----------------- | ------------------------------------------ | ----------------------------------------------------------------------------- |
-| **Lint**          | `npm run lint`                             | Zero ESLint errors (warnings do not block merge, errors do)                   |
-| **Build & Test**  | `npm run build` then `npm test`            | Successful Next.js production build and all Jest tests green                  |
-| **Lighthouse CI** | `lhci autorun --config=.lighthouserc.json` | Runtime performance budgets on `/`, `/pairs`, `/events`, `/docs` (see below)  |
+| Job               | Command                                    | What it enforces                                                             |
+| ----------------- | ------------------------------------------ | ---------------------------------------------------------------------------- |
+| **Lint**          | `npm run lint`                             | Zero ESLint errors (warnings do not block merge, errors do)                  |
+| **Build & Test**  | `npm run build` then `npm test`            | Successful Next.js production build and all Jest tests green                 |
+| **Lighthouse CI** | `lhci autorun --config=.lighthouserc.json` | Runtime performance budgets on `/`, `/pairs`, `/events`, `/docs` (see below) |
 
 Lint and Build & Test run in **parallel**. The Lighthouse CI job runs after Build & Test
 succeeds (`needs: build-test`), so it never blocks the faster checks. All three must be
@@ -74,34 +74,34 @@ reach `main`. The budgets are declared in `.lighthouserc.json` at the repo root.
 
 ### Audited routes
 
-| Route      | Purpose               |
-| ---------- | --------------------- |
-| `/`        | Home / landing page   |
-| `/pairs`   | Currency pair list    |
-| `/events`  | Audit log             |
-| `/docs`    | API documentation     |
+| Route     | Purpose             |
+| --------- | ------------------- |
+| `/`       | Home / landing page |
+| `/pairs`  | Currency pair list  |
+| `/events` | Audit log           |
+| `/docs`   | API documentation   |
 
 ### Performance thresholds
 
 Assertions that cause a **job failure** (error severity):
 
-| Metric / Category          | Budget         |
-| -------------------------- | -------------- |
-| Performance score          | ≥ 0.80         |
-| Accessibility score        | ≥ 0.90         |
-| Best Practices score       | ≥ 0.80         |
-| SEO score                  | ≥ 0.80         |
-| Largest Contentful Paint   | ≤ 2 500 ms     |
-| Cumulative Layout Shift    | ≤ 0.10         |
+| Metric / Category        | Budget     |
+| ------------------------ | ---------- |
+| Performance score        | ≥ 0.80     |
+| Accessibility score      | ≥ 0.90     |
+| Best Practices score     | ≥ 0.80     |
+| SEO score                | ≥ 0.80     |
+| Largest Contentful Paint | ≤ 2 500 ms |
+| Cumulative Layout Shift  | ≤ 0.10     |
 
 Assertions that emit a **warning** (advisory only, do not fail the job):
 
-| Metric                    | Advisory budget |
-| ------------------------- | --------------- |
-| First Contentful Paint    | ≤ 2 000 ms      |
-| Total Blocking Time       | ≤ 300 ms        |
-| Time to Interactive       | ≤ 3 800 ms      |
-| Speed Index               | ≤ 3 400 ms      |
+| Metric                 | Advisory budget |
+| ---------------------- | --------------- |
+| First Contentful Paint | ≤ 2 000 ms      |
+| Total Blocking Time    | ≤ 300 ms        |
+| Time to Interactive    | ≤ 3 800 ms      |
+| Speed Index            | ≤ 3 400 ms      |
 
 ### Running Lighthouse CI locally
 
@@ -173,8 +173,6 @@ of the normal Jest suite (`npm test`) and covers:
 - All advisory assertions are defined with either `warn` or `error` severity
 - Assertion tuple format `[severity, options]` is valid for every entry
 - Upload target is `filesystem` pointing at `.lighthouseci`
-
-
 
 ---
 

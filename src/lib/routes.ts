@@ -49,7 +49,7 @@ export const ROUTES = {
     description: 'Manage operator API keys.',
     group: 'Operations',
   },
-    status: {
+  status: {
     href: '/status',
     title: 'Status',
     description: 'API health and latency dashboard.',
