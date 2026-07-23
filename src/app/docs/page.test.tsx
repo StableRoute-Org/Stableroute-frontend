@@ -21,6 +21,24 @@ describe('DocsPage', () => {
     expect(screen.getByText(/GET \/api\/v1\/quote/i)).toBeInTheDocument();
   });
 
+  it('forms a valid heading outline without skipping levels', () => {
+    const { container } = render(<DocsPage />);
+    const headings = Array.from(
+      container.querySelectorAll('h1, h2, h3, h4, h5, h6')
+    );
+    const levels = headings.map((h) => parseInt(h.tagName[1], 10));
+
+    expect(levels.length).toBeGreaterThan(0);
+    expect(levels[0]).toBe(1); // Page starts with h1
+    
+    for (let i = 1; i < levels.length; i++) {
+      const prev = levels[i - 1];
+      const curr = levels[i];
+      // A heading can be any level up to prev + 1
+      expect(curr).toBeLessThanOrEqual(prev + 1);
+    }
+  });
+
   it('marks openapi.json as an external link', () => {
     render(<DocsPage />);
     const link = screen.getByRole('link', { name: /openapi\.json/i });
