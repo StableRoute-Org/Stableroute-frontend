@@ -114,7 +114,9 @@ export function PairsDrawer({ pair, onClose }: Props) {
           </section>
           {pair.volume !== undefined && (
             <section>
-              <h3 className="text-sm font-medium text-neutral-500">24h Volume</h3>
+              <h3 className="text-sm font-medium text-neutral-500">
+                24h Volume
+              </h3>
               <div
                 className="mt-1 font-mono text-lg"
                 title={formatNumber(pair.volume)}

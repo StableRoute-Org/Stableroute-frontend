@@ -80,7 +80,11 @@ export function isPair(v: unknown): v is Pair {
   if (!isObject(v)) return false;
   if (typeof v.source !== 'string') return false;
   if (typeof v.destination !== 'string') return false;
-  if (v.volume !== undefined && (typeof v.volume !== 'number' || !Number.isFinite(v.volume))) return false;
+  if (
+    v.volume !== undefined &&
+    (typeof v.volume !== 'number' || !Number.isFinite(v.volume))
+  )
+    return false;
   return true;
 }
 

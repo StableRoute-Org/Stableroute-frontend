@@ -2,7 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { useApi } from '@/lib/useApi';
-import { formatCompactNumber, formatNumber, formatTimestamp } from '@/lib/format';
+import {
+  formatCompactNumber,
+  formatNumber,
+  formatTimestamp,
+} from '@/lib/format';
 import { Button } from '@/components/Button';
 import { EmptyState } from '@/components/EmptyState';
 import { Spinner } from '@/components/Spinner';

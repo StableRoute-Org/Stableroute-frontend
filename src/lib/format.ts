@@ -43,7 +43,6 @@ export function formatCompactNumberDisplay(
   };
 }
 
-
 /** Human-readable quote amount with the raw base-unit string preserved for operators. */
 export function formatQuoteAmountDisplay(amount: string): {
   display: string;
