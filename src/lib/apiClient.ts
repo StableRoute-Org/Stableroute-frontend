@@ -1,4 +1,5 @@
 import { getApiBase } from './config';
+import { ValidationError, describeType } from './validate';
 
 export type ApiError = {
   error: string;
@@ -14,6 +15,8 @@ export type ApiFetchOptions = {
   };
   /** Request timeout in milliseconds. Default 15000. */
   timeoutMs?: number;
+  /** Optional runtime type guard applied to the parsed JSON response. */
+  validate?: (v: unknown) => v is unknown;
 };
 
 type AuthErrorHandler = (status: 401 | 403) => void;
@@ -96,7 +99,10 @@ export function sanitizeErrorMessage(message: string): string {
   return sanitized.replace(/\s{2,}/g, ' ').trim();
 }
 
-async function parseResponse<T>(res: Response): Promise<T> {
+async function parseResponse<T>(
+  res: Response,
+  validate?: (v: unknown) => v is T
+): Promise<T> {
   if (res.status === 204) return undefined as T;
   const text = await res.text();
   let body: T | ApiError | undefined;
@@ -123,6 +129,14 @@ async function parseResponse<T>(res: Response): Promise<T> {
     if (apiBody?.error !== undefined) extra.error = apiBody.error;
     if (apiBody?.requestId !== undefined) extra.requestId = apiBody.requestId;
     throw Object.assign(new Error(safeMsg), extra);
+  }
+  if (validate && !validate(body)) {
+    throw new ValidationError(
+      'Response failed runtime validation',
+      'root',
+      'valid response shape',
+      describeType(body)
+    );
   }
   return body as T;
 }
@@ -162,7 +176,10 @@ export async function apiFetch<T>(
       }
       // Reached the server (any HTTP status), so the network is up.
       _connectionHandler?.onSuccess();
-      return await parseResponse<T>(res);
+      return await parseResponse<T>(
+        res,
+        options?.validate as ((v: unknown) => v is T) | undefined
+      );
     } catch (err) {
       if (
         err instanceof Error &&
@@ -194,9 +211,16 @@ export async function apiFetch<T>(
 
 export const apiGet = <T>(path: string, options?: ApiFetchOptions) =>
   apiFetch<T>(path, {}, options);
-export const apiPost = <T>(path: string, body: unknown) =>
-  apiFetch<T>(path, { method: 'POST', body: JSON.stringify(body) });
-export const apiPatch = <T>(path: string, body: unknown) =>
-  apiFetch<T>(path, { method: 'PATCH', body: JSON.stringify(body) });
+export const apiPost = <T>(
+  path: string,
+  body: unknown,
+  options?: ApiFetchOptions
+) => apiFetch<T>(path, { method: 'POST', body: JSON.stringify(body) }, options);
+export const apiPatch = <T>(
+  path: string,
+  body: unknown,
+  options?: ApiFetchOptions
+) =>
+  apiFetch<T>(path, { method: 'PATCH', body: JSON.stringify(body) }, options);
 export const apiDelete = (path: string) =>
   apiFetch<void>(path, { method: 'DELETE' });

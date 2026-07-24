@@ -7,6 +7,7 @@ import { Button } from '@/components/Button';
 import { EmptyState } from '@/components/EmptyState';
 import { Spinner } from '@/components/Spinner';
 import { StatTile } from '@/components/StatTile';
+import { isStats } from '@/lib/validate';
 
 type Stats = { totalPairs: number; paused: boolean };
 
@@ -152,7 +153,7 @@ export function downloadStatsSnapshot(
 }
 
 export default function StatsClient() {
-  const result = useApi<Stats>('/api/v1/stats');
+  const result = useApi<Stats>('/api/v1/stats', isStats);
   const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null);
   const { refetch } = result;
   const status = result.status;
