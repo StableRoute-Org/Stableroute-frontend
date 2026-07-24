@@ -54,11 +54,14 @@ describe('StatsPage', () => {
     });
   });
 
-  it('formats totalPairs with thousands separators via formatNumber', async () => {
+  it('formats totalPairs with compact notation and exposes precise value in title/aria', async () => {
     mockFetch({ totalPairs: 1234567, paused: false });
     render(<StatsPage />);
-    const pairs = await screen.findByText('1,234,567');
+    const pairs = await screen.findByText('1.2M');
     expect(pairs).toBeInTheDocument();
+    const dd = pairs.closest('dd');
+    expect(dd).toHaveAttribute('title', '1,234,567');
+    expect(dd).toHaveAttribute('aria-label', '1,234,567');
   });
 
   it('renders Live when paused is false', async () => {
@@ -108,7 +111,7 @@ describe('StatsPage', () => {
       jest.advanceTimersByTime(5000);
     });
 
-    expect(await screen.findByText('2,000')).toBeInTheDocument();
+    expect(await screen.findByText('2K')).toBeInTheDocument();
     expect(await screen.findByText('Paused')).toBeInTheDocument();
     expect(global.fetch).toHaveBeenCalledTimes(2);
   });
@@ -207,7 +210,7 @@ describe('buildStatsSnapshot', () => {
 
     expect(snapshot.capturedAt).toBe('2026-07-21T00:00:00.000Z');
     expect(snapshot.metrics).toEqual([
-      { label: 'Pairs', value: 1234567, display: '1,234,567' },
+      { label: 'Pairs', value: 1234567, display: '1.2M' },
       { label: 'Status', value: 0, display: 'Live' },
     ]);
   });
@@ -259,7 +262,7 @@ describe('statsSnapshotToCsv', () => {
     expect(lines[2]).toBe('Status,0,Live,2026-07-21T00:00:00.000Z');
   });
 
-  it('quotes display values that contain commas from thousands separators', () => {
+  it('formats display values compactly in CSV', () => {
     const snapshot = buildStatsSnapshot(
       { totalPairs: 1234567, paused: false },
       '2026-07-21T00:00:00.000Z'
@@ -267,7 +270,7 @@ describe('statsSnapshotToCsv', () => {
     const csv = statsSnapshotToCsv(snapshot);
     const lines = csv.split('\n');
 
-    expect(lines[1]).toBe('Pairs,1234567,"1,234,567",2026-07-21T00:00:00.000Z');
+    expect(lines[1]).toBe('Pairs,1234567,1.2M,2026-07-21T00:00:00.000Z');
   });
 
   it('escapes embedded quote characters by doubling them', () => {

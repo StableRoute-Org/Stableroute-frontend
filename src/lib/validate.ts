@@ -80,6 +80,7 @@ export function isPair(v: unknown): v is Pair {
   if (!isObject(v)) return false;
   if (typeof v.source !== 'string') return false;
   if (typeof v.destination !== 'string') return false;
+  if (v.volume !== undefined && (typeof v.volume !== 'number' || !Number.isFinite(v.volume))) return false;
   return true;
 }
 
@@ -106,6 +107,14 @@ export function parsePair(v: unknown): Pair {
       'destination',
       'string',
       describeType(v.destination)
+    );
+  }
+  if (v.volume !== undefined && !isFiniteNumber(v.volume)) {
+    throw new ValidationError(
+      'Expected finite number',
+      'volume',
+      'number',
+      describeType(v.volume)
     );
   }
   return v as unknown as Pair;

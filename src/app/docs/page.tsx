@@ -68,7 +68,7 @@ const data = await res.json();`,
   dest_asset: "EURC",
   amount: "100",
 });
-const res = await fetch(\`http://localhost:3001/api/v1/quote?\${params}\`);
+const res = await fetch("http://localhost:3001/api/v1/quote?" + params);
 const quote = await res.json();`,
     },
   },
