@@ -29,6 +29,13 @@ Errors are contained at the narrowest boundary that can recover them:
 
 - `src/app/error.tsx` — root boundary, the last resort for errors no
   segment handles.
+- `src/app/global-error.tsx` — outermost safety net for root layout
+  failures. Renders its own `<html>/<body>` shell since the layout
+  is unavailable. Imports `globals.css` directly for Tailwind support
+  (relies on Next.js ≥15.0.3 CSS-import-in-global-error support;
+  inline styles are a deliberate fallback for versions where this
+  doesn't hold). Contains `GlobalErrorContent` (internal, testable)
+  wrapped in the required document shell.
 - `src/app/quote/error.tsx`, `src/app/events/error.tsx` — segment-level
   boundaries. A crash inside `QuoteClient` or `EventsClient` (render or
   effect) is caught at the segment, so the root layout — skip link,
@@ -85,6 +92,13 @@ Errors are contained at the narrowest boundary that can recover them:
 
 - `src/app/error.tsx` — root boundary, the last resort for errors no
   segment handles.
+- `src/app/global-error.tsx` — outermost safety net for root layout
+  failures. Renders its own `<html>/<body>` shell since the layout
+  is unavailable. Imports `globals.css` directly for Tailwind support
+  (relies on Next.js ≥15.0.3 CSS-import-in-global-error support;
+  inline styles are a deliberate fallback for versions where this
+  doesn't hold). Contains `GlobalErrorContent` (internal, testable)
+  wrapped in the required document shell.
 - `src/app/quote/error.tsx`, `src/app/events/error.tsx` — segment-level
   boundaries. A crash inside `QuoteClient` or `EventsClient` (render or
   effect) is caught at the segment, so the root layout — skip link,

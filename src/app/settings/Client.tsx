@@ -6,6 +6,7 @@ import { readTheme, effectiveTheme, type Theme } from '@/lib/theme';
 import { getApiBase } from '@/lib/config';
 import { useApi } from '@/lib/useApi';
 import { useEffect, useState } from 'react';
+import { isRouterStatus } from '@/lib/validate';
 
 function ApiBaseRow() {
   return (
@@ -23,7 +24,7 @@ function ApiBaseRow() {
 type RouterStatus = { paused: boolean };
 
 function RouterStatusRow() {
-  const status = useApi<RouterStatus>('/api/v1/admin/status');
+  const status = useApi<RouterStatus>('/api/v1/admin/status', isRouterStatus);
 
   return (
     <Card title="Router status">

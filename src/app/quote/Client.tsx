@@ -6,6 +6,7 @@ import { apiFetch, type ApiError } from '@/lib/apiClient';
 import { formatQuoteAmountDisplay, formatQuoteRateDisplay } from '@/lib/format';
 import { useLocalStorage } from '@/lib/useLocalStorage';
 import type { Quote } from '@/lib/types';
+import { isQuote } from '@/lib/validate';
 
 type FieldErrors = {
   source?: string;
@@ -186,7 +187,11 @@ export default function QuoteClient() {
         `/api/v1/quote?source_asset=${encodeURIComponent(normalizedSource)}` +
         `&dest_asset=${encodeURIComponent(normalizedDest)}` +
         `&amount=${encodeURIComponent(inputs.amount)}`;
-      const body = await apiFetch<Quote>(path, { signal: controller.signal });
+      const body = await apiFetch<Quote>(
+        path,
+        { signal: controller.signal },
+        { validate: isQuote }
+      );
       if (requestId !== activeRequestRef.current) return;
       setQuote(body);
       setHistory(pushHistory(inputs));

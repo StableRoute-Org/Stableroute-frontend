@@ -13,10 +13,11 @@ import { writeToClipboard } from '@/lib/clipboard';
 import { useApi } from '@/lib/useApi';
 import { filterPairs, groupBySource } from './pairsUtils';
 import { type Pair } from '@/lib/types';
+import { isPairsResponse } from '@/lib/validate';
 
 export default function PairsClient() {
   const { push } = useToast();
-  const api = useApi<{ pairs: Pair[] }>('/api/v1/pairs');
+  const api = useApi<{ pairs: Pair[] }>('/api/v1/pairs', isPairsResponse);
   const [query, setQuery] = useState('');
   const [pendingDelete, setPendingDelete] = useState<Pair | null>(null);
   const [copyingSymbol, setCopyingSymbol] = useState<string | null>(null);
