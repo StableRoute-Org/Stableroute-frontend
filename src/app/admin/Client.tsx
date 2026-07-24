@@ -5,6 +5,7 @@ import { Badge } from '@/components/Badge';
 import { Button } from '@/components/Button';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { apiGet, apiPost } from '@/lib/apiClient';
+import { isRouterStatus } from '@/lib/validate';
 
 export default function AdminClient() {
   const [paused, setPaused] = useState<boolean | null>(null);
@@ -13,7 +14,9 @@ export default function AdminClient() {
   const [confirmPause, setConfirmPause] = useState(false);
 
   const load = () =>
-    apiGet<{ paused: boolean }>('/api/v1/admin/status')
+    apiGet<{ paused: boolean }>('/api/v1/admin/status', {
+      validate: isRouterStatus,
+    })
       .then((body) => setPaused(body.paused))
       .catch((err) => setError((err as Error).message));
 

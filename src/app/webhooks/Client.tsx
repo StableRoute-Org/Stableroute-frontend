@@ -11,6 +11,7 @@ import { apiDelete, apiGet, apiPost } from '@/lib/apiClient';
 import { useList } from '@/lib/useList';
 import { WEBHOOK_EVENT_OPTIONS } from '@/lib/webhookEvents';
 import type { Webhook } from '@/lib/types';
+import { isWebhookListResponse } from '@/lib/validate';
 
 function isHttpsUrl(value: string): boolean {
   try {
@@ -23,9 +24,9 @@ function isHttpsUrl(value: string): boolean {
 export default function WebhooksClient() {
   const loadHooks = useCallback(
     () =>
-      apiGet<{ items: Webhook[] }>('/api/v1/webhooks').then(
-        (body) => body.items
-      ),
+      apiGet<{ items: Webhook[] }>('/api/v1/webhooks', {
+        validate: isWebhookListResponse,
+      }).then((body) => body.items),
     []
   );
   const hooks = useList(loadHooks);

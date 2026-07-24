@@ -139,3 +139,92 @@ handler shows a toast and the request still rejects so callers can react.
 
 Default timeout is 15s (`timeoutMs` option). Abort errors surface as
 `Request timed out`; network failures as `Network request failed`.
+
+## Runtime Validation
+
+`apiClient.ts` casts parsed JSON directly to the caller's generic type. To
+catch malformed or hostile responses **before** they reach React, pass a
+`validate` option — a runtime type guard — on any fetch call.
+
+### How it works
+
+```ts
+import { apiGet } from '@/lib/apiClient';
+import { isWebhookListResponse } from '@/lib/validate';
+
+const body = await apiGet<{ items: Webhook[] }>('/api/v1/webhooks', {
+  validate: isWebhookListResponse,
+});
+// body is guaranteed to match the Webhook[] shape at runtime.
+```
+
+If validation fails, a `ValidationError` is thrown (see below) and the
+response never reaches the caller.
+
+### With `useApi`
+
+```ts
+import { useApi } from '@/lib/useApi';
+import { isStats } from '@/lib/validate';
+
+const result = useApi<Stats>('/api/v1/stats', isStats);
+// result.data is validated before state is set.
+```
+
+### With `apiPost` / `apiPatch`
+
+```ts
+import { apiPost } from '@/lib/apiClient';
+import { isCreateApiKeyResponse } from '@/lib/validate';
+
+const created = await apiPost<CreateApiKeyResponse>(
+  '/api/v1/api-keys',
+  { label: 'Prod' },
+  { validate: isCreateApiKeyResponse }
+);
+```
+
+### Available validators
+
+All validators live in `src/lib/validate.ts`. Each is a pure function with
+no external dependencies.
+
+| Guard | Validates |
+|---|---|
+| `isPair` | `{ source: string; destination: string }` |
+| `isQuote` | `{ source_asset, dest_asset, amount, estimated_rate, route[] }` |
+| `isApiKey` | `{ prefix: string; label: string; createdAt: number }` |
+| `isCreateApiKeyResponse` | `{ key: string; prefix?: string }` |
+| `isWebhook` | `{ id, url, events (valid event types), createdAt }` |
+| `isRouterStatus` | `{ paused: boolean }` |
+| `isStats` | `{ totalPairs: number; paused: boolean }` |
+| `isPairsResponse` | `{ pairs: Pair[] }` |
+| `isApiKeyListResponse` | `{ items: ApiKey[] }` |
+| `isWebhookListResponse` | `{ items: Webhook[] }` |
+
+Each guard also has a `parse*` counterpart that throws `ValidationError`
+with structural metadata (field path, expected type, received type) rather
+than the raw value — preventing sensitive data from leaking into logs.
+
+### ValidationError
+
+```ts
+class ValidationError extends Error {
+  code: 'VALIDATION_ERROR';
+  field: string;     // e.g. "root", "events[2].type", "key"
+  expected: string;  // e.g. "string", "boolean", "webhook_event_type"
+  received: string;  // type description only — never the raw value
+}
+```
+
+`ValidationError` carries only structural metadata. Sensitive fields (e.g.
+API key secrets) are never attached to the error object, regardless of which
+field failed validation. The `received` field is produced by an internal
+`describeType()` helper that returns type names (`"string"`, `"object"`,
+`"array"`, etc.), never stringified values.
+
+### Opt-in design
+
+Validation is **opt-in**. Resources not yet wired to a validator (e.g. the
+health probe on the status page) continue to work unchanged. Add `validate`
+incrementally to the endpoints that benefit most from it first.
