@@ -71,6 +71,7 @@ StableRoute incorporates proactive accessibility patterns throughout the codebas
 - **Polite Live Regions**: Dynamic list updates (loading, empty, and populated states) across `/pairs`, `/events`, `/api-keys`, and `/webhooks` are wrapped in single `aria-live="polite"` containers with `aria-busy` state management, avoiding double announcements (see [`docs/loading-regions.md`](loading-regions.md)).
 - **Assertive Alerts**: Error states and high-priority toast notifications use `role="alert"` for immediate screen-reader announcement.
 - **Filter Groups**: Multi-control filter bars are semantically grouped using `<fieldset>` and visible `<legend>` elements (e.g., in `src/app/events/Client.tsx`).
+- **Settings Groups**: Related settings controls are likewise grouped with `<fieldset>`/`<legend>` — for example, the Appearance theme controls in `src/app/settings/Client.tsx` are wrapped in a `<fieldset>` labelled "Appearance" so assistive tech announces the group and its controls together.
 
 ### 4. Forms & Accessible UI Controls
 

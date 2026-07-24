@@ -272,6 +272,58 @@ describe('SettingsPage — AppearancePreview updates with theme', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Appearance controls grouping (fieldset + legend)
+// ---------------------------------------------------------------------------
+
+describe('SettingsPage — appearance controls grouping', () => {
+  it('groups the appearance controls in a labelled fieldset', () => {
+    render(<SettingsPage />);
+
+    const group = screen.getByRole('group', { name: /^appearance$/i });
+    expect(group.tagName).toBe('FIELDSET');
+    expect(group).toContainElement(
+      screen.getByRole('button', { name: /^light$/i })
+    );
+    expect(group).toContainElement(
+      screen.getByRole('button', { name: /^dark$/i })
+    );
+    expect(group).toContainElement(
+      screen.getByRole('button', { name: /^system$/i })
+    );
+    expect(group).toContainElement(
+      screen.getByText(/choose a colour scheme/i)
+    );
+  });
+
+  it('exposes the group name through a visible legend', () => {
+    render(<SettingsPage />);
+
+    const legend = document.querySelector('fieldset > legend');
+    expect(legend).toHaveTextContent('Appearance');
+    expect(legend).not.toHaveClass('sr-only');
+  });
+
+  it('does not change the theme-selection behaviour from inside the fieldset', () => {
+    render(<SettingsPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: /^dark$/i }));
+
+    expect(window.localStorage.getItem('stableroute.theme')).toBe('dark');
+    expect(
+      screen.getByRole('button', { name: /^dark$/i })
+    ).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('keeps the nested Theme button group nested inside the Appearance fieldset', () => {
+    render(<SettingsPage />);
+
+    const fieldset = screen.getByRole('group', { name: /^appearance$/i });
+    const themeGroup = screen.getByRole('group', { name: /^theme$/i });
+    expect(fieldset).toContainElement(themeGroup);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Edge cases
 // ---------------------------------------------------------------------------
 
