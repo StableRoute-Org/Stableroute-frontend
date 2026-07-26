@@ -3,6 +3,7 @@
 import { useCallback, useState } from 'react';
 import { Badge } from '@/components/Badge';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { EmptyState } from '@/components/EmptyState';
 import { IconButton } from '@/components/IconButton';
 import { ResourceList } from '@/components/ResourceList';
 import { TextField } from '@/components/TextField';
@@ -38,10 +39,11 @@ export default function WebhooksClient() {
   const [confirmRegister, setConfirmRegister] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
 
-  const items = hooks.status === 'success' ? hooks.data : null;
-  const loading = hooks.status === 'idle' || hooks.status === 'loading';
-  const displayError =
-    localError ?? (hooks.status === 'error' ? hooks.error : null);
+  const isLoading = hooks.status === 'loading';
+  const isError = hooks.status === 'error';
+  const isEmpty = hooks.status === 'success' && hooks.data.length === 0;
+  const hasData = hooks.status === 'success' && hooks.data.length > 0;
+  const displayError = localError;
 
   const toggleEvent = (event: string) => {
     setSelectedEvents((current) =>
@@ -123,59 +125,94 @@ export default function WebhooksClient() {
           </p>
         )}
       </form>
-      <ResourceList
-        items={items}
-        loading={loading}
-        emptyMessage="No webhooks registered."
-        getKey={(hook) => hook.id}
-        caption="Registered webhooks"
-        tableHeaders={['URL', 'Events', 'Registered', 'Actions']}
-        renderRow={(hook, { requestRemove }) => (
-          <>
-            <div>
-              <p className="break-all text-sm font-medium">{hook.url}</p>
-              <p className="text-xs text-neutral-500">
-                Registered <TimeAgo ts={hook.createdAt} />
+      {!hasData && (
+        <div aria-live="polite" aria-atomic="true" aria-busy={isLoading}>
+          {isLoading && <p>Loading…</p>}
+          {isError && (
+            <div
+              role="alert"
+              className="rounded-lg border border-rose-200 bg-rose-50 p-6 text-center dark:border-rose-800 dark:bg-rose-950"
+            >
+              <p className="text-sm font-medium text-rose-700 dark:text-rose-300">
+                Failed to load webhooks
               </p>
-              <div className="mt-1 flex flex-wrap gap-1">
-                {hook.events.map((event) => (
-                  <Badge key={event}>{event}</Badge>
-                ))}
-              </div>
+              <p className="mt-1 text-sm text-rose-600 dark:text-rose-400">
+                {hooks.error}
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  void hooks.refetch();
+                }}
+                className="mt-4 rounded-full bg-black px-5 py-2 text-sm font-medium text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+              >
+                Retry
+              </button>
             </div>
-            <IconButton label="Remove webhook" onClick={requestRemove}>
+          )}
+          {isEmpty && (
+            <EmptyState
+              title="No webhooks registered"
+              description="Register your first webhook endpoint using the form above."
+            />
+          )}
+        </div>
+      )}
+      {hasData && (
+        <ResourceList
+          items={hooks.data}
+          loading={false}
+          emptyMessage="No webhooks registered."
+          getKey={(hook) => hook.id}
+          caption="Registered webhooks"
+          tableHeaders={['URL', 'Events', 'Registered', 'Actions']}
+          renderRow={(hook, { requestRemove }) => (
+            <>
+              <div>
+                <p className="break-all text-sm font-medium">{hook.url}</p>
+                <p className="text-xs text-neutral-500">
+                  Registered <TimeAgo ts={hook.createdAt} />
+                </p>
+                <div className="mt-1 flex flex-wrap gap-1">
+                  {hook.events.map((event) => (
+                    <Badge key={event}>{event}</Badge>
+                  ))}
+                </div>
+              </div>
+              <IconButton label="Remove webhook" onClick={requestRemove}>
+                ×
+              </IconButton>
+            </>
+          )}
+          renderCells={(hook, { requestRemove }) => [
+            <span key="url" className="break-all text-sm font-medium">
+              {hook.url}
+            </span>,
+            <div key="events" className="flex flex-wrap gap-1">
+              {hook.events.map((event) => (
+                <Badge key={event}>{event}</Badge>
+              ))}
+            </div>,
+            <span key="registered" className="text-xs text-neutral-500">
+              <TimeAgo ts={hook.createdAt} />
+            </span>,
+            <IconButton
+              key="actions"
+              label="Remove webhook"
+              onClick={requestRemove}
+            >
               ×
-            </IconButton>
-          </>
-        )}
-        renderCells={(hook, { requestRemove }) => [
-          <span key="url" className="break-all text-sm font-medium">
-            {hook.url}
-          </span>,
-          <div key="events" className="flex flex-wrap gap-1">
-            {hook.events.map((event) => (
-              <Badge key={event}>{event}</Badge>
-            ))}
-          </div>,
-          <span key="registered" className="text-xs text-neutral-500">
-            <TimeAgo ts={hook.createdAt} />
-          </span>,
-          <IconButton
-            key="actions"
-            label="Remove webhook"
-            onClick={requestRemove}
-          >
-            ×
-          </IconButton>,
-        ]}
-        removeDialogTitle="Remove webhook?"
-        removeDialogConfirmLabel="Remove"
-        onRemove={(hook) =>
-          void apiDelete(`/api/v1/webhooks/${hook.id}`).then(() =>
-            hooks.refetch()
-          )
-        }
-      />
+            </IconButton>,
+          ]}
+          removeDialogTitle="Remove webhook?"
+          removeDialogConfirmLabel="Remove"
+          onRemove={(hook) =>
+            void apiDelete(`/api/v1/webhooks/${hook.id}`).then(() =>
+              hooks.refetch()
+            )
+          }
+        />
+      )}
       <ConfirmDialog
         open={confirmRegister}
         tone="default"
