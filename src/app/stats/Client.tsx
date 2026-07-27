@@ -177,50 +177,77 @@ export default function StatsClient() {
     >
       <h1 className="text-3xl font-semibold tracking-tight">Stats</h1>
       {status === 'error' && (
-        <p role="alert" className="text-sm text-rose-600">
-          {error}
-        </p>
-      )}
-      {status === 'loading' && (
-        <div className="flex items-center gap-2 text-sm">
-          <Spinner label="Loading stats" />
-          Loading…
-        </div>
-      )}
-      {status === 'success' && data && (
-        <section aria-labelledby="stats-metrics-heading">
-          <h2 id="stats-metrics-heading" className="sr-only">
-            Router metrics
-          </h2>
-          <dl className="grid grid-cols-2 gap-4">
-            <StatTile label="Pairs" value={formatNumber(data.totalPairs)} />
-            <StatTile label="Status" value={data.paused ? 'Paused' : 'Live'} />
-          </dl>
-          {lastUpdatedAt !== null && <LastUpdated timestamp={lastUpdatedAt} />}
-          <div className="mt-4 flex gap-2">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => downloadStatsSnapshot(data, 'json')}
-            >
-              Download JSON
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => downloadStatsSnapshot(data, 'csv')}
-            >
-              Download CSV
-            </Button>
+        <section className="rounded-lg border border-rose-200 bg-rose-50 p-6 text-center dark:border-rose-900 dark:bg-rose-950">
+          <div role="alert">
+            <h2 className="text-base font-medium text-rose-900 dark:text-rose-100">
+              Unable to load stats
+            </h2>
+            <p className="mt-2 text-sm text-rose-700 dark:text-rose-300">
+              {error}
+            </p>
           </div>
+          <Button
+            type="button"
+            variant="secondary"
+            className="mt-4"
+            onClick={refetch}
+          >
+            Retry
+          </Button>
         </section>
       )}
-      {status === 'success' && data && data.totalPairs === 0 && (
-        <EmptyState
-          title="No pairs yet"
-          description="Register a pair to see metrics."
-        />
-      )}
+      <section
+        aria-live="polite"
+        aria-atomic="true"
+        aria-busy={status === 'loading'}
+        className="contents"
+      >
+        {status === 'loading' && (
+          <div className="flex items-center gap-2 text-sm">
+            <Spinner label="Loading stats" />
+            Loading…
+          </div>
+        )}
+        {status === 'success' && data && data.totalPairs === 0 && (
+          <EmptyState
+            title="No stats available yet"
+            description="Register a pair to start seeing router metrics."
+          />
+        )}
+        {status === 'success' && data && data.totalPairs > 0 && (
+          <section aria-labelledby="stats-metrics-heading">
+            <h2 id="stats-metrics-heading" className="sr-only">
+              Router metrics
+            </h2>
+            <dl className="grid grid-cols-2 gap-4">
+              <StatTile label="Pairs" value={formatNumber(data.totalPairs)} />
+              <StatTile
+                label="Status"
+                value={data.paused ? 'Paused' : 'Live'}
+              />
+            </dl>
+            {lastUpdatedAt !== null && (
+              <LastUpdated timestamp={lastUpdatedAt} />
+            )}
+            <div className="mt-4 flex gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => downloadStatsSnapshot(data, 'json')}
+              >
+                Download JSON
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => downloadStatsSnapshot(data, 'csv')}
+              >
+                Download CSV
+              </Button>
+            </div>
+          </section>
+        )}
+      </section>
     </main>
   );
 }

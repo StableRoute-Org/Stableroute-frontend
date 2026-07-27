@@ -5,6 +5,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import StatsPage from './page';
 import {
   buildStatsSnapshot,
@@ -31,7 +32,7 @@ describe('StatsPage', () => {
     mockFetch({ totalPairs: 0, paused: false });
     render(<StatsPage />);
     expect(screen.getByRole('heading', { name: /stats/i })).toBeInTheDocument();
-    await screen.findByText('Live');
+    await screen.findByText(/no stats available yet/i);
   });
 
   it('renders one canonical stats page region and heading', async () => {
@@ -40,7 +41,7 @@ describe('StatsPage', () => {
 
     expect(screen.getAllByRole('heading', { name: /stats/i })).toHaveLength(1);
     expect(document.querySelectorAll('#main-content')).toHaveLength(1);
-    await screen.findByText('Live');
+    await screen.findByText(/no stats available yet/i);
   });
 
   it('names the metrics panel with an accessible region', async () => {
@@ -62,26 +63,100 @@ describe('StatsPage', () => {
   });
 
   it('renders Live when paused is false', async () => {
-    mockFetch({ totalPairs: 0, paused: false });
+    mockFetch({ totalPairs: 1, paused: false });
     render(<StatsPage />);
     const status = await screen.findByText('Live');
     expect(status).toBeInTheDocument();
   });
 
   it('renders Paused when paused is true', async () => {
-    mockFetch({ totalPairs: 0, paused: true });
+    mockFetch({ totalPairs: 1, paused: true });
     render(<StatsPage />);
     const status = await screen.findByText('Paused');
     expect(status).toBeInTheDocument();
   });
 
-  it('renders error message on fetch failure', async () => {
+  it('renders a distinct error state on fetch failure', async () => {
     global.fetch = jest.fn().mockRejectedValue(new Error('Network error'));
     render(<StatsPage />);
-    await waitFor(() => {
-      const alert = screen.getByRole('alert');
-      expect(alert).toHaveTextContent(/network request failed/i);
-    });
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(/unable to load stats/i);
+    expect(alert).toHaveTextContent(/network request failed/i);
+    expect(screen.getByRole('button', { name: /retry/i })).toBeInTheDocument();
+    expect(screen.queryByText('Loading…')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/no stats available yet/i)
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('region', { name: /router metrics/i })
+    ).not.toBeInTheDocument();
+  });
+
+  it('renders an empty state instead of metrics when no stats are available', async () => {
+    mockFetch({ totalPairs: 0, paused: false });
+    render(<StatsPage />);
+
+    expect(
+      await screen.findByText(/no stats available yet/i)
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Loading…')).not.toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('region', { name: /router metrics/i })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /download json/i })
+    ).not.toBeInTheDocument();
+  });
+
+  it('keeps the loading state exclusive while the request is pending', () => {
+    global.fetch = jest.fn().mockReturnValue(new Promise(() => {}));
+    render(<StatsPage />);
+
+    expect(screen.getByText('Loading…')).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/no stats available yet/i)
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('region', { name: /router metrics/i })
+    ).not.toBeInTheDocument();
+  });
+
+  it('announces fetch state changes in one polite live region', async () => {
+    mockFetch({ totalPairs: 0, paused: false });
+    render(<StatsPage />);
+
+    const liveRegion = document.querySelector('[aria-live="polite"]');
+    expect(liveRegion).toHaveAttribute('aria-atomic', 'true');
+    expect(liveRegion).toHaveAttribute('aria-busy', 'true');
+    expect(document.querySelectorAll('[aria-live="polite"]')).toHaveLength(1);
+
+    await screen.findByText(/no stats available yet/i);
+    expect(liveRegion).toHaveAttribute('aria-busy', 'false');
+  });
+
+  it('retries the request from the keyboard and renders recovered stats', async () => {
+    const user = userEvent.setup();
+    global.fetch = jest
+      .fn()
+      .mockRejectedValueOnce(new Error('Network error'))
+      .mockResolvedValueOnce({
+        ok: true,
+        text: () =>
+          Promise.resolve(JSON.stringify({ totalPairs: 4, paused: false })),
+      } as unknown as Response);
+    render(<StatsPage />);
+
+    const retry = await screen.findByRole('button', { name: /retry/i });
+    retry.focus();
+    await user.keyboard('{Enter}');
+
+    expect(await screen.findByText('4')).toBeInTheDocument();
+    expect(screen.getByText('Live')).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    expect(global.fetch).toHaveBeenCalledTimes(2);
   });
 
   it('keeps the existing 5 second polling update behavior', async () => {
