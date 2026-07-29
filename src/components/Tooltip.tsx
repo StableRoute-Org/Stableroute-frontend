@@ -1,4 +1,4 @@
-'use client';
+import { memo, type ReactNode } from 'react';
 
 export type TooltipStatus = 'loading' | 'empty' | 'error' | 'success';
 
@@ -8,7 +8,7 @@ type Props = {
   /** Message shown for the current state (e.g. error detail, empty hint). */
   message?: string;
   /** The element the tooltip is attached to (trigger / content). */
-  children: React.ReactNode;
+  children: ReactNode;
 };
 
 const STATUS_LABEL: Record<TooltipStatus, string> = {
@@ -18,12 +18,7 @@ const STATUS_LABEL: Record<TooltipStatus, string> = {
   success: 'Ready',
 };
 
-/**
- * Tooltip surface that reflects one of four mutually-exclusive states:
- * loading, empty, error, success. The trigger/content always renders; the
- * status text (exposed via role="status" for assistive tech) changes.
- */
-export function Tooltip({ status, message, children }: Props) {
+function TooltipBase({ status, message, children }: Props) {
   return (
     <span className="relative inline-flex">
       {children}
@@ -39,3 +34,12 @@ export function Tooltip({ status, message, children }: Props) {
     </span>
   );
 }
+
+/**
+ * Tooltip surface that reflects one of four mutually-exclusive states:
+ * loading, empty, error, success. The trigger/content always renders; the
+ * status text (exposed via role="status" for assistive tech) changes.
+ *
+ * Memoized so stable props prevent needless re-renders of the trigger subtree.
+ */
+export const Tooltip = memo(TooltipBase);

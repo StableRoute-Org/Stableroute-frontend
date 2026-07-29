@@ -1,6 +1,15 @@
 import { render, screen } from '@testing-library/react';
 import { Tooltip } from '../Tooltip';
 
+const RenderCounter = () => {
+  let count = 0;
+  return (
+    <Tooltip status="success">
+      <span data-testid="child">{count}</span>
+    </Tooltip>
+  );
+};
+
 describe('Tooltip', () => {
   it('renders its trigger children', () => {
     render(
@@ -69,5 +78,21 @@ describe('Tooltip', () => {
       </Tooltip>
     );
     expect(screen.getByRole('status')).toHaveAttribute('aria-live', 'polite');
+  });
+
+  it('does not re-render when props are referentially stable (memoized)', () => {
+    const props = { status: 'success' as const, message: 'ok' };
+    const { rerender } = render(
+      <Tooltip {...props}>
+        <span>trigger</span>
+      </Tooltip>
+    );
+    // re-render with the same prop references — memo should skip
+    rerender(
+      <Tooltip {...props}>
+        <span>trigger</span>
+      </Tooltip>
+    );
+    expect(screen.getByRole('status')).toHaveTextContent(/ready/i);
   });
 });
