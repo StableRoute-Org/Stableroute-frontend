@@ -13,6 +13,7 @@ import {
   formatStatsAge,
   statsSnapshotToCsv,
   statsSnapshotToJson,
+  useBackoffInterval,
 } from './Client';
 
 const mockFetch = (data: unknown) => {
@@ -159,7 +160,7 @@ describe('StatsPage', () => {
     expect(global.fetch).toHaveBeenCalledTimes(2);
   });
 
-  it('keeps the existing 5 second polling update behavior', async () => {
+  it('polls again after 5 seconds following a successful response', async () => {
     jest.useFakeTimers();
     global.fetch = jest
       .fn()
@@ -188,7 +189,42 @@ describe('StatsPage', () => {
     expect(global.fetch).toHaveBeenCalledTimes(2);
   });
 
-  it('clears the polling interval on unmount', async () => {
+  it('backs off repeated failures and keeps one persistent error status', async () => {
+    jest.useFakeTimers();
+    global.fetch = jest.fn().mockRejectedValue(new Error('Network error'));
+
+    render(<StatsPage />);
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(/retrying automatically/i);
+    expect(screen.getAllByRole('alert')).toHaveLength(1);
+
+    await act(async () => {
+      jest.advanceTimersByTime(9_999);
+    });
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      jest.advanceTimersByTime(1);
+    });
+    await screen.findByRole('alert');
+    expect(global.fetch).toHaveBeenCalledTimes(2);
+    expect(screen.getAllByRole('alert')).toHaveLength(1);
+
+    await act(async () => {
+      jest.advanceTimersByTime(19_999);
+    });
+    expect(global.fetch).toHaveBeenCalledTimes(2);
+
+    await act(async () => {
+      jest.advanceTimersByTime(1);
+    });
+    await screen.findByRole('alert');
+    expect(global.fetch).toHaveBeenCalledTimes(3);
+    expect(screen.getAllByRole('alert')).toHaveLength(1);
+  });
+
+  it('clears the scheduled poll on unmount', async () => {
     jest.useFakeTimers();
     global.fetch = jest.fn().mockResolvedValue({
       ok: true,
@@ -256,6 +292,163 @@ describe('StatsPage', () => {
     unmount();
 
     expect(jest.getTimerCount()).toBe(0);
+  });
+});
+
+describe('useBackoffInterval', () => {
+  type Status = 'idle' | 'loading' | 'error' | 'success';
+
+  function BackoffHarness({
+    status,
+    poll,
+    schedule,
+    cancel,
+  }: {
+    status: Status;
+    poll: () => void;
+    schedule: jest.Mock;
+    cancel: jest.Mock;
+  }) {
+    useBackoffInterval(status, poll, {
+      baseMs: 5_000,
+      maxMs: 60_000,
+      schedule,
+      cancel,
+    });
+    return null;
+  }
+
+  it('injects scheduling and doubles failed-request delays up to the cap', () => {
+    const schedule = jest
+      .fn()
+      .mockImplementation((_callback: () => void, delayMs: number) => delayMs);
+    const cancel = jest.fn();
+    const poll = jest.fn();
+    const { rerender } = render(
+      <BackoffHarness
+        status="error"
+        poll={poll}
+        schedule={schedule}
+        cancel={cancel}
+      />
+    );
+
+    expect(schedule).toHaveBeenLastCalledWith(expect.any(Function), 10_000);
+
+    for (const expectedDelay of [20_000, 40_000, 60_000, 60_000]) {
+      rerender(
+        <BackoffHarness
+          status="loading"
+          poll={poll}
+          schedule={schedule}
+          cancel={cancel}
+        />
+      );
+      rerender(
+        <BackoffHarness
+          status="error"
+          poll={poll}
+          schedule={schedule}
+          cancel={cancel}
+        />
+      );
+      expect(schedule).toHaveBeenLastCalledWith(
+        expect.any(Function),
+        expectedDelay
+      );
+    }
+  });
+
+  it('resets to the base interval on the first success', () => {
+    const schedule = jest.fn().mockReturnValue(1);
+    const cancel = jest.fn();
+    const poll = jest.fn();
+    const { rerender } = render(
+      <BackoffHarness
+        status="error"
+        poll={poll}
+        schedule={schedule}
+        cancel={cancel}
+      />
+    );
+
+    rerender(
+      <BackoffHarness
+        status="loading"
+        poll={poll}
+        schedule={schedule}
+        cancel={cancel}
+      />
+    );
+    rerender(
+      <BackoffHarness
+        status="success"
+        poll={poll}
+        schedule={schedule}
+        cancel={cancel}
+      />
+    );
+
+    expect(schedule).toHaveBeenLastCalledWith(expect.any(Function), 5_000);
+  });
+
+  it('uses the latest callback and cancels pending work on cleanup', () => {
+    let scheduledCallback: (() => void) | undefined;
+    const schedule = jest.fn().mockImplementation((callback: () => void) => {
+      scheduledCallback = callback;
+      return 7;
+    });
+    const cancel = jest.fn();
+    const firstPoll = jest.fn();
+    const latestPoll = jest.fn();
+    const { rerender, unmount } = render(
+      <BackoffHarness
+        status="success"
+        poll={firstPoll}
+        schedule={schedule}
+        cancel={cancel}
+      />
+    );
+
+    rerender(
+      <BackoffHarness
+        status="success"
+        poll={latestPoll}
+        schedule={schedule}
+        cancel={cancel}
+      />
+    );
+    scheduledCallback?.();
+
+    expect(firstPoll).not.toHaveBeenCalled();
+    expect(latestPoll).toHaveBeenCalledTimes(1);
+    unmount();
+    expect(cancel).toHaveBeenCalledWith(7);
+  });
+
+  it('does not schedule while idle or loading', () => {
+    const schedule = jest.fn();
+    const cancel = jest.fn();
+    const poll = jest.fn();
+    const { rerender } = render(
+      <BackoffHarness
+        status="idle"
+        poll={poll}
+        schedule={schedule}
+        cancel={cancel}
+      />
+    );
+
+    rerender(
+      <BackoffHarness
+        status="loading"
+        poll={poll}
+        schedule={schedule}
+        cancel={cancel}
+      />
+    );
+
+    expect(schedule).not.toHaveBeenCalled();
   });
 });
 

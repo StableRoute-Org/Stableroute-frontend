@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useApi } from '@/lib/useApi';
 import { formatNumber, formatTimestamp } from '@/lib/format';
 import { Button } from '@/components/Button';
@@ -13,7 +13,56 @@ type Stats = { totalPairs: number; paused: boolean };
 
 /** Poll cadence for the stats dashboard (see ARCHITECTURE.md, "Data flow"). */
 const POLL_MS = 5_000;
+const MAX_POLL_MS = 60_000;
 const LAST_UPDATED_TICK_MS = 1_000;
+
+type PollStatus = 'idle' | 'loading' | 'error' | 'success';
+type TimeoutId = ReturnType<typeof setTimeout>;
+
+export type BackoffIntervalOptions = {
+  baseMs?: number;
+  maxMs?: number;
+  schedule?: (callback: () => void, delayMs: number) => TimeoutId;
+  cancel?: (timeoutId: TimeoutId) => void;
+};
+
+const scheduleTimeout = (callback: () => void, delayMs: number) =>
+  setTimeout(callback, delayMs);
+const cancelTimeout = (timeoutId: TimeoutId) => clearTimeout(timeoutId);
+
+/** Schedule the next poll after the current request settles. */
+export function useBackoffInterval(
+  status: PollStatus,
+  callback: () => void,
+  options: BackoffIntervalOptions = {}
+): void {
+  const {
+    baseMs = POLL_MS,
+    maxMs = MAX_POLL_MS,
+    schedule = scheduleTimeout,
+    cancel = cancelTimeout,
+  } = options;
+  const callbackRef = useRef(callback);
+  const failureCountRef = useRef(0);
+  callbackRef.current = callback;
+
+  useEffect(() => {
+    if (status !== 'success' && status !== 'error') return;
+
+    if (status === 'success') {
+      failureCountRef.current = 0;
+    } else {
+      failureCountRef.current += 1;
+    }
+
+    const delayMs =
+      status === 'success'
+        ? baseMs
+        : Math.min(baseMs * 2 ** failureCountRef.current, maxMs);
+    const timeoutId = schedule(() => callbackRef.current(), delayMs);
+    return () => cancel(timeoutId);
+  }, [baseMs, cancel, maxMs, schedule, status]);
+}
 
 /** Format elapsed time for the stats freshness label. */
 export function formatStatsAge(deltaMs: number): string {
@@ -160,10 +209,7 @@ export default function StatsClient() {
   const error = status === 'error' ? result.error : null;
   const data = status === 'success' ? result.data : null;
 
-  useEffect(() => {
-    const id = setInterval(refetch, POLL_MS);
-    return () => clearInterval(id);
-  }, [refetch]);
+  useBackoffInterval(status, refetch);
 
   useEffect(() => {
     if (status === 'success' && data) setLastUpdatedAt(Date.now());
@@ -184,6 +230,10 @@ export default function StatsClient() {
             </h2>
             <p className="mt-2 text-sm text-rose-700 dark:text-rose-300">
               {error}
+            </p>
+            <p className="mt-2 text-sm text-rose-700 dark:text-rose-300">
+              Retrying automatically with a longer delay while the service is
+              unavailable.
             </p>
           </div>
           <Button
