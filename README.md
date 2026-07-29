@@ -57,6 +57,7 @@ Reusable building blocks live under `src/components` and are imported by route p
 | [`ToastProvider`](src/components/ToastProvider.tsx)                 | App-wide toast notifications                                           |
 | [`KeyboardShortcutsHelp`](src/components/KeyboardShortcutsHelp.tsx) | `?` overlay listing keyboard shortcuts                                 |
 | [`CommandPalette`](src/components/CommandPalette.tsx)               | `Cmd/Ctrl+K` route jump palette                                        |
+| [`Tooltip`](src/components/Tooltip.tsx)                             | Status surface with loading/empty/error/success states (see [tooltips.md](docs/tooltips.md)) |
 
 Data fetching helpers (`apiClient`, `useApi`, `useList`) live in `src/lib`.
 
