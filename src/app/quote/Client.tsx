@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { TextField } from '@/components/TextField';
 import { apiFetch, type ApiError } from '@/lib/apiClient';
 import { formatQuoteAmountDisplay, formatQuoteRateDisplay } from '@/lib/format';
 import { useLocalStorage } from '@/lib/useLocalStorage';
 import type { Quote } from '@/lib/types';
 import { isQuote } from '@/lib/validate';
+import { QuoteHistory, type HistoryEntry, type QuoteInputs } from './QuoteHistory';
 
 type FieldErrors = {
   source?: string;
@@ -14,13 +15,7 @@ type FieldErrors = {
   amount?: string;
 };
 
-type QuoteInputs = {
-  source: string;
-  dest: string;
-  amount: string;
-};
 
-type HistoryEntry = QuoteInputs & { savedAt: number };
 
 const INPUTS_KEY = 'stableroute.quote.inputs';
 const HISTORY_KEY = 'stableroute.quote.history';
@@ -106,14 +101,14 @@ export default function QuoteClient() {
     setHistory(readHistory());
   }, []);
 
-  const applyInputs = (inputs: QuoteInputs) => {
+  const applyInputs = useCallback((inputs: QuoteInputs) => {
     setSourceAsset(inputs.source);
     setDestAsset(inputs.dest);
     setAmount(inputs.amount);
     setFieldErrors({});
     setFormError(null);
     setQuote(null);
-  };
+  }, []);
 
   const swapAssets = () => {
     setSourceAsset(destAsset);
@@ -224,31 +219,7 @@ export default function QuoteClient() {
         </p>
       </header>
 
-      {history.length > 0 && (
-        <section
-          aria-labelledby="recent-quotes-heading"
-          className="flex flex-col gap-2"
-        >
-          <h2 id="recent-quotes-heading" className="text-sm font-medium">
-            Recent quotes
-          </h2>
-          <ul className="flex flex-col gap-1">
-            {history.map((entry) => (
-              <li
-                key={`${entry.source}-${entry.dest}-${entry.amount}-${entry.savedAt}`}
-              >
-                <button
-                  type="button"
-                  onClick={() => applyInputs(entry)}
-                  className="w-full rounded border border-neutral-200 px-3 py-2 text-left text-sm hover:border-neutral-400 dark:border-neutral-800"
-                >
-                  {entry.source} → {entry.dest} · {entry.amount}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
+      <QuoteHistory history={history} onSelect={applyInputs} />
 
       <form onSubmit={onSubmit} className="flex flex-col gap-3">
         <TextField
