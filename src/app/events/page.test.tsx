@@ -1133,6 +1133,153 @@ describe('EventsPage', () => {
         screen.getByRole('button', { name: /clear filters/i })
       ).toBeDisabled();
     });
+
+    it('announces filter success after the debounce settles', async () => {
+      jest.useFakeTimers();
+      try {
+        await renderWithEvents();
+
+        const input = screen.getByLabelText(/filter by event type/i);
+        fireEvent.change(input, { target: { value: 'pair' } });
+
+        // Before the debounce fires, no announcement should appear.
+        expect(
+          screen.queryByText(/filter applied/i)
+        ).not.toBeInTheDocument();
+
+        act(() => {
+          jest.advanceTimersByTime(400);
+        });
+
+        expect(
+          await screen.findByText('Filter applied. Showing 2 events.')
+        ).toBeInTheDocument();
+
+        const regions = document.querySelectorAll('main [aria-live=polite]');
+        expect(regions).toHaveLength(1);
+        expect(regions[0]).toContainElement(
+          screen.getByText('Filter applied. Showing 2 events.')
+        );
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it('announces filter failure (no match) after the debounce settles', async () => {
+      jest.useFakeTimers();
+      try {
+        await renderWithEvents();
+
+        const input = screen.getByLabelText(/filter by event type/i);
+        fireEvent.change(input, { target: { value: 'no-such-type' } });
+
+        act(() => {
+          jest.advanceTimersByTime(400);
+        });
+
+        expect(
+          await screen.findByText(
+            'No events match the filter "no-such-type".'
+          )
+        ).toBeInTheDocument();
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it('debounces rapid filter keystrokes so only the final announcement fires', async () => {
+      jest.useFakeTimers();
+      try {
+        await renderWithEvents();
+
+        const input = screen.getByLabelText(/filter by event type/i);
+
+        // Type 'p' then 'a' then 'i' rapidly — each resets the timer.
+        fireEvent.change(input, { target: { value: 'p' } });
+        jest.advanceTimersByTime(200);
+        fireEvent.change(input, { target: { value: 'pa' } });
+        jest.advanceTimersByTime(200);
+        fireEvent.change(input, { target: { value: 'pai' } });
+
+        // Only 200 ms passed since the last change — no announcement yet.
+        expect(
+          screen.queryByText(/filter applied/i)
+        ).not.toBeInTheDocument();
+
+        // Advance far enough for the final debounce to settle.
+        act(() => {
+          jest.advanceTimersByTime(400);
+        });
+
+        expect(
+          await screen.findByText(/filter applied/i)
+        ).toBeInTheDocument();
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it('clears a stale success message when the filter text is deleted', async () => {
+      jest.useFakeTimers();
+      try {
+        await renderWithEvents();
+
+        const input = screen.getByLabelText(/filter by event type/i);
+        fireEvent.change(input, { target: { value: 'pair' } });
+
+        act(() => {
+          jest.advanceTimersByTime(400);
+        });
+
+        expect(
+          await screen.findByText('Filter applied. Showing 2 events.')
+        ).toBeInTheDocument();
+
+        // Delete the filter text
+        fireEvent.change(input, { target: { value: '' } });
+
+        // The stale announcement is cleared immediately on change.
+        expect(
+          screen.queryByText('Filter applied. Showing 2 events.')
+        ).not.toBeInTheDocument();
+
+        act(() => {
+          jest.advanceTimersByTime(400);
+        });
+
+        // After debounce, clearing shows "Filters cleared" since we went
+        // from a filtered to unfiltered state.
+        expect(
+          await screen.findByText('Filters cleared. Showing all events.')
+        ).toBeInTheDocument();
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it('announces singular event count when one event matches', async () => {
+      jest.useFakeTimers();
+      try {
+        global.fetch = jest
+          .fn()
+          .mockResolvedValue(okEventsResponse(filterableEvents));
+        renderPage();
+        expect(await screen.findByText('pair.registered')).toBeInTheDocument();
+
+        const input = screen.getByLabelText(/filter by event type/i);
+        fireEvent.change(input, { target: { value: 'quote' } });
+
+        act(() => {
+          jest.advanceTimersByTime(400);
+        });
+
+        expect(
+          await screen.findByText('Filter applied. Showing 1 event.')
+        ).toBeInTheDocument();
+      } finally {
+        jest.useRealTimers();
+      }
+    });
   });
 
   describe('payload safety', () => {

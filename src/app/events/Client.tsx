@@ -36,6 +36,8 @@ export default function EventsClient() {
   );
   const [typeFilter, setTypeFilter] = useState('');
   const [filterAnnouncement, setFilterAnnouncement] = useState('');
+  const [debouncedFilter, setDebouncedFilter] = useState('');
+  const filterTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [showFull, setShowFull] = useState<Record<string, boolean>>({});
   const refetchEvents = eventsApi.refetch;
@@ -70,6 +72,22 @@ export default function EventsClient() {
     if (!needle) return items;
     return items.filter((event) => event.type.toLowerCase().includes(needle));
   }, [items, typeFilter]);
+
+  // Debounce filter announcements: only announce after the user stops typing
+  // for 400 ms so rapid keystrokes don't spam the live region.
+  useEffect(() => {
+    if (filterTimerRef.current !== null) {
+      clearTimeout(filterTimerRef.current);
+    }
+    filterTimerRef.current = setTimeout(() => {
+      setDebouncedFilter(typeFilter);
+    }, 400);
+    return () => {
+      if (filterTimerRef.current !== null) {
+        clearTimeout(filterTimerRef.current);
+      }
+    };
+  }, [typeFilter]);
 
   useEffect(() => {
     if (freshParsed !== null) setLastUpdatedAt(Date.now());
@@ -112,7 +130,7 @@ export default function EventsClient() {
 
   const handleTypeFilterChange = useCallback((value: string) => {
     setTypeFilter(value);
-    // Drop a stale "filters cleared" message as soon as the user filters again.
+    // Drop a stale announcement as soon as the user filters again.
     setFilterAnnouncement('');
   }, []);
 
@@ -120,6 +138,34 @@ export default function EventsClient() {
     setTypeFilter('');
     setFilterAnnouncement('Filters cleared. Showing all events.');
   }, []);
+
+  // Announce filter results via the live region after the debounce settles.
+  const prevDebouncedRef = useRef('');
+  useEffect(() => {
+    // Don't announce while data is still loading.
+    if (!filteredItems || !items) return;
+
+    const prevNeedle = prevDebouncedRef.current.trim().toLowerCase();
+    const needle = debouncedFilter.trim().toLowerCase();
+    prevDebouncedRef.current = debouncedFilter;
+
+    if (!needle && prevNeedle) {
+      // The user cleared a previously-active filter by typing.
+      setFilterAnnouncement('Filters cleared. Showing all events.');
+      return;
+    }
+    if (!needle) return;
+
+    if (filteredItems.length === 0) {
+      setFilterAnnouncement(
+        `No events match the filter "${debouncedFilter.trim()}".`
+      );
+    } else {
+      setFilterAnnouncement(
+        `Filter applied. Showing ${filteredItems.length} event${filteredItems.length !== 1 ? 's' : ''}.`
+      );
+    }
+  }, [debouncedFilter, filteredItems, items]);
 
   const handleCopyPayload = useCallback(
     async (eventId: string, payloadJson: string) => {
