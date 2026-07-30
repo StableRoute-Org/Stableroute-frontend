@@ -1,4 +1,5 @@
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -412,6 +413,216 @@ describe('PairsPage', () => {
 
       resolveWrite();
       await waitFor(() => expect(copyButton).not.toBeDisabled());
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // Filter announcement (live region)
+  // -------------------------------------------------------------------------
+
+  describe('filter announcement', () => {
+    it('renders no announcement when no filter is active', async () => {
+      mockFetch([{ source: 'USDC', destination: 'EURC' }]);
+      render(<PairsPage />);
+      await waitFor(() => {
+        expect(screen.getByText('EURC')).toBeInTheDocument();
+      });
+      expect(
+        screen.queryByText(/filter applied/i)
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(/filters cleared/i)
+      ).not.toBeInTheDocument();
+    });
+
+    it('announces filter success after the debounce settles', async () => {
+      jest.useFakeTimers();
+      try {
+        global.fetch = jest.fn().mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          text: async () =>
+            JSON.stringify({
+              pairs: [
+                { source: 'USDC', destination: 'EURC' },
+                { source: 'BTC', destination: 'USDC' },
+              ],
+            }),
+        } as unknown as Response);
+
+        render(<PairsPage />);
+        await waitFor(() => {
+          expect(screen.getByText('2 pairs')).toBeInTheDocument();
+        });
+
+        const input = screen.getByPlaceholderText('Search by asset code');
+        fireEvent.change(input, { target: { value: 'BTC' } });
+
+        // Before the debounce fires, no announcement should appear.
+        expect(
+          screen.queryByText(/filter applied/i)
+        ).not.toBeInTheDocument();
+
+        act(() => {
+          jest.advanceTimersByTime(400);
+        });
+
+        expect(
+          await screen.findByText('Filter applied. Showing 1 pair.')
+        ).toBeInTheDocument();
+
+        const live = document.querySelector('[aria-live=polite]');
+        expect(live).toContainElement(
+          screen.getByText('Filter applied. Showing 1 pair.')
+        );
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it('announces filter failure (no match) after the debounce settles', async () => {
+      jest.useFakeTimers();
+      try {
+        mockFetch([{ source: 'USDC', destination: 'EURC' }]);
+        render(<PairsPage />);
+        await waitFor(() => {
+          expect(screen.getByText('1 pair')).toBeInTheDocument();
+        });
+
+        const input = screen.getByPlaceholderText('Search by asset code');
+        fireEvent.change(input, { target: { value: 'ZZZ' } });
+
+        act(() => {
+          jest.advanceTimersByTime(400);
+        });
+
+        expect(
+          await screen.findByText('No pairs match the filter "ZZZ".')
+        ).toBeInTheDocument();
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it('debounces rapid filter keystrokes so only the final announcement fires', async () => {
+      jest.useFakeTimers();
+      try {
+        mockFetch([
+          { source: 'USDC', destination: 'EURC' },
+          { source: 'BTC', destination: 'USDC' },
+        ]);
+        render(<PairsPage />);
+        await waitFor(() => {
+          expect(screen.getByText('2 pairs')).toBeInTheDocument();
+        });
+
+        const input = screen.getByPlaceholderText('Search by asset code');
+
+        // Type 'B' then 'T' then 'C' rapidly — each resets the timer.
+        fireEvent.change(input, { target: { value: 'B' } });
+        jest.advanceTimersByTime(200);
+        fireEvent.change(input, { target: { value: 'BT' } });
+        jest.advanceTimersByTime(200);
+        fireEvent.change(input, { target: { value: 'BTC' } });
+
+        // Only 200 ms passed since the last change — no announcement yet.
+        expect(
+          screen.queryByText(/filter applied/i)
+        ).not.toBeInTheDocument();
+
+        // Advance far enough for the final debounce to settle.
+        act(() => {
+          jest.advanceTimersByTime(400);
+        });
+
+        expect(
+          await screen.findByText('Filter applied. Showing 1 pair.')
+        ).toBeInTheDocument();
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it('announces cleared filter when filter is emptied', async () => {
+      jest.useFakeTimers();
+      try {
+        global.fetch = jest.fn().mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          text: async () =>
+            JSON.stringify({
+              pairs: [
+                { source: 'USDC', destination: 'EURC' },
+                { source: 'BTC', destination: 'USDC' },
+              ],
+            }),
+        } as unknown as Response);
+
+        render(<PairsPage />);
+        await waitFor(() => {
+          expect(screen.getByText('2 pairs')).toBeInTheDocument();
+        });
+
+        const input = screen.getByPlaceholderText('Search by asset code');
+
+        // First apply a filter
+        fireEvent.change(input, { target: { value: 'BTC' } });
+        act(() => {
+          jest.advanceTimersByTime(400);
+        });
+        expect(
+          await screen.findByText('Filter applied. Showing 1 pair.')
+        ).toBeInTheDocument();
+
+        // Now clear the filter
+        fireEvent.change(input, { target: { value: '' } });
+        act(() => {
+          jest.advanceTimersByTime(400);
+        });
+
+        expect(
+          await screen.findByText('Filters cleared. Showing all pairs.')
+        ).toBeInTheDocument();
+      } finally {
+        jest.useRealTimers();
+      }
+    });
+
+    it('announces plural when multiple pairs match', async () => {
+      jest.useFakeTimers();
+      try {
+        global.fetch = jest.fn().mockResolvedValueOnce({
+          ok: true,
+          status: 200,
+          text: async () =>
+            JSON.stringify({
+              pairs: [
+                { source: 'USDC', destination: 'EURC' },
+                { source: 'USDC', destination: 'NGNC' },
+                { source: 'BTC', destination: 'XLM' },
+              ],
+            }),
+        } as unknown as Response);
+
+        render(<PairsPage />);
+        await waitFor(() => {
+          expect(screen.getByText('3 pairs')).toBeInTheDocument();
+        });
+
+        const input = screen.getByPlaceholderText('Search by asset code');
+        // Filter for 'USDC' — matches the first two pairs (source=USDC).
+        fireEvent.change(input, { target: { value: 'USDC' } });
+
+        act(() => {
+          jest.advanceTimersByTime(400);
+        });
+
+        expect(
+          await screen.findByText('Filter applied. Showing 2 pairs.')
+        ).toBeInTheDocument();
+      } finally {
+        jest.useRealTimers();
+      }
     });
   });
 

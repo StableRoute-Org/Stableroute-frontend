@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Badge } from '@/components/Badge';
 import { ColumnVisibilityToggle } from '@/components/ColumnVisibilityToggle';
@@ -22,6 +22,9 @@ export default function PairsClient() {
   const { push } = useToast();
   const api = useApi<{ pairs: Pair[] }>('/api/v1/pairs', isPairsResponse);
   const [query, setQuery] = useState('');
+  const [filterAnnouncement, setFilterAnnouncement] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
+  const filterTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [pendingDelete, setPendingDelete] = useState<Pair | null>(null);
   const [activePair, setActivePair] = useState<Pair | null>(null);
   const [copyingSymbol, setCopyingSymbol] = useState<string | null>(null);
@@ -37,6 +40,49 @@ export default function PairsClient() {
     () => (pairs ? filterPairs(pairs, query) : null),
     [pairs, query]
   );
+
+  // Debounce filter announcements: only announce after the user stops typing
+  // for 400 ms so rapid keystrokes don't spam the live region.
+  useEffect(() => {
+    if (filterTimerRef.current !== null) {
+      clearTimeout(filterTimerRef.current);
+    }
+    filterTimerRef.current = setTimeout(() => {
+      setDebouncedQuery(query);
+    }, 400);
+    return () => {
+      if (filterTimerRef.current !== null) {
+        clearTimeout(filterTimerRef.current);
+      }
+    };
+  }, [query]);
+
+  // Announce filter results via the live region after the debounce settles.
+  const prevDebouncedRef = useRef('');
+  useEffect(() => {
+    if (!filtered || !pairs) return;
+
+    const prevNeedle = prevDebouncedRef.current.trim().toLowerCase();
+    const needle = debouncedQuery.trim().toLowerCase();
+    prevDebouncedRef.current = debouncedQuery;
+
+    if (!needle && prevNeedle) {
+      // The user cleared a previously-active filter by typing.
+      setFilterAnnouncement('Filters cleared. Showing all pairs.');
+      return;
+    }
+    if (!needle) return;
+
+    if (filtered.length === 0) {
+      setFilterAnnouncement(
+        `No pairs match the filter "${debouncedQuery.trim()}".`
+      );
+    } else {
+      setFilterAnnouncement(
+        `Filter applied. Showing ${filtered.length} pair${filtered.length !== 1 ? 's' : ''}.`
+      );
+    }
+  }, [debouncedQuery, filtered, pairs]);
 
   // Grouping is a second, separate derivation from `filtered`. Without its own
   // memo it would still re-run on every render (e.g. toggling the delete
@@ -114,6 +160,7 @@ export default function PairsClient() {
         aria-busy={api.status === 'loading'}
         className="contents"
       >
+        {filterAnnouncement && <p className="sr-only">{filterAnnouncement}</p>}
         {api.status === 'loading' && (
           <div className="flex items-center gap-2 text-sm text-neutral-600">
             <Spinner label="Loading pairs" />
