@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { TextField } from '@/components/TextField';
 import { SlippageView } from './Slippage';
 import { apiFetch, type ApiError } from '@/lib/apiClient';
-import { formatQuoteAmountDisplay, formatQuoteRateDisplay } from '@/lib/format';
+import { formatQuoteAmountDisplay, formatQuoteRateDisplay, formatPercent } from '@/lib/format';
 import { useFormAnnouncement } from '@/lib/useFormAnnouncement';
 import { useLocalStorage } from '@/lib/useLocalStorage';
 import type { Quote } from '@/lib/types';
@@ -347,7 +347,7 @@ export default function QuoteClient() {
       <SlippageView
         status={loading ? 'loading' : formError ? 'error' : quote ? 'success' : 'empty'}
         slippage={
-          quote ? `${((Number(quote.estimated_rate) - 1) * 100).toFixed(2)}%` : undefined
+          quote ? formatPercent(Number(quote.estimated_rate) - 1, 2) : undefined
         }
         errorMessage={formError ?? undefined}
         onRetry={formError ? retryQuote : undefined}
