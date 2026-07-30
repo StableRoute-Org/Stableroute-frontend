@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { apiGet } from '@/lib/apiClient';
 import { getApiBase } from '@/lib/config';
+import { formatDecimals } from '@/lib/format';
 import { TimeAgo } from '@/components/TimeAgo';
 import { Spinner } from '@/components/Spinner';
 
@@ -112,7 +113,7 @@ export default function StatusClient() {
               </dt>
               <dd className="mt-1 text-2xl font-semibold">
                 {probe.latencyMs !== null
-                  ? `${probe.latencyMs.toFixed(0)} ms`
+                  ? `${formatDecimals(probe.latencyMs, 0)} ms`
                   : '—'}
               </dd>
             </div>
