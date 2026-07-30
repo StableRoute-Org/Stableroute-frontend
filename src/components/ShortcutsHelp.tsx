@@ -25,6 +25,11 @@ export const shortcuts = [
     description: 'Open links, press buttons, and submit focused form actions.',
   },
   {
+    keys: 'Ctrl+Shift+L / Cmd+Shift+L',
+    label: 'Toggle theme',
+    description: 'Switch between light and dark mode from any page.',
+  },
+  {
     keys: 'Ctrl+R / Cmd+R',
     label: 'Refresh route data',
     description: 'Reload the current page to request fresh backend state.',
