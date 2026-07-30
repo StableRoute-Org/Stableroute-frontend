@@ -56,6 +56,12 @@ export type ResourceListProps<T> = {
    * `scope="col"` inside a `<thead>`. Required when `caption` is set.
    */
   tableHeaders?: string[];
+  /**
+   * Optional sr-only announcement rendered inside the polite live region.
+   * Use this for form-status messages so every meaningful page update
+   * is read through a single aria-live region.
+   */
+  announcement?: string;
 };
 
 /**
@@ -86,6 +92,7 @@ export function ResourceList<T>({
   loadingMessage = 'Loading…',
   caption,
   tableHeaders,
+  announcement,
 }: ResourceListProps<T>) {
   const [pendingRemove, setPendingRemove] = useState<T | null>(null);
 
@@ -100,6 +107,7 @@ export function ResourceList<T>({
   return (
     <>
       <div aria-live="polite" aria-atomic="true">
+        {announcement && <p className="sr-only">{announcement}</p>}
         {loading && !items && <p>{loadingMessage}</p>}
         {items && items.length === 0 && (
           <p className="text-sm text-neutral-600">{emptyMessage}</p>

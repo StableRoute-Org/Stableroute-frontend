@@ -51,7 +51,7 @@ jobs:
 
       - name: Scan PR diff for secrets
         env:
-          BASE_REF: ${{ github.event.pull_request.base.ref || 'origin/main' }}
+          BASE_REF: origin/${{ github.event.pull_request.base.ref || 'main' }}
         run: npm run scan:secrets:ci
 
   build-test:
@@ -93,7 +93,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '24'
+          node-version: '20'
           cache: 'npm'
 
       - name: Install dependencies

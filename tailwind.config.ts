@@ -1,4 +1,5 @@
 import type { Config } from 'tailwindcss';
+import plugin from 'tailwindcss/plugin';
 
 const config: Config = {
   content: [
@@ -58,10 +59,12 @@ const config: Config = {
         warning: {
           50: '#fffbeb',
           100: '#fef3c7',
+          200: '#fde68a',
           300: '#fcd34d',
           400: '#fbbf24',
           600: '#d97706',
           800: '#92400e',
+          900: '#78350f',
           950: '#54210e',
         },
 
@@ -85,7 +88,11 @@ const config: Config = {
       },
     },
   },
-  plugins: [],
+  plugins: [
+    plugin(function({ addVariant }) {
+      addVariant('compact', '&[data-density="compact"]');
+    }),
+  ],
 };
 
 export default config;

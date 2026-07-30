@@ -233,6 +233,63 @@ function SortHeader({ label, sortKey, activeSortKey, sortDir, onSort }) {
 - [`README.md`](../README.md) — overview, routes, scripts.
 - [`docs/theme-storage.md`](./theme-storage.md) — light/dark toggle and the
   `localStorage` contract that backs it.
+- [`docs/history.md`](./history.md) — quote history component contract, props,
+  and memoization.
+
+## `Tooltip` primitive
+
+`Tooltip` (`src/components/Tooltip.tsx`) is an accessible popup that
+describes a UI control on hover or focus. Use it in place of the native HTML
+`title` attribute, which is invisible to keyboard users and cannot be styled.
+
+### API
+
+| Prop      | Type     | Default | Description                                           |
+| --------- | -------- | ------- | ----------------------------------------------------- |
+| `content` | `string` | —       | Text shown inside the tooltip popup. **Required.**    |
+| `children`| `ReactNode` | —    | The trigger element the tooltip describes. **Required.** |
+| `delay`   | `number` | `500`   | Milliseconds to wait before showing the tooltip.      |
+
+### Behaviour
+
+- **Show**: on `mouseenter` (hover) or `focus` (keyboard tab).
+- **Hide**: on `mouseleave`, `blur`, or pressing the `Escape` key.
+- **Accessibility**: the trigger is wired to the tooltip popup via
+  `aria-describedby`. The popup has `role="tooltip"`.
+- **Motion**: the popup uses `transition-opacity duration-150`, which is
+  collapsed to ~0ms by the global
+  `@media (prefers-reduced-motion: reduce)` rule in `globals.css`.
+- **Position**: the popup appears centered above the trigger.
+- **Delay**: a default 500 ms delay prevents flicker when the cursor passes
+  over the trigger. The `delay` prop overrides this.
+
+### Examples
+
+```tsx
+import { Tooltip } from '@/components/Tooltip';
+
+<Tooltip content="Copy API key secret">
+  <IconButton label="Copy">⧉</IconButton>
+</Tooltip>
+
+<Tooltip content="sk_abc123…" delay={300}>
+  <span className="font-mono text-xs">sk_abc…</span>
+</Tooltip>
+```
+
+### When to use
+
+- Replace every native `title` attribute that describes a UI control.
+- Add tooltips to icon-only controls, truncated text, and abbreviation
+  expansions.
+- Do **not** use for critical information that must be visible at all times
+  — tooltips are ephemeral and require pointer or focus interaction.
+
+### Related
+
+- `src/components/__tests__/Tooltip.test.tsx` — behaviour coverage.
+- `src/components/IconButton.tsx` — receives an optional `tooltip` prop that
+  is forwarded to the `Tooltip` primitive internally.
 
 ## IconButton accessible-label contract
 
@@ -242,6 +299,8 @@ there is no visible text fallback.
 
 - **Accessible name**: always sourced from `label`, never inferred from
   `children` (icons are typically `aria-hidden`).
+- **Tooltip**: an optional `tooltip` string wraps the button in a
+  `Tooltip` component to provide an accessible description on hover/focus.
 - **Disabled**: pass the native `disabled` prop. Disabled buttons remain
   discoverable by role/name for assistive tech, but the browser blocks the
   click event, so `onClick` will not fire.

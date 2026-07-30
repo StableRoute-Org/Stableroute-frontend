@@ -1,16 +1,18 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Badge } from '@/components/Badge';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { EmptyState } from '@/components/EmptyState';
 import { IconButton } from '@/components/IconButton';
 import { ResourceList } from '@/components/ResourceList';
 import { TextField } from '@/components/TextField';
 import { TimeAgo } from '@/components/TimeAgo';
 import { apiDelete, apiGet, apiPost } from '@/lib/apiClient';
+import { useFormAnnouncement } from '@/lib/useFormAnnouncement';
 import { useList } from '@/lib/useList';
 import { WEBHOOK_EVENT_OPTIONS } from '@/lib/webhookEvents';
-import type { Webhook } from '@/lib/types';
+import type { TestDeliveryResult, Webhook } from '@/lib/types';
 import { isWebhookListResponse } from '@/lib/validate';
 
 function isHttpsUrl(value: string): boolean {
@@ -37,11 +39,50 @@ export default function WebhooksClient() {
   const [submitting, setSubmitting] = useState(false);
   const [confirmRegister, setConfirmRegister] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
+  const { message: formStatus, announce } = useFormAnnouncement();
 
-  const items = hooks.status === 'success' ? hooks.data : null;
-  const loading = hooks.status === 'idle' || hooks.status === 'loading';
-  const displayError =
-    localError ?? (hooks.status === 'error' ? hooks.error : null);
+  const [testResults, setTestResults] = useState<
+    Record<
+      string,
+      { testing: boolean; statusCode?: number; ok?: boolean } | undefined
+    >
+  >({});
+
+  const sendTestDelivery = async (hookId: string) => {
+    setTestResults((prev) => ({ ...prev, [hookId]: { testing: true } }));
+    try {
+      const result = await apiPost<TestDeliveryResult>(
+        `/api/v1/webhooks/${hookId}/test`,
+        {}
+      );
+      setTestResults((prev) => ({
+        ...prev,
+        [hookId]: { testing: false, statusCode: result.statusCode, ok: result.ok },
+      }));
+    } catch {
+      setTestResults((prev) => ({
+        ...prev,
+        [hookId]: { testing: false, statusCode: 0, ok: false },
+      }));
+    }
+  };
+
+  const isLoading = hooks.status === 'loading';
+  const isError = hooks.status === 'error';
+  const isEmpty = hooks.status === 'success' && hooks.data.length === 0;
+  const hasData = hooks.status === 'success' && hooks.data.length > 0;
+  const displayError = localError;
+
+  // Memoize the loaded webhook items so unrelated state changes (typing in the
+  // URL field, toggling the confirm dialog, or localError updates) do not cause
+  // the ResourceList rows to re-render. `hooks.data` is stable-by-reference
+  // between refetches, so this memo only recomputes when the list actually
+  // changes.
+  const webhookData = hooks.status === 'success' ? hooks.data : null;
+  const webhookItems = useMemo(
+    () => webhookData ?? [],
+    [webhookData]
+  );
 
   const toggleEvent = (event: string) => {
     setSelectedEvents((current) =>
@@ -62,12 +103,15 @@ export default function WebhooksClient() {
     }
     setLocalError(null);
     setSubmitting(true);
+    announce('Registering webhook…');
     try {
       await apiPost('/api/v1/webhooks', { url, events: selectedEvents });
       setUrl('');
+      announce('Webhook registered.');
       await hooks.refetch();
     } catch (err) {
       setLocalError((err as Error).message);
+      announce('');
     } finally {
       setSubmitting(false);
     }
@@ -123,59 +167,123 @@ export default function WebhooksClient() {
           </p>
         )}
       </form>
-      <ResourceList
-        items={items}
-        loading={loading}
-        emptyMessage="No webhooks registered."
-        getKey={(hook) => hook.id}
-        caption="Registered webhooks"
-        tableHeaders={['URL', 'Events', 'Registered', 'Actions']}
-        renderRow={(hook, { requestRemove }) => (
-          <>
-            <div>
-              <p className="break-all text-sm font-medium">{hook.url}</p>
-              <p className="text-xs text-neutral-500">
-                Registered <TimeAgo ts={hook.createdAt} />
-              </p>
-              <div className="mt-1 flex flex-wrap gap-1">
-                {hook.events.map((event) => (
-                  <Badge key={event}>{event}</Badge>
-                ))}
+      {isLoading && (
+        <p className="text-sm text-neutral-600 dark:text-neutral-400">
+          Loading…
+        </p>
+      )}
+      {isError && !localError && (
+        <p role="alert" className="text-sm text-rose-600">
+          {hooks.error}
+        </p>
+      )}
+      {isEmpty && (
+        <EmptyState
+          title="No webhooks registered"
+          description="Register your first webhook endpoint using the form above."
+        />
+      )}
+      {hasData && (
+        <ResourceList
+          items={webhookItems}
+          loading={false}
+          emptyMessage="No webhooks registered."
+          getKey={(hook) => hook.id}
+          announcement={formStatus || undefined}
+          caption="Registered webhooks"
+          tableHeaders={['URL', 'Events', 'Registered', 'Actions']}
+          renderRow={(hook, { requestRemove }) => (
+            <>
+              <div>
+                <p className="break-all text-sm font-medium">{hook.url}</p>
+                <p className="text-xs text-neutral-500">
+                  Registered <TimeAgo ts={hook.createdAt} />
+                </p>
+                <div className="mt-1 flex flex-wrap gap-1">
+                  {hook.events.map((event) => (
+                    <Badge key={event}>{event}</Badge>
+                  ))}
+                </div>
+                {testResults[hook.id]?.statusCode !== undefined && (
+                  <p
+                    className={`mt-1 text-xs ${
+                      testResults[hook.id]?.ok
+                        ? 'text-green-600'
+                        : 'text-rose-600'
+                    }`}
+                  >
+                    Test delivery:{' '}
+                    {testResults[hook.id]?.ok ? 'OK' : 'Failed'} (
+                    {testResults[hook.id]?.statusCode})
+                  </p>
+                )}
               </div>
-            </div>
-            <IconButton label="Remove webhook" onClick={requestRemove}>
-              ×
-            </IconButton>
-          </>
-        )}
-        renderCells={(hook, { requestRemove }) => [
-          <span key="url" className="break-all text-sm font-medium">
-            {hook.url}
-          </span>,
-          <div key="events" className="flex flex-wrap gap-1">
-            {hook.events.map((event) => (
-              <Badge key={event}>{event}</Badge>
-            ))}
-          </div>,
-          <span key="registered" className="text-xs text-neutral-500">
-            <TimeAgo ts={hook.createdAt} />
-          </span>,
-          <IconButton
-            key="actions"
-            label="Remove webhook"
-            onClick={requestRemove}
-          >
-            ×
-          </IconButton>,
-        ]}
-        removeDialogTitle="Remove webhook?"
-        removeDialogConfirmLabel="Remove"
-        onRemove={(hook) =>
-          void apiDelete(`/api/v1/webhooks/${hook.id}`).then(() =>
-            hooks.refetch()
-          )
-        }
-      />
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={testResults[hook.id]?.testing}
+                  aria-busy={testResults[hook.id]?.testing}
+                  aria-label={`Test delivery for ${hook.url}`}
+                  onClick={() => void sendTestDelivery(hook.id)}
+                  className="rounded-full border border-neutral-300 px-3 py-1 text-xs hover:border-neutral-500 disabled:opacity-50 dark:border-neutral-700"
+                >
+                  {testResults[hook.id]?.testing ? 'Testing…' : 'Test'}
+                </button>
+                <IconButton label="Remove webhook" onClick={requestRemove}>
+                  ×
+                </IconButton>
+              </div>
+            </>
+          )}
+          renderCells={(hook, { requestRemove }) => [
+            <span key="url" className="break-all text-sm font-medium">
+              {hook.url}
+            </span>,
+            <div key="events" className="flex flex-wrap gap-1">
+              {hook.events.map((event) => (
+                <Badge key={event}>{event}</Badge>
+              ))}
+            </div>,
+            <span key="registered" className="text-xs text-neutral-500">
+              <TimeAgo ts={hook.createdAt} />
+            </span>,
+            <div key="actions" className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={testResults[hook.id]?.testing}
+                aria-busy={testResults[hook.id]?.testing}
+                aria-label={`Test delivery for ${hook.url}`}
+                onClick={() => void sendTestDelivery(hook.id)}
+                className="rounded-full border border-neutral-300 px-3 py-1 text-xs hover:border-neutral-500 disabled:opacity-50 dark:border-neutral-700"
+              >
+                {testResults[hook.id]?.testing ? 'Testing…' : 'Test'}
+              </button>
+              {testResults[hook.id]?.statusCode !== undefined && (
+                <span
+                  className={`text-xs ${
+                    testResults[hook.id]?.ok
+                      ? 'text-green-600'
+                      : 'text-rose-600'
+                  }`}
+                >
+                  {testResults[hook.id]?.ok ? 'OK' : 'Failed'} (
+                  {testResults[hook.id]?.statusCode})
+                </span>
+              )}
+              <IconButton label="Remove webhook" onClick={requestRemove}>
+                ×
+              </IconButton>
+            </div>,
+          ]}
+          removeDialogTitle="Remove webhook?"
+          removeDialogConfirmLabel="Remove"
+          onRemove={(hook) =>
+            void apiDelete(`/api/v1/webhooks/${hook.id}`).then(() =>
+              hooks.refetch()
+            )
+          }
+        />
+      )}
       <ConfirmDialog
         open={confirmRegister}
         tone="default"

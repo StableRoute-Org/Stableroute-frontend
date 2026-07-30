@@ -37,6 +37,7 @@ export default function RootLayout({
     <html lang="en" dir="ltr" suppressHydrationWarning>
       <head>
         <Script src="/theme-init.js" strategy="beforeInteractive" />
+        <Script src="/density-init.js" strategy="beforeInteractive" />
       </head>
       <body>
         <a

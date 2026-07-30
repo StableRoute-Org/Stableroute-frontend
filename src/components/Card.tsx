@@ -24,15 +24,15 @@ export function Card({
   return (
     <section
       data-card
-      className={`rounded-lg border border-neutral-200 p-4 dark:border-neutral-800 ${className}`}
+      className={`rounded-lg border border-neutral-200 p-4 compact:p-2 dark:border-neutral-800 ${className}`}
       {...rest}
     >
-      {title && <header className="mb-2 font-medium">{title}</header>}
+      {title && <header className="mb-2 font-medium compact:mb-1">{title}</header>}
       <div>{children}</div>
       {footer && (
         <footer
           data-card-footer
-          className="mt-3 border-t border-neutral-100 pt-3 text-xs text-neutral-500 dark:border-neutral-800"
+          className="mt-3 border-t border-neutral-100 pt-3 text-xs text-neutral-500 dark:border-neutral-800 compact:mt-1.5 compact:pt-1.5"
         >
           {footer}
         </footer>

@@ -145,6 +145,36 @@ describe('EventsPage', () => {
     });
   });
 
+  it('renders a Retry button on error and refetches when clicked', async () => {
+    global.fetch = jest
+      .fn()
+      .mockRejectedValueOnce(new Error('Failed to load'))
+      .mockResolvedValueOnce({
+        ok: true,
+        text: async () =>
+          JSON.stringify({
+            items: [
+              {
+                id: 'evt-recovered',
+                ts: 1_782_460_000_000,
+                type: 'pair.registered',
+                payload: {},
+              },
+            ],
+          }),
+      } as unknown as Response);
+
+    renderPage();
+
+    const retryButton = await screen.findByRole('button', { name: /retry/i });
+    expect(retryButton).toBeInTheDocument();
+
+    fireEvent.click(retryButton);
+
+    expect(await screen.findByText('pair.registered')).toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
   it('has exactly one aria-live=polite region in the page content', async () => {
     global.fetch = jest.fn().mockResolvedValueOnce({
       ok: true,
@@ -1047,7 +1077,7 @@ describe('EventsPage', () => {
       expect(screen.getAllByRole('listitem')).toHaveLength(1);
     });
 
-    it('hides the list when the filter matches nothing', async () => {
+    it('shows filter-empty state when the filter matches nothing', async () => {
       await renderWithEvents();
 
       fireEvent.change(screen.getByLabelText(/filter by event type/i), {
@@ -1055,9 +1085,39 @@ describe('EventsPage', () => {
       });
 
       expect(screen.queryByRole('listitem')).not.toBeInTheDocument();
+      expect(screen.getByText(/No events match the filter/i)).toBeInTheDocument();
       expect(
         screen.getByRole('button', { name: /clear filters/i })
       ).toBeEnabled();
+    });
+
+    it('keeps the filter-empty state announcement inside the polite live region', async () => {
+      await renderWithEvents();
+
+      fireEvent.change(screen.getByLabelText(/filter by event type/i), {
+        target: { value: 'no-such-type' },
+      });
+
+      const emptyMsg = screen.getByText(/No events match the filter/i);
+      const regions = document.querySelectorAll('main [aria-live=polite]');
+      expect(regions).toHaveLength(1);
+      expect(regions[0]).toContainElement(emptyMsg);
+    });
+
+    it('does not show filter-empty state when there are no events at all', async () => {
+      global.fetch = jest.fn().mockResolvedValueOnce({
+        ok: true,
+        text: async () => JSON.stringify({ items: [] }),
+      } as unknown as Response);
+
+      renderPage();
+      await waitFor(() => {
+        expect(screen.getByText(/No events yet/i)).toBeInTheDocument();
+      });
+
+      expect(
+        screen.queryByText(/No events match the filter/i)
+      ).not.toBeInTheDocument();
     });
 
     it('offers the filter controls before any events load', () => {

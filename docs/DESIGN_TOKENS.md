@@ -49,3 +49,15 @@ two token values above — there is no separate "system" CSS state to handle.
 | `danger`  | Destructive actions   |
 
 See `src/components/Badge.tsx` for class mappings.
+
+## Density preferences
+
+The `data-density` attribute on the root `<html>` element controls spacing
+density across the application.
+
+| Value         | Description                              |
+| ------------- | ---------------------------------------- |
+| `comfortable` | Default padding and spacing (generous)   |
+| `compact`     | Reduced padding and spacing for scanning |
+
+Controlled via `stableroute.density` in `localStorage`.

@@ -1,6 +1,7 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { act, render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { useRouter } from 'next/navigation';
 import { CommandPalette } from '../CommandPalette';
+import { ROUTES } from '@/lib/routes';
 
 jest.mock('next/navigation');
 
@@ -232,6 +233,27 @@ describe('CommandPalette', () => {
       });
     });
 
+    it('navigates to the href of the specifically highlighted route, not just the first one', async () => {
+      render(<CommandPalette />);
+      fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
+      await waitFor(() => {
+        expect(screen.getByRole('dialog')).toBeInTheDocument();
+      });
+      const input = screen.getByPlaceholderText('Jump to…');
+      // Highlight the second route rather than the first, so a pass here
+      // proves Enter follows the active selection instead of always
+      // pushing route index 0.
+      fireEvent.keyDown(input, { key: 'ArrowDown' });
+      fireEvent.keyDown(input, { key: 'ArrowDown' });
+
+      const secondRoute = Object.values(ROUTES)[1];
+      fireEvent.keyDown(input, { key: 'Enter' });
+
+      await waitFor(() => {
+        expect(mockPush).toHaveBeenCalledWith(secondRoute.href);
+      });
+    });
+
     it('does not navigate with Enter when no option selected', async () => {
       render(<CommandPalette />);
       fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
@@ -294,6 +316,33 @@ describe('CommandPalette', () => {
       });
     });
 
+    it('sources the unfiltered option list directly from ROUTES, then narrows to matching entries', async () => {
+      render(<CommandPalette />);
+      fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
+      await waitFor(() => {
+        expect(screen.getByRole('dialog')).toBeInTheDocument();
+      });
+
+      const allRouteTitles = Object.values(ROUTES).map((route) => route.title);
+      const unfilteredOptions = screen.getAllByRole('option');
+      expect(unfilteredOptions).toHaveLength(allRouteTitles.length);
+      expect(unfilteredOptions.map((option) => option.textContent)).toEqual(
+        allRouteTitles
+      );
+
+      const input = screen.getByPlaceholderText('Jump to…');
+      fireEvent.change(input, { target: { value: 'stat' } });
+
+      const expectedMatches = Object.values(ROUTES).filter((route) =>
+        route.title.toLowerCase().includes('stat')
+      );
+      const filteredOptions = screen.getAllByRole('option');
+      expect(filteredOptions).toHaveLength(expectedMatches.length);
+      expect(filteredOptions.map((option) => option.textContent)).toEqual(
+        expectedMatches.map((route) => route.title)
+      );
+    });
+
     it('is case-insensitive', async () => {
       render(<CommandPalette />);
       fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
@@ -335,7 +384,7 @@ describe('CommandPalette', () => {
       fireEvent.click(options[0]);
 
       await waitFor(() => {
-        expect(mockPush).toHaveBeenCalled();
+        expect(mockPush).toHaveBeenCalledWith(Object.values(ROUTES)[0].href);
         expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
       });
     });
@@ -457,6 +506,119 @@ describe('CommandPalette', () => {
     });
   });
 
+  describe('Live Region Announcements', () => {
+    beforeEach(() => {
+      jest.useFakeTimers();
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it('renders a polite live region with aria-atomic', async () => {
+      render(<CommandPalette />);
+      fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
+      await waitFor(() => {
+        expect(screen.getByRole('dialog')).toBeInTheDocument();
+      });
+
+      const liveRegion = screen.getByText('', { selector: '.sr-only' });
+      expect(liveRegion).toHaveAttribute('aria-live', 'polite');
+      expect(liveRegion).toHaveAttribute('aria-atomic', 'true');
+    });
+
+    it('announces result count when matches are found', async () => {
+      render(<CommandPalette />);
+      fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
+      await waitFor(() => {
+        expect(screen.getByRole('dialog')).toBeInTheDocument();
+      });
+
+      const input = screen.getByPlaceholderText('Jump to…');
+      await act(async () => {
+        fireEvent.change(input, { target: { value: 'pairs' } });
+        jest.advanceTimersByTime(300);
+      });
+
+      expect(screen.getByText(/1 result found/i)).toBeInTheDocument();
+    });
+
+    it('announces plural result count when multiple matches', async () => {
+      render(<CommandPalette />);
+      fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
+      await waitFor(() => {
+        expect(screen.getByRole('dialog')).toBeInTheDocument();
+      });
+
+      const input = screen.getByPlaceholderText('Jump to…');
+      await act(async () => {
+        fireEvent.change(input, { target: { value: 'a' } });
+        jest.advanceTimersByTime(300);
+      });
+
+      expect(screen.getByText(/results found/i)).toBeInTheDocument();
+    });
+
+    it('announces "No results found" when no matches', async () => {
+      render(<CommandPalette />);
+      fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
+      await waitFor(() => {
+        expect(screen.getByRole('dialog')).toBeInTheDocument();
+      });
+
+      const input = screen.getByPlaceholderText('Jump to…');
+      await act(async () => {
+        fireEvent.change(input, { target: { value: 'zzzzzzz' } });
+        jest.advanceTimersByTime(300);
+      });
+
+      expect(screen.getByText('No results found')).toBeInTheDocument();
+    });
+
+    it('does not announce when query is empty', () => {
+      render(<CommandPalette />);
+      fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
+
+      const liveRegion = screen.getByText('', { selector: '.sr-only' });
+      expect(liveRegion).toBeEmptyDOMElement();
+    });
+
+    it('debounces rapid updates and announces only the final message', async () => {
+      render(<CommandPalette />);
+      fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
+      await waitFor(() => {
+        expect(screen.getByRole('dialog')).toBeInTheDocument();
+      });
+
+      const input = screen.getByPlaceholderText('Jump to…');
+      await act(async () => {
+        fireEvent.change(input, { target: { value: 'x' } });
+        fireEvent.change(input, { target: { value: 'xy' } });
+        fireEvent.change(input, { target: { value: 'xyz' } });
+        jest.advanceTimersByTime(300);
+      });
+
+      expect(screen.getByText('No results found')).toBeInTheDocument();
+    });
+
+    it('clears announcement timer on unmount', async () => {
+      const clearTimeoutSpy = jest.spyOn(window, 'clearTimeout');
+      const { unmount } = render(<CommandPalette />);
+      fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
+      await waitFor(() => {
+        expect(screen.getByRole('dialog')).toBeInTheDocument();
+      });
+
+      const input = screen.getByPlaceholderText('Jump to…');
+      fireEvent.change(input, { target: { value: 'pairs' } });
+
+      // The debounce timeout is now scheduled; unmount should clear it
+      unmount();
+      expect(clearTimeoutSpy).toHaveBeenCalled();
+      clearTimeoutSpy.mockRestore();
+    });
+  });
+
   describe('Event Listener Cleanup', () => {
     it('removes event listener on unmount', () => {
       const removeSpy = jest.spyOn(window, 'removeEventListener');
@@ -466,4 +628,78 @@ describe('CommandPalette', () => {
       removeSpy.mockRestore();
     });
   });
+
+  describe('Search States & Accessibility', () => {
+    it('renders distinct loading state when loading prop is true', async () => {
+      render(<CommandPalette loading />);
+      fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
+      await waitFor(() => {
+        expect(screen.getByText('Searching routes…')).toBeInTheDocument();
+      });
+    });
+
+    it(
+      'renders distinct error state with role=alert when error prop is provided',
+      async () => {
+        render(<CommandPalette error="Failed to fetch route index" />);
+        fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
+        await waitFor(() => {
+          const alert = screen.getByRole('alert');
+          expect(alert).toBeInTheDocument();
+          expect(screen.getByText('Search failed')).toBeInTheDocument();
+          expect(
+            screen.getByText('Failed to fetch route index')
+          ).toBeInTheDocument();
+        });
+
+        const input = screen.getByRole('combobox');
+        expect(input).toHaveAttribute('aria-invalid', 'true');
+        expect(input).toHaveAttribute(
+          'aria-describedby',
+          'command-palette-error-message'
+        );
+      }
+    );
+
+    it(
+      'renders retry button and triggers onRetry callback when clicked',
+      async () => {
+        const handleRetry = jest.fn();
+        render(
+          <CommandPalette error="Network timeout" onRetry={handleRetry} />
+        );
+        fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
+        await waitFor(() => {
+          expect(screen.getByRole('alert')).toBeInTheDocument();
+        });
+
+        const retryBtn = screen.getByRole('button', { name: 'Retry' });
+        expect(retryBtn).toBeInTheDocument();
+
+        fireEvent.click(retryBtn);
+        expect(handleRetry).toHaveBeenCalledTimes(1);
+      }
+    );
+
+    it('announces search state changes via live region', async () => {
+      render(<CommandPalette />);
+      fireEvent.keyDown(window, { key: 'k', ctrlKey: true });
+      await waitFor(() => {
+        expect(screen.getByRole('dialog')).toBeInTheDocument();
+      });
+
+      const liveRegion = screen.getByRole('status');
+      expect(liveRegion).toHaveTextContent(/Found \d+ matching routes/);
+
+      const input = screen.getByRole('combobox');
+      fireEvent.change(input, { target: { value: 'nonexistentroute' } });
+
+      await waitFor(() => {
+        expect(liveRegion).toHaveTextContent(
+          'No routes found for "nonexistentroute".'
+        );
+      });
+    });
+  });
 });
+

@@ -1,15 +1,27 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
 import { rawStringSerializer, useLocalStorage } from '@/lib/useLocalStorage';
 import { effectiveTheme, isTheme, THEME_KEY, type Theme } from '@/lib/theme';
 
-export function ThemeToggle() {
+export function ThemeToggle({
+  onChange,
+}: {
+  onChange?: (theme: Theme) => void;
+}) {
   const [theme, setTheme] = useLocalStorage<Theme>(
     THEME_KEY,
     'system',
     isTheme,
     rawStringSerializer
+  );
+
+  const handleClick = useCallback(
+    (t: Theme) => {
+      setTheme(t);
+      onChange?.(t);
+    },
+    [setTheme, onChange]
   );
 
   useEffect(() => {
@@ -29,7 +41,7 @@ export function ThemeToggle() {
         <button
           key={t}
           type="button"
-          onClick={() => setTheme(t)}
+          onClick={() => handleClick(t)}
           aria-pressed={theme === t}
           className={`rounded-full px-3 py-1 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[var(--focus-ring-offset)] focus-visible:outline-[color:var(--focus-ring-color)] ${
             theme === t

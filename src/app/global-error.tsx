@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect } from 'react';
+import { memo, useEffect, useMemo } from 'react';
 import './globals.css';
 
-export function GlobalErrorContent({
+export const GlobalErrorContent = memo(function GlobalErrorContent({
   error,
   reset,
 }: {
@@ -16,6 +16,11 @@ export function GlobalErrorContent({
       error.digest ?? error.message
     );
   }, [error]);
+
+  const message = useMemo(
+    () => error.message || 'Unexpected error.',
+    [error.message]
+  );
 
   return (
     <div
@@ -33,7 +38,7 @@ export function GlobalErrorContent({
         role="alert"
         className="text-sm text-neutral-600 dark:text-neutral-400"
       >
-        <p>{error.message || 'Unexpected error.'}</p>
+        <p>{message}</p>
         {error.requestId && (
           <p className="mt-1 text-xs">
             Request ID: <code>{error.requestId}</code>
@@ -49,7 +54,7 @@ export function GlobalErrorContent({
       </button>
     </div>
   );
-}
+});
 
 export default function GlobalError({
   error,

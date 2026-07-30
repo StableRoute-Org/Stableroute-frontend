@@ -29,6 +29,9 @@ Callers branch on `result.ok`:
   `TextField` so it can still be copied by hand.
 - `events/Client.tsx` shows an error toast on failure and expands the event's
   payload `<pre>` block so it's visible and selectable.
+- `stats/Client.tsx` confirms a copied stats snapshot with a toast; on failure
+  it shows an error toast and renders the same snapshot in a labeled,
+  selectable, read-only text area.
 
 Never call `navigator.clipboard.writeText` directly in page/component code —
 route it through `writeToClipboard` so insecure-context and permission

@@ -56,6 +56,25 @@ Validation logic remains in their respective modules:
 
 These validators continue to use the centralized types, ensuring all validation is type-safe and consistent.
 
+## Request correlation (`X-Request-Id`)
+
+Every `apiFetch` call generates a collision-resistant id (`createRequestId()`,
+UUID v4 via `crypto.randomUUID` with a no-dependency fallback) and sends it as
+the `X-Request-Id` header. The same id is reused across retry attempts for one
+logical call so backend logs stay correlated.
+
+On failure, that id is attached to the thrown `Error` as `requestId` when the
+response body does not already include one (network/timeout errors always get
+the client-generated id). UI error surfaces already render `error.requestId`
+for support.
+
+```ts
+import { REQUEST_ID_HEADER, createRequestId } from '@/lib/apiClient';
+
+// Header name constant — do not hardcode in callers.
+REQUEST_ID_HEADER; // 'X-Request-Id'
+```
+
 ## Error shape
 
 Failed responses parse JSON bodies matching:
@@ -112,12 +131,14 @@ Output: "Unauthorized: [redacted]"
 The `requestId` field from the API response body is attached directly to the
 thrown `Error` **object** — not embedded in the message string — so support
 teams can still correlate failures without the message leaking sensitive data.
+When the body omits `requestId`, the client-generated id from `X-Request-Id`
+is used instead.
 
 ```ts
 // Accessing requestId in a catch block:
 const err = await apiFetch('/api/v1/quote?...').catch((e) => e);
 console.log(err.message); // sanitized, safe to show in a toast
-console.log(err.requestId); // original, safe for support correlation
+console.log(err.requestId); // server or client id, safe for support correlation
 ```
 
 ## Auth error handler
@@ -134,6 +155,24 @@ handler shows a toast and the request still rejects so callers can react.
 | `apiPost`   | POST   | JSON body             |
 | `apiPatch`  | PATCH  | JSON body             |
 | `apiDelete` | DELETE | 204 → `undefined`     |
+
+## Webhook Test Delivery
+
+The webhooks page adds a per-row "Test" button that sends a test delivery to a
+registered endpoint via `POST /api/v1/webhooks/:id/test`.
+
+The response shape is:
+
+```ts
+type TestDeliveryResult = {
+  statusCode: number;
+  ok: boolean;
+};
+```
+
+On success the row displays the status code inline (e.g. `OK (200)`). On failure
+it shows `Failed (<statusCode>)`. The control is disabled while a test is
+in-flight.
 
 ## Timeouts
 

@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect } from 'react';
+import { memo, useEffect, useMemo } from 'react';
 
-export default function ErrorBoundary({
+const ErrorBoundary = memo(function ErrorBoundary({
   error,
   reset,
 }: {
@@ -12,6 +12,11 @@ export default function ErrorBoundary({
   useEffect(() => {
     console.error('App error boundary caught:', error.digest ?? error.message);
   }, [error]);
+
+  const message = useMemo(
+    () => error.message || 'Unexpected error.',
+    [error.message]
+  );
 
   return (
     <main
@@ -24,7 +29,7 @@ export default function ErrorBoundary({
         role="alert"
         className="text-sm text-neutral-600 dark:text-neutral-400"
       >
-        <p>{error.message || 'Unexpected error.'}</p>
+        <p>{message}</p>
         {error.requestId && (
           <p className="mt-1 text-xs">
             Request ID: <code>{error.requestId}</code>
@@ -40,4 +45,6 @@ export default function ErrorBoundary({
       </button>
     </main>
   );
-}
+});
+
+export default ErrorBoundary;

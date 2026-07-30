@@ -268,6 +268,32 @@ describe('PairsPage', () => {
     );
   });
 
+  it('renders a Retry button on error and refetches when clicked', async () => {
+    global.fetch = jest
+      .fn()
+      .mockRejectedValueOnce(new Error('Network error'))
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        text: async () =>
+          JSON.stringify({
+            pairs: [{ source: 'USDC', destination: 'EURC' }],
+          }),
+      } as unknown as Response);
+
+    render(<PairsPage />);
+
+    const retryButton = await screen.findByRole('button', { name: /retry/i });
+    expect(retryButton).toBeInTheDocument();
+
+    fireEvent.click(retryButton);
+
+    await waitFor(() => {
+      expect(screen.getByText('1 pair')).toBeInTheDocument();
+    });
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
   it('has exactly one aria-live=polite region', async () => {
     mockFetch([]);
     render(<PairsPage />);

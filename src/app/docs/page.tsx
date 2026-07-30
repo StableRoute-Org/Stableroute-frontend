@@ -112,6 +112,154 @@ export default function DocsPage() {
           </div>
         ))}
       </dl>
+
+      <hr className="my-2 border-neutral-200 dark:border-neutral-800" />
+
+      <section aria-labelledby="search-component-heading">
+        <h2
+          id="search-component-heading"
+          className="text-2xl font-semibold tracking-tight"
+        >
+          Search component
+        </h2>
+        <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">
+          The <code className="rounded bg-neutral-100 px-1 py-0.5 font-mono text-xs dark:bg-neutral-800">CommandPalette</code>{' '}
+          component provides a keyboard-accessible command palette for quickly
+          navigating between application routes.
+        </p>
+
+        <div className="mt-4 space-y-4">
+          <div>
+            <h3 className="font-mono text-sm font-medium">Props</h3>
+            <p className="mt-1 text-sm text-neutral-700 dark:text-neutral-300">
+              The component accepts no props — it is self-contained and derives
+              its route data from{' '}
+              <code className="rounded bg-neutral-100 px-1 py-0.5 font-mono text-xs dark:bg-neutral-800">ROUTES</code>{' '}
+              in <code className="rounded bg-neutral-100 px-1 py-0.5 font-mono text-xs dark:bg-neutral-800">@/lib/routes</code>.
+            </p>
+          </div>
+
+          <div>
+            <h3 className="font-mono text-sm font-medium">Keyboard shortcuts</h3>
+            <ul className="mt-1 list-inside list-disc space-y-1 text-sm text-neutral-700 dark:text-neutral-300">
+              <li>
+                <kbd className="rounded border border-neutral-300 bg-neutral-50 px-1 py-0.5 font-mono text-xs dark:border-neutral-700 dark:bg-neutral-900">Ctrl+K</kbd>{' '}
+                / <kbd className="rounded border border-neutral-300 bg-neutral-50 px-1 py-0.5 font-mono text-xs dark:border-neutral-700 dark:bg-neutral-900">⌘K</kbd>{' '}
+                — Open / close the palette
+              </li>
+              <li>
+                <kbd className="rounded border border-neutral-300 bg-neutral-50 px-1 py-0.5 font-mono text-xs dark:border-neutral-700 dark:bg-neutral-900">Esc</kbd>{' '}
+                — Close the palette
+              </li>
+              <li>
+                <kbd className="rounded border border-neutral-300 bg-neutral-50 px-1 py-0.5 font-mono text-xs dark:border-neutral-700 dark:bg-neutral-900">↓ ↑</kbd>{' '}
+                — Navigate between matching routes
+              </li>
+              <li>
+                <kbd className="rounded border border-neutral-300 bg-neutral-50 px-1 py-0.5 font-mono text-xs dark:border-neutral-700 dark:bg-neutral-900">Enter</kbd>{' '}
+                — Navigate to the highlighted route
+              </li>
+            </ul>
+          </div>
+
+          <div>
+            <h3 className="font-mono text-sm font-medium">Filtering behavior</h3>
+            <p className="mt-1 text-sm text-neutral-700 dark:text-neutral-300">
+              Typing in the input filters routes case-insensitively by their{' '}
+              <code className="rounded bg-neutral-100 px-1 py-0.5 font-mono text-xs dark:bg-neutral-800">title</code>{' '}
+              field. When no routes match the query, the palette displays a
+              &ldquo;No routes found&rdquo; message. Changing the query resets
+              the active index to prevent stale selections.
+            </p>
+          </div>
+
+          <div>
+            <h3 className="font-mono text-sm font-medium">ARIA contract</h3>
+            <table className="mt-1 w-full text-left text-sm">
+              <caption className="sr-only">
+                ARIA roles and attributes for the CommandPalette
+              </caption>
+              <thead>
+                <tr className="border-b border-neutral-200 dark:border-neutral-800">
+                  <th scope="col" className="py-1 pr-4 font-medium">
+                    Element
+                  </th>
+                  <th scope="col" className="py-1 pr-4 font-medium">
+                    Role
+                  </th>
+                  <th scope="col" className="py-1 font-medium">
+                    Key attributes
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="text-neutral-700 dark:text-neutral-300">
+                <tr>
+                  <td className="py-1 pr-4">Overlay</td>
+                  <td className="py-1 pr-4">
+                    <code className="rounded bg-neutral-100 px-1 py-0.5 font-mono text-xs dark:bg-neutral-800">dialog</code>
+                  </td>
+                  <td className="py-1">
+                    <code className="rounded bg-neutral-100 px-1 py-0.5 font-mono text-xs dark:bg-neutral-800">aria-modal=&quot;true&quot;</code>,{' '}
+                    <code className="rounded bg-neutral-100 px-1 py-0.5 font-mono text-xs dark:bg-neutral-800">aria-label=&quot;Command palette&quot;</code>
+                  </td>
+                </tr>
+                <tr>
+                  <td className="py-1 pr-4">Input</td>
+                  <td className="py-1 pr-4">
+                    <code className="rounded bg-neutral-100 px-1 py-0.5 font-mono text-xs dark:bg-neutral-800">combobox</code>
+                  </td>
+                  <td className="py-1">
+                    <code className="rounded bg-neutral-100 px-1 py-0.5 font-mono text-xs dark:bg-neutral-800">aria-expanded</code>,{' '}
+                    <code className="rounded bg-neutral-100 px-1 py-0.5 font-mono text-xs dark:bg-neutral-800">aria-controls</code>,{' '}
+                    <code className="rounded bg-neutral-100 px-1 py-0.5 font-mono text-xs dark:bg-neutral-800">aria-activedescendant</code>,{' '}
+                    <code className="rounded bg-neutral-100 px-1 py-0.5 font-mono text-xs dark:bg-neutral-800">aria-label=&quot;Search routes&quot;</code>
+                  </td>
+                </tr>
+                <tr>
+                  <td className="py-1 pr-4">Results list</td>
+                  <td className="py-1 pr-4">
+                    <code className="rounded bg-neutral-100 px-1 py-0.5 font-mono text-xs dark:bg-neutral-800">listbox</code>
+                  </td>
+                  <td className="py-1">
+                    <code className="rounded bg-neutral-100 px-1 py-0.5 font-mono text-xs dark:bg-neutral-800">id=&quot;command-palette-listbox&quot;</code>
+                  </td>
+                </tr>
+                <tr>
+                  <td className="py-1 pr-4">Each result</td>
+                  <td className="py-1 pr-4">
+                    <code className="rounded bg-neutral-100 px-1 py-0.5 font-mono text-xs dark:bg-neutral-800">option</code>
+                  </td>
+                  <td className="py-1">
+                    <code className="rounded bg-neutral-100 px-1 py-0.5 font-mono text-xs dark:bg-neutral-800">aria-selected</code>,{' '}
+                    <code className="rounded bg-neutral-100 px-1 py-0.5 font-mono text-xs dark:bg-neutral-800">id=&quot;command-palette-option-$&#123;href&#125;&quot;</code>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div>
+            <h3 className="font-mono text-sm font-medium">Usage example</h3>
+            <div className="mt-1 rounded-md bg-neutral-50 p-4 text-sm dark:bg-neutral-950">
+              <pre className="overflow-x-auto font-mono text-xs text-neutral-700 dark:text-neutral-300">
+{`import { CommandPalette } from '@/components/CommandPalette';
+
+// Render in the root layout — CommandPalette takes zero props.
+// It registers a global keydown listener and manages its own
+// open/close state internally.
+export default function RootLayout({ children }) {
+  return (
+    <>
+      <CommandPalette />
+      {children}
+    </>
+  );
+}`}
+              </pre>
+            </div>
+          </div>
+        </div>
+      </section>
     </main>
   );
 }

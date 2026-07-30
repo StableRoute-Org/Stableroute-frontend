@@ -248,9 +248,18 @@ export default function EventsClient() {
         </div>
       </fieldset>
       {error && (
-        <p role="alert" className="text-sm text-rose-600">
-          {error}
-        </p>
+        <div role="alert" className="flex flex-wrap items-center gap-3 rounded-lg border border-rose-200 bg-rose-50 p-4 dark:border-rose-900 dark:bg-rose-950">
+          <p className="text-sm text-rose-600 dark:text-rose-400">
+            {error}
+          </p>
+          <button
+            type="button"
+            onClick={refetchEvents}
+            className="rounded-full bg-rose-600 px-4 py-1.5 text-xs font-medium text-white hover:bg-rose-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500"
+          >
+            Retry
+          </button>
+        </div>
       )}
       <section
         aria-labelledby="events-log-heading"
@@ -271,6 +280,15 @@ export default function EventsClient() {
             description="Router events will appear here once activity starts."
           />
         )}
+        {filteredItems &&
+          filteredItems.length === 0 &&
+          items &&
+          items.length > 0 && (
+            <EmptyState
+              title="No events match the filter"
+              description="Try a different event type or clear the filter to see all events."
+            />
+          )}
         {filteredItems && filteredItems.length > 0 && (
           <>
             <p className="text-sm text-neutral-600 dark:text-neutral-400">
@@ -290,7 +308,7 @@ export default function EventsClient() {
                 return (
                   <li
                     key={event.id}
-                    className="rounded border border-neutral-200 p-3 font-mono text-xs dark:border-neutral-800"
+                    className="rounded border border-neutral-200 p-3 compact:p-1.5 font-mono text-xs dark:border-neutral-800"
                   >
                     <div className="flex flex-wrap items-center justify-between gap-2 text-neutral-500">
                       <span>{event.type}</span>

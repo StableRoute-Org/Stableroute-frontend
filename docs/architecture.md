@@ -124,7 +124,7 @@ incrementing `requestIdRef`.
 | 3    | Request                    | Calls `apiFetch<Quote>(path)` with query params `?source_asset=...&dest_asset=...&amount=...`. Aborts previous in-flight request via `AbortController`. |
 | 4    | `src/lib/apiClient.ts`     | Sends GET, parses `Quote` response.                                                                                                                     |
 | 5    | Display                    | Formats amount via `formatQuoteAmountDisplay` / `formatQuoteRateDisplay` (both from `src/lib/format.ts`).                                               |
-| 6    | History                    | Inputs persisted to `localStorage` via `useLocalStorage` (`src/lib/useLocalStorage.ts`).                                                                |
+| 6    | History                    | Inputs persisted to `localStorage` via `useLocalStorage` (`src/lib/useLocalStorage.ts`) and rendered via `QuoteHistory` (see [`docs/history.md`](history.md)). |
 
 ### Events
 

@@ -31,15 +31,18 @@ display string:
 
 ## Serialisation
 
-Two pure, DOM-free functions turn a snapshot into text:
+Three pure, DOM-free functions turn a snapshot into text:
 
 - `statsSnapshotToJson(snapshot)` — `JSON.stringify(snapshot, null, 2)`.
 - `statsSnapshotToCsv(snapshot)` — a `label,value,display,capturedAt` header
   followed by one row per metric. Fields containing a comma, quote, or
   newline (e.g. `formatNumber`'s thousands separators) are quoted and
   internal quotes doubled, per standard CSV escaping.
+- `statsSnapshotToText(snapshot)` — a concise, human-readable summary using
+  the same formatted values displayed in the metric tiles, plus the capture
+  timestamp.
 
-Both are exported from `src/app/stats/Client.tsx` and can be unit tested
+All three are exported from `src/app/stats/Client.tsx` and can be unit tested
 without touching the DOM.
 
 ## Download
@@ -60,6 +63,14 @@ filesystems.
 
 ## UI
 
-Once stats load successfully, the Stats page renders **Download JSON** and
-**Download CSV** buttons next to the metric tiles. They're hidden while
-loading or on error, since there's no snapshot to export yet.
+Once a non-empty stats response loads successfully, the Stats page renders
+**Copy stats snapshot**, **Download JSON**, and **Download CSV** controls next
+to the metric tiles. They're hidden while loading, on error, or when the page
+shows its empty state, since there are no displayed metrics to copy or export.
+
+The copy action uses the guarded clipboard helper documented in
+`docs/clipboard.md`. A successful write produces a confirmation toast. If the
+Clipboard API is unavailable or rejects access, the page instead produces an
+error toast and shows the same snapshot in a labeled, read-only text area that
+selects its contents on focus for manual copying. While a write is pending,
+the button is disabled so repeated activation cannot enqueue duplicate writes.

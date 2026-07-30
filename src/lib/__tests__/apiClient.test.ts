@@ -1,6 +1,9 @@
 import {
   apiFetch,
+  createRequestId,
   registerAuthErrorHandler,
+  registerConnectionHandler,
+  REQUEST_ID_HEADER,
   sanitizeErrorMessage,
 } from '../apiClient';
 
@@ -595,7 +598,7 @@ describe('error body field coverage', () => {
     expect(err.error).toBeUndefined();
   });
 
-  it('does not attach requestId when the body omits it', async () => {
+  it('surfaces the client-generated requestId when the body omits it', async () => {
     mockResponse(
       400,
       JSON.stringify({ error: 'bad_request', message: 'Missing field' })
@@ -603,7 +606,13 @@ describe('error body field coverage', () => {
     const err = (await apiFetch('/test').catch((e: unknown) => e)) as Error & {
       requestId?: string;
     };
-    expect(err.requestId).toBeUndefined();
+    const sentId = (
+      (global.fetch as jest.Mock).mock.calls[0][1] as { headers: HeadersInit }
+    ).headers as Record<string, string>;
+    expect(err.requestId).toBe(sentId[REQUEST_ID_HEADER]);
+    expect(err.requestId).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+    );
   });
 
   it('attaches both error code and requestId when both are present', async () => {
@@ -800,5 +809,343 @@ describe('sensitive URL parameter redaction', () => {
     expect(err.message).not.toContain('api_key');
     expect(err.message).not.toContain('supersecretkey');
     jest.useRealTimers();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// X-Request-Id — per-request correlation header
+// ---------------------------------------------------------------------------
+
+function headersOf(callIndex = 0): Record<string, string> {
+  const init = (global.fetch as jest.Mock).mock.calls[callIndex][1] as {
+    headers: Record<string, string>;
+  };
+  return init.headers;
+}
+
+describe('createRequestId', () => {
+  it('returns a UUID v4 string via crypto.randomUUID when available', () => {
+    // jsdom may omit randomUUID; install a temporary implementation to hit
+    // the preferred path used in modern browsers and Node.
+    const mockId = '123e4567-e89b-42d3-a456-426614174000';
+    const randomUUID = jest.fn(() => mockId);
+    Object.defineProperty(crypto, 'randomUUID', {
+      configurable: true,
+      value: randomUUID,
+    });
+    try {
+      expect(createRequestId()).toBe(mockId);
+      expect(randomUUID).toHaveBeenCalledTimes(1);
+    } finally {
+      Object.defineProperty(crypto, 'randomUUID', {
+        configurable: true,
+        value: undefined,
+      });
+    }
+  });
+
+  it('returns distinct ids across many invocations', () => {
+    const ids = new Set(Array.from({ length: 200 }, () => createRequestId()));
+    expect(ids.size).toBe(200);
+  });
+
+  it('falls back to getRandomValues when crypto.randomUUID is unavailable', () => {
+    const original = crypto.randomUUID;
+    Object.defineProperty(crypto, 'randomUUID', {
+      configurable: true,
+      value: undefined,
+    });
+    try {
+      const id = createRequestId();
+      expect(id).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+      );
+    } finally {
+      Object.defineProperty(crypto, 'randomUUID', {
+        configurable: true,
+        value: original,
+      });
+    }
+  });
+
+  it('falls back to Math.random when getRandomValues is also unavailable', () => {
+    const originalUUID = crypto.randomUUID;
+    const originalGRV = crypto.getRandomValues;
+    Object.defineProperty(crypto, 'randomUUID', {
+      configurable: true,
+      value: undefined,
+    });
+    Object.defineProperty(crypto, 'getRandomValues', {
+      configurable: true,
+      value: undefined,
+    });
+    try {
+      const id = createRequestId();
+      expect(id).toMatch(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+      );
+    } finally {
+      Object.defineProperty(crypto, 'randomUUID', {
+        configurable: true,
+        value: originalUUID,
+      });
+      Object.defineProperty(crypto, 'getRandomValues', {
+        configurable: true,
+        value: originalGRV,
+      });
+    }
+  });
+});
+
+describe('registerConnectionHandler', () => {
+  it('notifies onSuccess for completed HTTP responses and clears on unregister', async () => {
+    mockResponse(200, JSON.stringify({ ok: true }));
+    const onSuccess = jest.fn();
+    const onError = jest.fn();
+    const unregister = registerConnectionHandler({ onSuccess, onError });
+
+    await apiFetch('/ok');
+    expect(onSuccess).toHaveBeenCalled();
+    expect(onError).not.toHaveBeenCalled();
+
+    unregister();
+    onSuccess.mockClear();
+    mockResponse(200, JSON.stringify({ ok: true }));
+    await apiFetch('/ok-again');
+    expect(onSuccess).not.toHaveBeenCalled();
+  });
+
+  it('notifies onError for network failures', async () => {
+    global.fetch = jest
+      .fn()
+      .mockRejectedValue(new TypeError('Failed to fetch'));
+    const onSuccess = jest.fn();
+    const onError = jest.fn();
+    const unregister = registerConnectionHandler({ onSuccess, onError });
+
+    await apiFetch('/down').catch(() => undefined);
+    expect(onError).toHaveBeenCalled();
+    expect(onSuccess).not.toHaveBeenCalled();
+    unregister();
+  });
+
+  it('does not clear a newer handler when an older unregister runs', async () => {
+    mockResponse(200, JSON.stringify({ ok: true }));
+    const first = { onSuccess: jest.fn(), onError: jest.fn() };
+    const second = { onSuccess: jest.fn(), onError: jest.fn() };
+    const unregisterFirst = registerConnectionHandler(first);
+    const unregisterSecond = registerConnectionHandler(second);
+
+    unregisterFirst(); // must not clear `second`
+    await apiFetch('/ok');
+    expect(second.onSuccess).toHaveBeenCalled();
+    expect(first.onSuccess).not.toHaveBeenCalled();
+    unregisterSecond();
+  });
+});
+
+describe('X-Request-Id header', () => {
+  it('sends X-Request-Id on every successful request', async () => {
+    mockResponse(200, JSON.stringify({ ok: true }));
+    await apiFetch('/test');
+    const headers = headersOf();
+    expect(headers[REQUEST_ID_HEADER]).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+    );
+  });
+
+  it('sends X-Request-Id on POST helper calls', async () => {
+    mockResponse(200, JSON.stringify({ id: 1 }));
+    const { apiPost } = await import('../apiClient');
+    await apiPost('/api/v1/pairs', { source: 'USDC' });
+    expect(headersOf()[REQUEST_ID_HEADER]).toBeDefined();
+  });
+
+  it('does not let caller headers omit X-Request-Id', async () => {
+    mockResponse(200, JSON.stringify({ ok: true }));
+    await apiFetch('/test', {
+      headers: {
+        Authorization: 'Bearer tok',
+        'Content-Type': 'application/json',
+      },
+    });
+    const headers = headersOf();
+    expect(headers.Authorization).toBe('Bearer tok');
+    expect(headers[REQUEST_ID_HEADER]).toBeDefined();
+  });
+
+  it('surfaces the sent request id on HTTP error when body omits requestId', async () => {
+    mockResponse(500, '');
+    const err = (await apiFetch('/test').catch((e: unknown) => e)) as Error & {
+      requestId?: string;
+    };
+    expect(err.requestId).toBe(headersOf()[REQUEST_ID_HEADER]);
+  });
+
+  it('surfaces the sent request id on non-JSON error bodies', async () => {
+    mockResponse(503, 'Service Unavailable', 'text/plain');
+    const err = (await apiFetch('/test').catch((e: unknown) => e)) as Error & {
+      requestId?: string;
+    };
+    expect(err.message).toBe('HTTP 503');
+    expect(err.requestId).toBe(headersOf()[REQUEST_ID_HEADER]);
+  });
+
+  it('prefers the server requestId when the error body includes one', async () => {
+    mockResponse(
+      400,
+      JSON.stringify({
+        error: 'bad_request',
+        message: 'Invalid input',
+        requestId: 'server-req-99',
+      })
+    );
+    const err = (await apiFetch('/test').catch((e: unknown) => e)) as Error & {
+      requestId?: string;
+    };
+    expect(err.requestId).toBe('server-req-99');
+    // Client still sent its own header for backend log correlation
+    expect(headersOf()[REQUEST_ID_HEADER]).toBeDefined();
+    expect(headersOf()[REQUEST_ID_HEADER]).not.toBe('server-req-99');
+  });
+
+  it('surfaces requestId on network failures', async () => {
+    global.fetch = jest
+      .fn()
+      .mockRejectedValue(new TypeError('Failed to fetch'));
+    const err = (await apiFetch('/test').catch((e: unknown) => e)) as Error & {
+      requestId?: string;
+    };
+    expect(err.message).toBe('Network request failed');
+    expect(err.requestId).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+    );
+  });
+
+  it('surfaces requestId on timeout errors', async () => {
+    jest.useFakeTimers();
+    global.fetch = jest.fn().mockImplementation(
+      (_url: string, init: RequestInit) =>
+        new Promise((_resolve, reject) => {
+          (init.signal as AbortSignal).addEventListener('abort', () => {
+            reject(
+              new DOMException('The operation was aborted.', 'AbortError')
+            );
+          });
+        })
+    );
+    const errorPromise = apiFetch('/slow', {}, { timeoutMs: 100 }).catch(
+      (e: unknown) => e
+    );
+    jest.advanceTimersByTime(200);
+    const err = (await errorPromise) as Error & { requestId?: string };
+    expect(err.message).toBe('Request timed out');
+    expect(err.requestId).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+    );
+    jest.useRealTimers();
+  });
+
+  it('reuses the same request id across retry attempts', async () => {
+    jest.useFakeTimers();
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce({
+        status: 503,
+        ok: false,
+        text: () => Promise.resolve(''),
+      } as unknown as Response)
+      .mockResolvedValueOnce({
+        status: 200,
+        ok: true,
+        text: () => Promise.resolve(JSON.stringify({ ok: true })),
+      } as unknown as Response);
+    global.fetch = fetchMock as unknown as typeof global.fetch;
+
+    const promise = apiFetch(
+      '/retry-me',
+      {},
+      { retry: { maxAttempts: 2, baseDelayMs: 50 } }
+    );
+    await jest.advanceTimersByTimeAsync(50);
+    await expect(promise).resolves.toEqual({ ok: true });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    const firstId = headersOf(0)[REQUEST_ID_HEADER];
+    const secondId = headersOf(1)[REQUEST_ID_HEADER];
+    expect(firstId).toBeDefined();
+    expect(secondId).toBe(firstId);
+    jest.useRealTimers();
+  });
+
+  it('gives concurrent requests distinct ids', async () => {
+    global.fetch = jest.fn().mockImplementation(() =>
+      Promise.resolve({
+        status: 200,
+        ok: true,
+        text: () => Promise.resolve(JSON.stringify({ ok: true })),
+      } as unknown as Response)
+    );
+
+    await Promise.all([
+      apiFetch('/a'),
+      apiFetch('/b'),
+      apiFetch('/c'),
+      apiFetch('/d'),
+      apiFetch('/e'),
+    ]);
+
+    const ids = (global.fetch as jest.Mock).mock.calls.map((call) => {
+      const headers = call[1].headers as Record<string, string>;
+      return headers[REQUEST_ID_HEADER];
+    });
+    expect(ids).toHaveLength(5);
+    expect(new Set(ids).size).toBe(5);
+  });
+
+  it('throws ValidationError when validate rejects the body', async () => {
+    mockResponse(200, JSON.stringify({ unexpected: true }));
+    await expect(
+      apiFetch('/test', {}, { validate: (v): v is { ok: true } => false })
+    ).rejects.toThrow('Response failed runtime validation');
+  });
+
+  it('propagates caller abort without treating it as a timeout', async () => {
+    const external = new AbortController();
+    global.fetch = jest.fn().mockImplementation(
+      (_url: string, init: RequestInit) =>
+        new Promise((_resolve, reject) => {
+          (init.signal as AbortSignal).addEventListener('abort', () => {
+            reject(
+              new DOMException('The operation was aborted.', 'AbortError')
+            );
+          });
+        })
+    );
+    const pending = apiFetch('/cancel-me', { signal: external.signal }).catch(
+      (e: unknown) => e
+    );
+    external.abort();
+    const err = (await pending) as DOMException;
+    expect(err.name).toBe('AbortError');
+  });
+
+  it('aborts immediately when the caller signal is already aborted', async () => {
+    const external = new AbortController();
+    external.abort();
+    global.fetch = jest.fn().mockImplementation(
+      (_url: string, init: RequestInit) =>
+        new Promise((_resolve, reject) => {
+          if ((init.signal as AbortSignal).aborted) {
+            reject(
+              new DOMException('The operation was aborted.', 'AbortError')
+            );
+            return;
+          }
+        })
+    );
+    const err = (await apiFetch('/already-aborted', {
+      signal: external.signal,
+    }).catch((e: unknown) => e)) as DOMException;
+    expect(err.name).toBe('AbortError');
   });
 });

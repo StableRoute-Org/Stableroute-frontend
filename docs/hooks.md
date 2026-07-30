@@ -82,6 +82,35 @@ return (
 
 ---
 
+## `useBackoffInterval(status, callback, options?)`
+
+Schedules one callback after a request reaches either `"success"` or `"error"`.
+It does not schedule work while a request is `"idle"` or `"loading"`, which
+prevents overlapping polls.
+
+### Backoff Semantics
+
+- A successful request schedules the next poll at `baseMs` and resets all prior failures.
+- Each consecutive error doubles the delay, capped at `maxMs`.
+- With the stats defaults, delays progress through 10, 20, 40, and 60 seconds after errors; the first success restores the 5-second cadence.
+- Changing state or unmounting cancels the pending timeout.
+
+### Injectable Timing
+
+Tests can provide `schedule` and `cancel` functions through `options` to inspect
+delays and trigger callbacks without waiting for real timers:
+
+```tsx
+useBackoffInterval(status, refetch, {
+  baseMs: 5_000,
+  maxMs: 60_000,
+  schedule,
+  cancel,
+});
+```
+
+---
+
 ## When to use `apiFetch` directly
 
 Use `apiFetch` (or `apiGet`, `apiPost`, etc.) directly when:

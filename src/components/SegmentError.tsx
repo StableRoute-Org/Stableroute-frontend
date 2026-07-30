@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { memo, useEffect, useMemo } from 'react';
 
 export type SegmentErrorProps = {
   /** Human-readable segment name (e.g. "quote"); used in the heading and log line. */
@@ -18,8 +18,14 @@ export type SegmentErrorProps = {
  * header, navigation, footer — stays mounted. The "Try again" button calls
  * the boundary's `reset()` so recovery re-renders just the segment instead
  * of reloading the page.
+ *
+ * Wrapped with `React.memo` to avoid re-renders on unrelated state changes.
  */
-export function SegmentError({ segment, error, reset }: SegmentErrorProps) {
+export const SegmentError = memo(function SegmentError({
+  segment,
+  error,
+  reset,
+}: SegmentErrorProps) {
   useEffect(() => {
     console.error(
       `${segment} segment error boundary caught:`,
@@ -27,20 +33,25 @@ export function SegmentError({ segment, error, reset }: SegmentErrorProps) {
     );
   }, [segment, error]);
 
+  const heading = useMemo(() => `The ${segment} page hit an error.`, [segment]);
+
+  const message = useMemo(
+    () => error.message || 'Unexpected error.',
+    [error.message]
+  );
+
   return (
     <main
       id="main-content"
       tabIndex={-1}
       className="mx-auto flex min-h-[60vh] max-w-xl flex-col items-center justify-center gap-4 p-8 text-center focus:outline-none"
     >
-      <h1 className="text-2xl font-semibold">
-        The {segment} page hit an error.
-      </h1>
+      <h1 className="text-2xl font-semibold">{heading}</h1>
       <div
         role="alert"
         className="text-sm text-neutral-600 dark:text-neutral-400"
       >
-        <p>{error.message || 'Unexpected error.'}</p>
+        <p>{message}</p>
         {error.requestId && (
           <p className="mt-1 text-xs">
             Request ID: <code>{error.requestId}</code>
@@ -56,4 +67,4 @@ export function SegmentError({ segment, error, reset }: SegmentErrorProps) {
       </button>
     </main>
   );
-}
+});

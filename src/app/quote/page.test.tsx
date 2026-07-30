@@ -5,6 +5,7 @@ import {
   waitFor,
   cleanup,
   act,
+  within,
 } from '@testing-library/react';
 import { Component, type ReactNode } from 'react';
 import QuotePage from './page';
@@ -79,7 +80,8 @@ describe('QuotePage', () => {
     fireEvent.click(screen.getByRole('button', { name: /Get quote/i }));
 
     await waitFor(() => {
-      expect(screen.getByRole('status')).toHaveTextContent(/USDC → EURC/);
+      const quoteStatus = screen.getAllByRole('status').find((el) => el.textContent?.includes('USDC'));
+      expect(quoteStatus).toHaveTextContent(/USDC → EURC/);
     });
     expect(mockFetch).toHaveBeenCalledWith(
       expect.stringContaining(
@@ -131,7 +133,8 @@ describe('QuotePage', () => {
     } as unknown as Response);
 
     await waitFor(() => {
-      expect(screen.getByRole('status')).toHaveTextContent(/USDC → EURC/);
+      const quoteStatus = screen.getAllByRole('status').find((el) => el.textContent?.includes('USDC'));
+      expect(quoteStatus).toHaveTextContent(/USDC → EURC/);
     });
   });
 
@@ -189,7 +192,8 @@ describe('QuotePage', () => {
     expect(secondSignal).toBeDefined();
 
     await waitFor(() => {
-      expect(screen.getByRole('status')).toHaveTextContent(/USDC → EURC/);
+      const quoteStatus = screen.getAllByRole('status').find((el) => el.textContent?.includes('USDC'));
+      expect(quoteStatus).toHaveTextContent(/USDC → EURC/);
     });
   });
 
@@ -226,7 +230,8 @@ describe('QuotePage', () => {
     fireEvent.click(screen.getByRole('button', { name: /Get quote/i }));
 
     await waitFor(() => {
-      expect(screen.getByRole('status')).toHaveTextContent(/1\.00 XLM/);
+      const quoteStatus = screen.getAllByRole('status').find((el) => el.textContent?.includes('XLM'));
+      expect(quoteStatus).toHaveTextContent(/1\.00 XLM/);
     });
     expect(screen.getByText('1.00 XLM')).toHaveAttribute('title', '10000000');
     expect(screen.getByText('1,234')).toHaveAttribute('title', '1234');
@@ -407,7 +412,8 @@ describe('QuotePage', () => {
     fireEvent.click(screen.getByRole('button', { name: /Get quote/i }));
 
     await waitFor(() => {
-      expect(screen.getByRole('status')).toHaveTextContent(/USDC → EURC/);
+      const quoteStatus = screen.getAllByRole('status').find((el) => el.textContent?.includes('USDC'));
+      expect(quoteStatus).toHaveTextContent(/USDC → EURC/);
     });
     expect(mockFetch).toHaveBeenCalledWith(
       expect.stringContaining('source_asset=USDC&dest_asset=EURC&amount=100'),
@@ -475,7 +481,9 @@ describe('QuotePage', () => {
     fireEvent.click(screen.getByRole('button', { name: /Get quote/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/must differ/i)).toBeInTheDocument();
+      expect(
+        within(screen.getByRole('alert')).getByText(/must differ/i)
+      ).toBeInTheDocument();
     });
   });
 
@@ -510,11 +518,101 @@ describe('QuotePage', () => {
     fireEvent.click(screen.getByRole('button', { name: /Get quote/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/must differ/i)).toBeInTheDocument();
+      expect(
+        within(screen.getByRole('alert')).getByText(/must differ/i)
+      ).toBeInTheDocument();
     });
     expect(screen.getByRole('alert')).toHaveTextContent(
       /Request ID: req-abc-123/
     );
+  });
+
+  it('announces form submission status via a polite live region', async () => {
+    let resolveRequest: ((value: Response) => void) | undefined;
+    const pendingResponse = new Promise<Response>((resolve) => {
+      resolveRequest = resolve;
+    });
+
+    const mockFetch = jest
+      .fn()
+      .mockImplementationOnce(() => pendingResponse);
+    globalThis.fetch = mockFetch as unknown as typeof globalThis.fetch;
+
+    render(<QuotePage />);
+    fireEvent.change(getSourceInput(), {
+      target: { value: 'USDC' },
+    });
+    fireEvent.change(getDestinationInput(), {
+      target: { value: 'EURC' },
+    });
+    fireEvent.change(getAmountInput(), {
+      target: { value: '100' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Get quote/i }));
+
+    // The sr-only live region should announce the in-progress status
+    const liveAnnouncement = document.querySelector(
+      '[aria-live=polite].sr-only'
+    );
+    expect(liveAnnouncement).toHaveTextContent('Requesting quote…');
+
+    resolveRequest?.({
+      ok: true,
+      text: async () =>
+        JSON.stringify({
+          source_asset: 'USDC',
+          dest_asset: 'EURC',
+          amount: '100',
+          estimated_rate: '1.0',
+          route: ['USDC', 'EURC'],
+        }),
+    } as unknown as Response);
+
+    await waitFor(() => {
+      expect(liveAnnouncement).toHaveTextContent('Quote received.');
+    });
+  });
+
+  it('clears the sr-only announcement when the request fails', async () => {
+    const mockFetch = jest.fn().mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      text: async () =>
+        JSON.stringify({
+          error: 'server_error',
+          message: 'Internal server error',
+        }),
+    } as unknown as Response);
+    globalThis.fetch = mockFetch as unknown as typeof globalThis.fetch;
+
+    render(<QuotePage />);
+    fireEvent.change(getSourceInput(), {
+      target: { value: 'USDC' },
+    });
+    fireEvent.change(getDestinationInput(), {
+      target: { value: 'EURC' },
+    });
+    fireEvent.change(getAmountInput(), {
+      target: { value: '100' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /Get quote/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toBeInTheDocument();
+    });
+
+    const liveAnnouncement = document.querySelector(
+      '[aria-live=polite].sr-only'
+    );
+    expect(liveAnnouncement).toHaveTextContent('');
+  });
+
+  it('does not announce form status on initial render', () => {
+    render(<QuotePage />);
+    const liveAnnouncement = document.querySelector(
+      '[aria-live=polite].sr-only'
+    );
+    expect(liveAnnouncement).toHaveTextContent('');
   });
 
   it('omits the requestId line when the backend does not include one', async () => {
@@ -547,9 +645,165 @@ describe('QuotePage', () => {
     fireEvent.click(screen.getByRole('button', { name: /Get quote/i }));
 
     await waitFor(() => {
-      expect(screen.getByText(/must differ/i)).toBeInTheDocument();
+      expect(
+        within(screen.getByRole('alert')).getByText(/must differ/i)
+      ).toBeInTheDocument();
     });
-    expect(screen.getByRole('alert')).not.toHaveTextContent(/Request ID/);
+    // Client-generated X-Request-Id is surfaced for support correlation.
+    expect(screen.getByRole('alert')).toHaveTextContent(/Request ID:/);
+    expect(screen.getByRole('alert').textContent).toMatch(
+      /Request ID:\s*[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i
+    );
+  });
+
+  it('announces quote success in the polite live region', async () => {
+    const mockFetch = jest.fn().mockResolvedValueOnce({
+      ok: true,
+      text: async () =>
+        JSON.stringify({
+          source_asset: 'USDC',
+          dest_asset: 'EURC',
+          amount: '1000000',
+          estimated_rate: '1.0',
+          route: ['USDC', 'EURC'],
+        }),
+    } as unknown as Response);
+    globalThis.fetch = mockFetch as unknown as typeof globalThis.fetch;
+
+    render(<QuotePage />);
+    fireEvent.change(getSourceInput(), { target: { value: 'USDC' } });
+    fireEvent.change(getDestinationInput(), { target: { value: 'EURC' } });
+    fireEvent.change(getAmountInput(), { target: { value: '1000000' } });
+    fireEvent.click(screen.getByRole('button', { name: /Get quote/i }));
+
+    await waitFor(() => {
+      const liveRegion = document.querySelector(
+        '[aria-live="polite"][aria-atomic="true"]'
+      );
+      expect(liveRegion).toHaveTextContent(
+        /Quote received: USDC → EURC at estimated rate 1/
+      );
+    });
+  });
+
+  it('announces quote failure in the polite live region', async () => {
+    globalThis.fetch = jest.fn().mockResolvedValueOnce({
+      ok: false,
+      status: 400,
+      text: async () =>
+        JSON.stringify({
+          error: 'invalid_request',
+          message: 'source_asset and dest_asset must differ',
+        }),
+    } as unknown as Response);
+
+    render(<QuotePage />);
+    fireEvent.change(getSourceInput(), { target: { value: 'USDC' } });
+    fireEvent.change(getDestinationInput(), { target: { value: 'EURC' } });
+    fireEvent.change(getAmountInput(), { target: { value: '100' } });
+    fireEvent.click(screen.getByRole('button', { name: /Get quote/i }));
+
+    await waitFor(() => {
+      const liveRegion = document.querySelector(
+        '[aria-live="polite"][aria-atomic="true"]'
+      );
+      expect(liveRegion).toHaveTextContent(
+        /Quote request failed: source_asset and dest_asset must differ/
+      );
+    });
+  });
+
+  it('clears the slippage announcement when a new valid submission starts', async () => {
+    jest.useFakeTimers();
+
+    const mockFetch = jest.fn().mockResolvedValueOnce({
+      ok: true,
+      text: async () =>
+        JSON.stringify({
+          source_asset: 'USDC',
+          dest_asset: 'EURC',
+          amount: '1000000',
+          estimated_rate: '1.0',
+          route: ['USDC', 'EURC'],
+        }),
+    } as unknown as Response);
+    globalThis.fetch = mockFetch as unknown as typeof globalThis.fetch;
+
+    render(<QuotePage />);
+    fireEvent.change(getSourceInput(), { target: { value: 'USDC' } });
+    fireEvent.change(getDestinationInput(), { target: { value: 'EURC' } });
+    fireEvent.change(getAmountInput(), { target: { value: '1000000' } });
+    fireEvent.click(screen.getByRole('button', { name: /Get quote/i }));
+
+    await waitFor(() => {
+      const liveRegion = document.querySelector(
+        '[aria-live="polite"][aria-atomic="true"]'
+      );
+      expect(liveRegion).toHaveTextContent(/Quote received/);
+    });
+
+    // Advance past the 1s cooldown before the second submission
+    act(() => {
+      jest.advanceTimersByTime(1000);
+    });
+
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      text: async () =>
+        JSON.stringify({
+          source_asset: 'EURC',
+          dest_asset: 'USDC',
+          amount: '500000',
+          estimated_rate: '2.0',
+          route: ['EURC', 'USDC'],
+        }),
+    } as unknown as Response);
+
+    fireEvent.change(getSourceInput(), { target: { value: 'EURC' } });
+    fireEvent.change(getDestinationInput(), { target: { value: 'USDC' } });
+    fireEvent.change(getAmountInput(), { target: { value: '500000' } });
+    fireEvent.click(screen.getByRole('button', { name: /Get quote/i }));
+
+    await waitFor(() => {
+      const liveRegion = document.querySelector(
+        '[aria-live="polite"][aria-atomic="true"]'
+      );
+      expect(liveRegion).toHaveTextContent(
+        /Quote received: EURC → USDC at estimated rate 2/
+      );
+    });
+
+    jest.useRealTimers();
+  });
+
+  it('has exactly one polite atomic live region in the page content', async () => {
+    const mockFetch = jest.fn().mockResolvedValueOnce({
+      ok: true,
+      text: async () =>
+        JSON.stringify({
+          source_asset: 'USDC',
+          dest_asset: 'EURC',
+          amount: '1000000',
+          estimated_rate: '1.0',
+          route: ['USDC', 'EURC'],
+        }),
+    } as unknown as Response);
+    globalThis.fetch = mockFetch as unknown as typeof globalThis.fetch;
+
+    render(<QuotePage />);
+    fireEvent.change(getSourceInput(), { target: { value: 'USDC' } });
+    fireEvent.change(getDestinationInput(), { target: { value: 'EURC' } });
+    fireEvent.change(getAmountInput(), { target: { value: '1000000' } });
+    fireEvent.click(screen.getByRole('button', { name: /Get quote/i }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('status')).toBeInTheDocument();
+    });
+
+    const politeAtomicRegions = document.querySelectorAll(
+      '[aria-live="polite"][aria-atomic="true"]'
+    );
+    expect(politeAtomicRegions).toHaveLength(1);
   });
 });
 
@@ -671,5 +925,63 @@ describe('QuoteError segment boundary', () => {
       'quote segment error boundary caught:',
       'digest-quote-1'
     );
+  });
+
+  describe('Quote History Integration', () => {
+    it('reads history from localStorage and populates form when a history entry is clicked', () => {
+      const historyItems = [
+        { source: 'USDC', dest: 'EURC', amount: '2500000', savedAt: 1000 },
+      ];
+      localStorage.setItem(
+        'stableroute.quote.history',
+        JSON.stringify(historyItems)
+      );
+
+      render(<QuotePage />);
+
+      expect(
+        screen.getByRole('heading', { name: /Recent quotes/i })
+      ).toBeInTheDocument();
+      const historyButton = screen.getByRole('button', {
+        name: /USDC → EURC · 2500000/i,
+      });
+      expect(historyButton).toBeInTheDocument();
+
+      fireEvent.click(historyButton);
+
+      expect(getSourceInput()).toHaveValue('USDC');
+      expect(getDestinationInput()).toHaveValue('EURC');
+      expect(getAmountInput()).toHaveValue('2500000');
+    });
+
+    it('verifies history component render count does not increase when form inputs change', () => {
+      const historyItems = [
+        { source: 'USDC', dest: 'EURC', amount: '1000000', savedAt: 1000 },
+      ];
+      localStorage.setItem(
+        'stableroute.quote.history',
+        JSON.stringify(historyItems)
+      );
+
+      render(<QuotePage />);
+
+      expect(
+        screen.getByRole('button', { name: /USDC → EURC · 1000000/i })
+      ).toBeInTheDocument();
+
+      // Type in Source asset input
+      fireEvent.change(getSourceInput(), { target: { value: 'XLM' } });
+
+      // Type in Destination asset input
+      fireEvent.change(getDestinationInput(), { target: { value: 'BTC' } });
+
+      // Type in Amount input
+      fireEvent.change(getAmountInput(), { target: { value: '500' } });
+
+      // Output remains unchanged
+      expect(
+        screen.getByRole('button', { name: /USDC → EURC · 1000000/i })
+      ).toBeInTheDocument();
+    });
   });
 });

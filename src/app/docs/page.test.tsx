@@ -95,6 +95,95 @@ describe('DocsPage', () => {
     });
     expect(copyButtons.length).toBe(5);
   });
+
+  describe('Search component docs', () => {
+    it('renders search component section heading', () => {
+      render(<DocsPage />);
+      expect(
+        screen.getByRole('heading', { name: 'Search component' })
+      ).toBeInTheDocument();
+    });
+
+    it('documents that CommandPalette accepts zero props', () => {
+      render(<DocsPage />);
+      expect(
+        screen.getByText(/The component accepts no props/)
+      ).toBeInTheDocument();
+    });
+
+    it('references the ROUTES data source', () => {
+      render(<DocsPage />);
+      expect(screen.getByText(/ROUTES/)).toBeInTheDocument();
+      expect(screen.getByText(/@\/lib\/routes/)).toBeInTheDocument();
+    });
+
+    it('lists keyboard shortcuts for Ctrl+K and Cmd+K', () => {
+      render(<DocsPage />);
+      expect(screen.getByText('Ctrl+K')).toBeInTheDocument();
+      expect(screen.getByText('⌘K')).toBeInTheDocument();
+    });
+
+    it('lists keyboard shortcuts for Escape, arrows, and Enter', () => {
+      render(<DocsPage />);
+      expect(screen.getByText('Esc')).toBeInTheDocument();
+      expect(screen.getByText('↓ ↑')).toBeInTheDocument();
+      expect(screen.getByText('Enter')).toBeInTheDocument();
+    });
+
+    it('documents case-insensitive filtering behavior', () => {
+      render(<DocsPage />);
+      expect(
+        screen.getByText(/filters routes case-insensitively/)
+      ).toBeInTheDocument();
+      expect(screen.getByText(/No routes found/)).toBeInTheDocument();
+    });
+
+    it('documents ARIA roles for dialog, combobox, listbox, and option', () => {
+      render(<DocsPage />);
+      const table = screen.getByRole('table');
+      expect(within(table).getByText('dialog')).toBeInTheDocument();
+      expect(within(table).getByText('combobox')).toBeInTheDocument();
+      expect(within(table).getByText('listbox')).toBeInTheDocument();
+      expect(within(table).getByText('option')).toBeInTheDocument();
+    });
+
+    it('documents ARIA attributes in the table', () => {
+      render(<DocsPage />);
+      const table = screen.getByRole('table');
+      expect(
+        within(table).getByText(/aria-modal="true"/)
+      ).toBeInTheDocument();
+      expect(
+        within(table).getByText(/aria-label="Command palette"/)
+      ).toBeInTheDocument();
+      expect(
+        within(table).getByText(/aria-expanded/)
+      ).toBeInTheDocument();
+      expect(
+        within(table).getByText(/aria-controls/)
+      ).toBeInTheDocument();
+      expect(
+        within(table).getByText(/aria-activedescendant/)
+      ).toBeInTheDocument();
+      expect(
+        within(table).getByText(/aria-selected/)
+      ).toBeInTheDocument();
+    });
+
+    it('renders a usage example with import statement', () => {
+      render(<DocsPage />);
+      expect(
+        screen.getByText(/import { CommandPalette } from/)
+      ).toBeInTheDocument();
+    });
+
+    it('shows the zero-props rendering pattern in the usage example', () => {
+      render(<DocsPage />);
+      expect(
+        screen.getByText(/takes zero props/)
+      ).toBeInTheDocument();
+    });
+  });
 });
 
 describe('OpenApiLink', () => {

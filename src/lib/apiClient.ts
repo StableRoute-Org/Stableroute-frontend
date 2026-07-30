@@ -19,6 +19,9 @@ export type ApiFetchOptions = {
   validate?: (v: unknown) => v is unknown;
 };
 
+/** Header used to correlate frontend API calls with backend logs. */
+export const REQUEST_ID_HEADER = 'X-Request-Id';
+
 type AuthErrorHandler = (status: 401 | 403) => void;
 let _authErrorHandler: AuthErrorHandler | null = null;
 
@@ -34,6 +37,39 @@ let _connectionHandler: ConnectionHandler | null = null;
 const DEFAULT_TIMEOUT_MS = 15_000;
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * Creates a collision-resistant request id with no extra dependencies.
+ * Prefers `crypto.randomUUID()`; falls back to a UUID v4 built from
+ * `crypto.getRandomValues` (or `Math.random` as a last resort).
+ */
+export function createRequestId(): string {
+  if (
+    typeof crypto !== 'undefined' &&
+    typeof crypto.randomUUID === 'function'
+  ) {
+    return crypto.randomUUID();
+  }
+
+  const bytes = new Uint8Array(16);
+  if (
+    typeof crypto !== 'undefined' &&
+    typeof crypto.getRandomValues === 'function'
+  ) {
+    crypto.getRandomValues(bytes);
+  } else {
+    for (let i = 0; i < 16; i += 1) {
+      bytes[i] = Math.floor(Math.random() * 256);
+    }
+  }
+  // RFC 4122 version 4 / variant 1
+  bytes[6] = (bytes[6]! & 0x0f) | 0x40;
+  bytes[8] = (bytes[8]! & 0x3f) | 0x80;
+  const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join(
+    ''
+  );
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
 
 /** Called once by <ApiAuthGuard> when it mounts inside <ToastProvider>. */
 export function registerAuthErrorHandler(
@@ -101,7 +137,9 @@ export function sanitizeErrorMessage(message: string): string {
 
 async function parseResponse<T>(
   res: Response,
-  validate?: (v: unknown) => v is T
+  validate?: (v: unknown) => v is T,
+  /** Client-generated id sent on the request; used when the body omits one. */
+  clientRequestId?: string
 ): Promise<T> {
   if (res.status === 204) return undefined as T;
   const text = await res.text();
@@ -110,7 +148,13 @@ async function parseResponse<T>(
     try {
       body = JSON.parse(text) as T | ApiError;
     } catch {
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) {
+        throw Object.assign(new Error(`HTTP ${res.status}`), {
+          ...(clientRequestId !== undefined
+            ? { requestId: clientRequestId }
+            : {}),
+        });
+      }
       throw new Error('Invalid JSON response');
     }
   }
@@ -124,10 +168,13 @@ async function parseResponse<T>(
     // Build the error with the sanitized message. We deliberately exclude
     // body.message when spreading so the raw server text never overwrites
     // the redacted copy. Only status, error code, and requestId are kept.
+    // Prefer the server's requestId when present; otherwise surface the
+    // client-generated id that was sent on the request header.
     const apiBody = body as ApiError | undefined;
     const extra: Record<string, unknown> = { status: res.status };
     if (apiBody?.error !== undefined) extra.error = apiBody.error;
-    if (apiBody?.requestId !== undefined) extra.requestId = apiBody.requestId;
+    const requestId = apiBody?.requestId ?? clientRequestId;
+    if (requestId !== undefined) extra.requestId = requestId;
     throw Object.assign(new Error(safeMsg), extra);
   }
   if (validate && !validate(body)) {
@@ -153,20 +200,34 @@ export async function apiFetch<T>(
       ? Math.max(1, options.retry.maxAttempts ?? 3)
       : 1;
   const baseDelayMs = options?.retry?.baseDelayMs ?? 100;
+  // One id per logical call (shared across retries) for end-to-end tracing.
+  const requestId = createRequestId();
 
   let lastError: unknown;
   const timeoutMs = options?.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
+    // Honor caller aborts (e.g. quote page cancellation) while keeping timeout.
+    const externalSignal = init.signal;
+    let onExternalAbort: (() => void) | undefined;
+    if (externalSignal) {
+      if (externalSignal.aborted) {
+        controller.abort();
+      } else {
+        onExternalAbort = () => controller.abort();
+        externalSignal.addEventListener('abort', onExternalAbort);
+      }
+    }
     try {
       const res = await fetch(`${getApiBase()}${path}`, {
+        ...init,
         headers: {
           'Content-Type': 'application/json',
           ...(init.headers ?? {}),
+          [REQUEST_ID_HEADER]: requestId,
         },
         signal: controller.signal,
-        ...init,
       });
       // A response of any status means the API is reachable.
       _connectionHandler?.onSuccess();
@@ -178,20 +239,31 @@ export async function apiFetch<T>(
       _connectionHandler?.onSuccess();
       return await parseResponse<T>(
         res,
-        options?.validate as ((v: unknown) => v is T) | undefined
+        options?.validate as ((v: unknown) => v is T) | undefined,
+        requestId
       );
     } catch (err) {
       if (
         err instanceof Error &&
         ('status' in err ||
+          err instanceof ValidationError ||
           err.message === 'Invalid JSON response' ||
           err.message.startsWith('HTTP '))
       ) {
-        // An HTTP-level error still means the request reached the server.
+        // An HTTP-level / parse error still means the request reached the server.
         _connectionHandler?.onSuccess();
+        // Ensure support can correlate even when the body lacked requestId
+        // (e.g. empty/non-JSON error responses that throw before assign).
+        if (!('requestId' in err)) {
+          Object.assign(err, { requestId });
+        }
         throw err;
       }
       lastError = err;
+      // Caller-initiated abort should not be reported as a timeout/network error.
+      if (externalSignal?.aborted) {
+        throw err;
+      }
       const message =
         err instanceof DOMException && err.name === 'AbortError'
           ? 'Request timed out'
@@ -201,12 +273,19 @@ export async function apiFetch<T>(
         continue;
       }
       _connectionHandler?.onError();
-      throw new Error(message);
+      throw Object.assign(new Error(message), { requestId });
     } finally {
       clearTimeout(timer);
+      if (externalSignal && onExternalAbort) {
+        externalSignal.removeEventListener('abort', onExternalAbort);
+      }
     }
   }
-  throw lastError ?? new Error('request failed');
+  // Defensive: the loop always returns or throws on the final attempt.
+  /* istanbul ignore next */
+  throw Object.assign(lastError ?? new Error('request failed'), {
+    requestId,
+  });
 }
 
 export const apiGet = <T>(path: string, options?: ApiFetchOptions) =>

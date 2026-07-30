@@ -80,6 +80,31 @@ describe('ResourceList', () => {
     expect(container.querySelector('li.custom-row')).toBeInTheDocument();
   });
 
+  it('renders an sr-only announcement inside the live region when provided', () => {
+    render(
+      <ResourceList {...basicProps({ announcement: 'Changes saved.' })} />
+    );
+    const live = document.querySelector('[aria-live=polite]');
+    expect(live).toHaveTextContent('Changes saved.');
+    const srOnly = live?.querySelector('.sr-only');
+    expect(srOnly).toBeInTheDocument();
+    expect(srOnly).toHaveTextContent('Changes saved.');
+  });
+
+  it('does not render the announcement paragraph when announcement is undefined', () => {
+    render(<ResourceList {...basicProps()} />);
+    const live = document.querySelector('[aria-live=polite]');
+    const srOnly = live?.querySelector('.sr-only');
+    expect(srOnly).not.toBeInTheDocument();
+  });
+
+  it('does not render the announcement paragraph when announcement is empty string', () => {
+    render(<ResourceList {...basicProps({ announcement: '' })} />);
+    const live = document.querySelector('[aria-live=polite]');
+    const srOnly = live?.querySelector('.sr-only');
+    expect(srOnly).not.toBeInTheDocument();
+  });
+
   it("opens the remove dialog when a row's remove control is triggered", () => {
     render(<ResourceList {...basicProps()} />);
     fireEvent.click(screen.getByRole('button', { name: /remove alpha/i }));

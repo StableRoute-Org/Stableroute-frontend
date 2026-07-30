@@ -85,3 +85,8 @@ export type Webhook = {
   events: string[];
   createdAt: number;
 };
+
+export type TestDeliveryResult = {
+  statusCode: number;
+  ok: boolean;
+};

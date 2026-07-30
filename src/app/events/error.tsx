@@ -1,5 +1,6 @@
 'use client';
 
+import { memo } from 'react';
 import {
   SegmentError,
   type SegmentErrorProps,
@@ -15,6 +16,10 @@ import {
  * "Try again" calls Next's `reset()` to re-render just this segment without
  * a full page reload.
  */
-export default function EventsError(props: Omit<SegmentErrorProps, 'segment'>) {
+const EventsError = memo(function EventsError(
+  props: Omit<SegmentErrorProps, 'segment'>
+) {
   return <SegmentError segment="events" {...props} />;
-}
+});
+
+export default EventsError;
