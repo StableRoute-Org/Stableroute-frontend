@@ -14,6 +14,11 @@ describe('ShortcutsHelp', () => {
     for (const shortcut of shortcuts) {
       expect(screen.getByText(shortcut.keys)).toBeInTheDocument();
     }
+    // Verify the theme shortcut is documented
+    expect(
+      screen.getByText('Ctrl+Shift+L / Cmd+Shift+L')
+    ).toBeInTheDocument();
+    expect(screen.getByText('Toggle theme')).toBeInTheDocument();
   });
 
   it('also opens when Shift+/ is reported by the browser', () => {

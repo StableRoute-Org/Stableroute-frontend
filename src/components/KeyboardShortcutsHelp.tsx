@@ -6,6 +6,7 @@ import { ROUTES } from '@/lib/routes';
 const SHORTCUTS = [
   { keys: '?', description: 'Open this shortcuts help' },
   { keys: 'Ctrl/⌘ K', description: 'Open command palette' },
+  { keys: 'Ctrl/⌘ Shift L', description: 'Toggle light/dark theme' },
   { keys: 'Esc', description: 'Close dialogs and overlays' },
 ];
 
