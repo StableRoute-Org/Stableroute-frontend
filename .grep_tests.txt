@@ -1,0 +1,11 @@
+﻿C:\Users\Jenola\OneDrive\Documents\GitHub\Stableroute-frontend\scripts\__tests__\checkStagedSecrets.test.js:161: ['README.md', false],
+C:\Users\Jenola\OneDrive\Documents\GitHub\Stableroute-frontend\scripts\__tests__\checkStagedSecrets.test.js:208: it.each(['src/app/page.tsx', 'README.md', 'package.json'])(
+C:\Users\Jenola\OneDrive\Documents\GitHub\Stableroute-frontend\src\app\metadata.test.tsx:8: import { metadata as docsMetadata } from './docs/page';
+C:\Users\Jenola\OneDrive\Documents\GitHub\Stableroute-frontend\src\components\__tests__\Styleguide.test.tsx:17: `Missing styleguide at ${STYLEGUIDE_PATH}. Run 'git status' — the docs/STYLEGUIDE.md file should exist on this branch.`
+C:\Users\Jenola\OneDrive\Documents\GitHub\Stableroute-frontend\src\components\__tests__\Styleguide.test.tsx:23: describe('docs/STYLEGUIDE.md', () => {
+C:\Users\Jenola\OneDrive\Documents\GitHub\Stableroute-frontend\src\__tests__\accessibilityDocs.test.ts:7: const readmePath = path.join(rootDir, 'README.md');
+C:\Users\Jenola\OneDrive\Documents\GitHub\Stableroute-frontend\src\__tests__\accessibilityDocs.test.ts:24: describe('docs/ACCESSIBILITY.md existence and structure', () => {
+C:\Users\Jenola\OneDrive\Documents\GitHub\Stableroute-frontend\src\__tests__\accessibilityDocs.test.ts:85: describe('README.md integration', () => {
+C:\Users\Jenola\OneDrive\Documents\GitHub\Stableroute-frontend\src\__tests__\accessibilityDocs.test.ts:86: it('links to docs/ACCESSIBILITY.md under Accessibility section', () => {
+C:\Users\Jenola\OneDrive\Documents\GitHub\Stableroute-frontend\src\__tests__\accessibilityDocs.test.ts:96: it('links to docs/ACCESSIBILITY.md in Contributor Checklist', () => {
+C:\Users\Jenola\OneDrive\Documents\GitHub\Stableroute-frontend\src\__tests__\metadata.test.tsx:6: import { metadata as docsMeta } from '@/app/docs/page';

@@ -1,0 +1,41 @@
+
+> stableroute-frontend@0.1.0 build
+> next build
+
+   ▲ Next.js 15.0.3
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully
+   Linting and checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/16) ...
+   Generating static pages (4/16) 
+   Generating static pages (8/16) 
+   Generating static pages (12/16) 
+ ✓ Generating static pages (16/16)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                              Size     First Load JS
+┌ ○ /                                    175 B           109 kB
+├ ○ /_not-found                          151 B           100 kB
+├ ○ /about                               151 B           100 kB
+├ ○ /admin                               2.02 kB         104 kB
+├ ○ /api-keys                            2.8 kB          108 kB
+├ ○ /docs                                2.31 kB         102 kB
+├ ○ /events                              4.84 kB         107 kB
+├ ○ /pairs                               6.42 kB         118 kB
+├ ○ /pairs/new                           1.54 kB         104 kB
+├ ○ /quote                               4.21 kB         106 kB
+├ ○ /settings                            2.73 kB         105 kB
+├ ○ /stats                               4.38 kB         107 kB
+├ ○ /status                              1.96 kB         104 kB
+└ ○ /webhooks                            2.29 kB         108 kB
++ First Load JS shared by all            99.9 kB
+  ├ chunks/4bd1b696-4e4548a8a036de57.js  52.5 kB
+  ├ chunks/517-5c2973bc1ba0959c.js       45.5 kB
+  └ other shared chunks (total)          1.91 kB
+
+
+○  (Static)  prerendered as static content
+

@@ -58,6 +58,7 @@ Reusable building blocks live under `src/components` and are imported by route p
 | [`KeyboardShortcutsHelp`](src/components/KeyboardShortcutsHelp.tsx) | `?` overlay listing keyboard shortcuts                                 |
 | [`CommandPalette`](src/components/CommandPalette.tsx)               | `Cmd/Ctrl+K` route jump palette                                        |
 | [`Tooltip`](src/components/Tooltip.tsx)                             | Status surface with loading/empty/error/success states (see [tooltips.md](docs/tooltips.md)) |
+| [`Help`](src/components/Help.tsx)                                   | Contextual help surface with loading/empty/error/success states and debounced live-region announcements (see [help.md](docs/help.md)) |
 | [`QuoteHistory`](src/app/quote/QuoteHistory.tsx)                   | Recent quote history list with selection callback and memoization (see [history.md](docs/history.md)) |
 
 Data fetching helpers (`apiClient`, `useApi`, `useList`) live in `src/lib`.

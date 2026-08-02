@@ -30,26 +30,32 @@ export function CommandPalette({
   const [query, setQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(-1);
   const [announcement, setAnnouncement] = useState('');
+  const [resultAnnouncement, setResultAnnouncement] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const matches = Object.values(ROUTES).filter((route) =>
     route.title.toLowerCase().includes(query.toLowerCase())
   );
 
-  const [announcement, setAnnouncement] = useState('');
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const activeOptionId =
+    activeIndex >= 0 && activeIndex < matches.length
+      ? `command-palette-option-${matches[activeIndex].href}`
+      : undefined;
 
   const announce = useCallback((message: string) => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
-      setAnnouncement(message);
+      setResultAnnouncement(message);
     }, 300);
   }, []);
 
   useEffect(() => {
     if (!query) return;
     if (matches.length > 0) {
-      announce(`${matches.length} ${matches.length === 1 ? 'result' : 'results'} found`);
+      announce(
+        `${matches.length} ${matches.length === 1 ? 'result' : 'results'} found`
+      );
     } else {
       announce('No results found');
     }
@@ -60,11 +66,6 @@ export function CommandPalette({
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
   }, []);
-
-  const activeOptionId =
-    activeIndex >= 0 && activeIndex < matches.length
-      ? `command-palette-option-${matches[activeIndex].href}`
-      : undefined;
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -89,23 +90,23 @@ export function CommandPalette({
     inputRef.current?.focus();
   }, [open]);
 
-  // Update screen-reader live announcements on state changes
+  // Update screen-reader live announcements on state changes.
+  // Loading is reflected visually (and via a dedicated sr-only region below),
+  // so we avoid announcing the exact same string twice.
   useEffect(() => {
-    if (!open) {
+    if (!open || loading) {
       setAnnouncement('');
       return;
     }
 
     if (error) {
       setAnnouncement(`Search failed: ${error}`);
-    } else if (loading) {
-      setAnnouncement('Searching routes…');
     } else if (query.trim().length > 0 && matches.length === 0) {
       setAnnouncement(`No routes found for "${query.trim()}".`);
     } else if (matches.length > 0) {
-      const count = matches.length;
-      const suffix = count === 1 ? '' : 's';
-      setAnnouncement(`Found ${count} matching route${suffix}.`);
+      setAnnouncement(
+        `Found ${matches.length} matching route${matches.length === 1 ? '' : 's'}.`
+      );
     }
   }, [open, error, loading, query, matches.length]);
 
@@ -169,6 +170,11 @@ export function CommandPalette({
         {announcement}
       </div>
 
+      {/* Debounced, visually-hidden live region for rapid result updates */}
+      <div className="sr-only" aria-live="polite" aria-atomic="true">
+        {resultAnnouncement}
+      </div>
+
       <div
         className="w-full max-w-lg rounded-lg bg-white p-4 shadow-xl dark:bg-neutral-900"
         onClick={(event) => event.stopPropagation()}
@@ -193,16 +199,60 @@ export function CommandPalette({
           placeholder="Jump to…"
           className="w-full rounded-md border border-neutral-300 px-3 py-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-500 dark:border-neutral-700 dark:bg-neutral-950"
         />
-        <div className="sr-only" aria-live="polite" aria-atomic="true">
-          {announcement}
-        </div>
-        <ul
-          id="command-palette-listbox"
-          role="listbox"
-          className="mt-2 max-h-64 overflow-auto"
-        >
-          {matches.length > 0 ? (
-            matches.map((route, index) => (
+
+        {/* Loading State */}
+        {loading && (
+          <div className="mt-4 py-4 text-center text-sm text-neutral-500">
+            Searching routes…
+          </div>
+        )}
+
+        {/* Error State with Retry Affordance */}
+        {isError && (
+          <div
+            id="command-palette-error-message"
+            role="alert"
+            aria-live="assertive"
+            className="mt-4 rounded-lg border border-rose-200 bg-rose-50 p-4 text-center dark:border-rose-900/50 dark:bg-rose-950/30"
+          >
+            <p className="text-sm font-semibold text-rose-800 dark:text-rose-200">
+              Search failed
+            </p>
+            <p className="mt-1 text-xs text-rose-600 dark:text-rose-400">
+              {error}
+            </p>
+            {onRetry && (
+              <div className="mt-3">
+                <Button type="button" variant="secondary" onClick={handleRetry}>
+                  Retry
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Distinct Empty State */}
+        {isEmpty && (
+          <div className="mt-4">
+            <EmptyState
+              title="No routes found"
+              description={
+                query.trim().length > 0
+                  ? `No routes match "${query}". Try searching for another keyword.`
+                  : 'No routes available.'
+              }
+            />
+          </div>
+        )}
+
+        {/* Results List */}
+        {!loading && !isError && matches.length > 0 && (
+          <ul
+            id="command-palette-listbox"
+            role="listbox"
+            className="mt-2 max-h-64 overflow-auto"
+          >
+            {matches.map((route, index) => (
               <li key={route.href} role="presentation">
                 <button
                   id={`command-palette-option-${route.href}`}
@@ -227,3 +277,4 @@ export function CommandPalette({
     </div>
   );
 }
+

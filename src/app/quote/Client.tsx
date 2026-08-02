@@ -213,6 +213,7 @@ export default function QuoteClient() {
       const apiError = err as ApiError & { requestId?: string };
       setFormError(apiError.message ?? 'quote request failed');
       setRequestId(apiError.requestId ?? null);
+      announce('Quote request failed.');
       announce('');
       const failTime = Date.now();
       if (failTime - lastAnnounceAtRef.current >= 300) {

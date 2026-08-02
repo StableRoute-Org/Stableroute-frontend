@@ -1,0 +1,5 @@
+﻿29: - **`/events`** ([events/page.tsx](src/app/events/page.tsx)): Audit log page rendering the system event log history.
+58: | [`KeyboardShortcutsHelp`](src/components/KeyboardShortcutsHelp.tsx) | `?` overlay listing keyboard shortcuts                                 |
+60: | [`Tooltip`](src/components/Tooltip.tsx)                             | Status surface with loading/empty/error/success states (see [tooltips.md](docs/tooltips.md)) |
+61: | [`QuoteHistory`](src/app/quote/QuoteHistory.tsx)                   | Recent quote history list with selection callback and memoization (see [history.md](docs/history.md)) |
+63: Data fetching helpers (`apiClient`, `useApi`, `useList`) live in `src/lib`.
