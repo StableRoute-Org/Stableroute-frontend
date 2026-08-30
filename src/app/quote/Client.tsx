@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { TextField } from '@/components/TextField';
 import { SlippageView } from './Slippage';
 import { apiFetch, type ApiError } from '@/lib/apiClient';
@@ -14,6 +14,14 @@ import {
   type HistoryEntry,
   type QuoteInputs,
 } from './QuoteHistory';
+import {
+  canonicalEntryFromQuote,
+  mergePendingEntry,
+  pushHistoryPure,
+  readHistory,
+  writeHistory,
+  type PendingHistoryEntry,
+} from './historyModel';
 
 type FieldErrors = {
   source?: string;
@@ -22,10 +30,10 @@ type FieldErrors = {
 };
 
 const INPUTS_KEY = 'stableroute.quote.inputs';
-const HISTORY_KEY = 'stableroute.quote.history';
-const MAX_HISTORY = 5;
 const ASSET_CODE_PATTERN = /^[A-Za-z0-9]{1,12}$/;
 const MIN_SUBMIT_INTERVAL_MS = 1_000;
+const ROLLBACK_MESSAGE =
+  'The recent quotes update failed and was rolled back.';
 
 function normalizeAssetCode(value: string): string | null {
   const trimmed = value.trim();
@@ -46,29 +54,9 @@ function isQuoteInputs(value: unknown): value is QuoteInputs {
   );
 }
 
-function readHistory(): HistoryEntry[] {
-  try {
-    const raw = localStorage.getItem(HISTORY_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw) as HistoryEntry[];
-    return Array.isArray(parsed) ? parsed.slice(0, MAX_HISTORY) : [];
-  } catch {
-    return [];
-  }
-}
-
-function pushHistory(entry: QuoteInputs) {
-  const next: HistoryEntry[] = [
-    { ...entry, savedAt: Date.now() },
-    ...readHistory().filter(
-      (item) =>
-        item.source !== entry.source ||
-        item.dest !== entry.dest ||
-        item.amount !== entry.amount
-    ),
-  ].slice(0, MAX_HISTORY);
-  localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
-  return next;
+function pushHistory(entry: QuoteInputs): HistoryEntry[] {
+  // Confirmed writes only — optimistic entries never reach localStorage.
+  return writeHistory(pushHistoryPure(readHistory(), entry));
 }
 
 export default function QuoteClient() {
@@ -81,6 +69,9 @@ export default function QuoteClient() {
   const [destAsset, setDestAsset] = useState('');
   const [amount, setAmount] = useState('');
   const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [pendingEntry, setPendingEntry] = useState<PendingHistoryEntry | null>(
+    null
+  );
   const [quote, setQuote] = useState<Quote | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
@@ -183,6 +174,17 @@ export default function QuoteClient() {
     const currentRequestId = activeRequestRef.current + 1;
     activeRequestRef.current = currentRequestId;
 
+    // Optimistic mutation (#723): reflect the requested quote in Recent
+    // quotes before the server responds. Rendered via mergePendingEntry and
+    // never persisted; reconciled or rolled back when the request settles.
+    // A newer submission overwrites this single slot, implicitly discarding
+    // the stale one.
+    setPendingEntry({
+      ...inputs,
+      savedAt: now,
+      key: `pending-${currentRequestId}`,
+    });
+
     setLoading(true);
     announce('Requesting quote…');
     try {
@@ -197,7 +199,11 @@ export default function QuoteClient() {
       );
       if (currentRequestId !== activeRequestRef.current) return;
       setQuote(body);
-      setHistory(pushHistory(inputs));
+      // Reconcile (#723): the confirmed entry built from the server's
+      // response fields replaces the optimistic row; only now is anything
+      // written to localStorage.
+      setHistory(pushHistory(canonicalEntryFromQuote(body)));
+      setPendingEntry(null);
       announce('Quote received.');
       const rateDisplay = formatQuoteRateDisplay(body.estimated_rate).display;
       const now = Date.now();
@@ -210,10 +216,15 @@ export default function QuoteClient() {
     } catch (err) {
       if (currentRequestId !== activeRequestRef.current) return;
       if (controller.signal.aborted) return;
+      // Roll back (#723): drop the optimistic row so the rendered history is
+      // exactly what it was before the submission. Only this slot is
+      // cleared — unrelated state (form fields, confirmed rows, storage)
+      // was never touched by the mutation.
+      setPendingEntry(null);
       const apiError = err as ApiError & { requestId?: string };
       setFormError(apiError.message ?? 'quote request failed');
       setRequestId(apiError.requestId ?? null);
-      announce('');
+      announce(ROLLBACK_MESSAGE);
       const failTime = Date.now();
       if (failTime - lastAnnounceAtRef.current >= 300) {
         lastAnnounceAtRef.current = failTime;
@@ -246,6 +257,13 @@ export default function QuoteClient() {
     onSubmit(new Event('submit') as any);
   }, [onSubmit]);
 
+  // Stable identity across unrelated re-renders keeps QuoteHistory's memo
+  // effective; the pending entry (if any) leads the rendered rows.
+  const historyView = useMemo(
+    () => mergePendingEntry(history, pendingEntry),
+    [history, pendingEntry]
+  );
+
   return (
     <main
       id="main-content"
@@ -259,7 +277,11 @@ export default function QuoteClient() {
         </p>
       </header>
 
-      <QuoteHistory history={history} onSelect={applyInputs} />
+      <QuoteHistory
+        history={historyView}
+        hasPendingEntry={pendingEntry !== null}
+        onSelect={applyInputs}
+      />
 
       <form onSubmit={onSubmit} className="flex flex-col gap-3">
         <TextField

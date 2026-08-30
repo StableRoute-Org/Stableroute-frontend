@@ -581,7 +581,7 @@ describe('QuotePage', () => {
     });
   });
 
-  it('clears the sr-only announcement when the request fails', async () => {
+  it('announces the rollback to assistive tech when the request fails', async () => {
     const mockFetch = jest.fn().mockResolvedValueOnce({
       ok: false,
       status: 500,
@@ -612,7 +612,7 @@ describe('QuotePage', () => {
     const liveAnnouncement = document.querySelector(
       '[aria-live=polite].sr-only'
     );
-    expect(liveAnnouncement).toHaveTextContent('');
+    expect(liveAnnouncement).toHaveTextContent(/rolled back/i);
   });
 
   it('does not announce form status on initial render', () => {
