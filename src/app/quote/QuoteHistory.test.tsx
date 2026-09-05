@@ -267,4 +267,47 @@ describe('QuoteHistory Component', () => {
       expect(sources).toEqual(['CCC', 'AAA', 'BBB']);
     });
   });
+
+  describe('CSV and JSON Export (Issue #730)', () => {
+    beforeEach(() => {
+      window.URL.createObjectURL = jest.fn().mockReturnValue('blob:mock-url');
+      window.URL.revokeObjectURL = jest.fn();
+    });
+
+    it('renders Export CSV and Export JSON buttons when history exists', () => {
+      render(<QuoteHistory history={sampleHistory} onSelect={jest.fn()} />);
+      expect(
+        screen.getByRole('button', { name: /Export filtered quotes as CSV/i })
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: /Export filtered quotes as JSON/i })
+      ).toBeInTheDocument();
+    });
+
+    it('does not render export buttons when history is empty', () => {
+      render(<QuoteHistory history={[]} onSelect={jest.fn()} />);
+      expect(
+        screen.queryByRole('button', { name: /Export filtered quotes as CSV/i })
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: /Export filtered quotes as JSON/i })
+      ).not.toBeInTheDocument();
+    });
+
+    it('triggers CSV download when Export CSV is clicked', () => {
+      render(<QuoteHistory history={sampleHistory} onSelect={jest.fn()} />);
+      fireEvent.click(
+        screen.getByRole('button', { name: /Export filtered quotes as CSV/i })
+      );
+      expect(window.URL.createObjectURL).toHaveBeenCalledTimes(1);
+    });
+
+    it('triggers JSON download when Export JSON is clicked', () => {
+      render(<QuoteHistory history={sampleHistory} onSelect={jest.fn()} />);
+      fireEvent.click(
+        screen.getByRole('button', { name: /Export filtered quotes as JSON/i })
+      );
+      expect(window.URL.createObjectURL).toHaveBeenCalledTimes(1);
+    });
+  });
 });
