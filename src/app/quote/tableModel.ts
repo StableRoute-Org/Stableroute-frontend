@@ -172,13 +172,11 @@ export function nextSortDir(current: SortDir): SortDir {
   }
 }
 
-/** Filter → stable-sort → paginate. Page is clamped into the valid range for
- * the filtered row count, so removing rows can never strand the view on an
- * out-of-range page. */
-export function applyViewState(
+/** Filter → stable-sort without pagination slice, used by CSV/JSON export to capture the full filtered view. */
+export function getFilteredRows(
   rows: HistoryEntry[],
   state: TableViewState
-): DerivedTable {
+): HistoryEntry[] {
   const needle = state.filter.trim().toLowerCase();
   const filtered = rows.filter((row) => {
     const matchesText =
@@ -190,22 +188,33 @@ export function applyViewState(
   });
 
   const { dir } = state;
-  const sorted =
-    dir === 'none'
-      ? filtered
-      : filtered
-          .map((entry, index) => ({ entry, index }))
-          .sort((a, b) =>
-            compareByColumn(
-              a.entry,
-              b.entry,
-              state.sort,
-              dir,
-              a.index,
-              b.index
-            )
-          )
-          .map(({ entry }) => entry);
+  if (dir === 'none') {
+    return filtered;
+  }
+
+  return filtered
+    .map((entry, index) => ({ entry, index }))
+    .sort((a, b) =>
+      compareByColumn(
+        a.entry,
+        b.entry,
+        state.sort,
+        dir,
+        a.index,
+        b.index
+      )
+    )
+    .map(({ entry }) => entry);
+}
+
+/** Filter → stable-sort → paginate. Page is clamped into the valid range for
+ * the filtered row count, so removing rows can never strand the view on an
+ * out-of-range page. */
+export function applyViewState(
+  rows: HistoryEntry[],
+  state: TableViewState
+): DerivedTable {
+  const sorted = getFilteredRows(rows, state);
 
   const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
   const page = Math.min(Math.max(1, state.page), totalPages);
