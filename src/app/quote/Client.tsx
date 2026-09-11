@@ -1,8 +1,14 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { TextField } from '@/components/TextField';
 import { SlippageView } from './Slippage';
+import { SwapResultView } from './SwapResultView';
+import {
+  swapAsyncReducer,
+  INITIAL_SWAP_STATE,
+  formatSwapError,
+} from './swapStateMachine';
 import { apiFetch, type ApiError } from '@/lib/apiClient';
 import { formatQuoteAmountDisplay, formatQuoteRateDisplay } from '@/lib/format';
 import { useFormAnnouncement } from '@/lib/useFormAnnouncement';
@@ -72,11 +78,12 @@ export default function QuoteClient() {
   const [pendingEntry, setPendingEntry] = useState<PendingHistoryEntry | null>(
     null
   );
-  const [quote, setQuote] = useState<Quote | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
-  const [formError, setFormError] = useState<string | null>(null);
-  const [requestId, setRequestId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [swapState, dispatchSwap] = useReducer(
+    swapAsyncReducer,
+    INITIAL_SWAP_STATE
+  );
+  const loading = swapState.status === 'loading';
   const { message: formStatus, announce } = useFormAnnouncement();
   const [slippageAnnouncement, setSlippageAnnouncement] = useState('');
   const activeRequestRef = useRef(0);
@@ -104,8 +111,7 @@ export default function QuoteClient() {
     setDestAsset(inputs.dest);
     setAmount(inputs.amount);
     setFieldErrors({});
-    setFormError(null);
-    setQuote(null);
+    dispatchSwap({ type: 'RESET' });
   }, []);
 
   const swapAssets = () => {
@@ -118,20 +124,20 @@ export default function QuoteClient() {
     }));
   };
 
-  const executeQuoteRequest = useCallback(async () => {
-    const now = Date.now();
-    const lastSubmitAt = lastSubmitAtRef.current;
-    const isCoolingDown =
-      lastSubmitAt !== null && now - lastSubmitAt < MIN_SUBMIT_INTERVAL_MS;
+  const executeQuoteRequest = useCallback(
+    async (options?: { bypassCooldown?: boolean }) => {
+      const now = Date.now();
+      const lastSubmitAt = lastSubmitAtRef.current;
+      const isCoolingDown =
+        !options?.bypassCooldown &&
+        lastSubmitAt !== null &&
+        now - lastSubmitAt < MIN_SUBMIT_INTERVAL_MS;
 
-    if (isCoolingDown) {
-      return;
-    }
+      if (isCoolingDown) {
+        return;
+      }
 
     setFieldErrors({});
-    setFormError(null);
-    setRequestId(null);
-    setQuote(null);
     setSlippageAnnouncement('');
 
     const nextErrors: FieldErrors = {};
@@ -185,7 +191,7 @@ export default function QuoteClient() {
       key: `pending-${currentRequestId}`,
     });
 
-    setLoading(true);
+    dispatchSwap({ type: 'SUBMIT_START' });
     announce('Requesting quote…');
     try {
       const path =
@@ -198,7 +204,7 @@ export default function QuoteClient() {
         { validate: isQuote }
       );
       if (currentRequestId !== activeRequestRef.current) return;
-      setQuote(body);
+      dispatchSwap({ type: 'SUBMIT_SUCCESS', quote: body });
       // Reconcile (#723): the confirmed entry built from the server's
       // response fields replaces the optimistic row; only now is anything
       // written to localStorage.
@@ -221,20 +227,18 @@ export default function QuoteClient() {
       // cleared — unrelated state (form fields, confirmed rows, storage)
       // was never touched by the mutation.
       setPendingEntry(null);
-      const apiError = err as ApiError & { requestId?: string };
-      setFormError(apiError.message ?? 'quote request failed');
-      setRequestId(apiError.requestId ?? null);
+      const { message, requestId } = formatSwapError(err);
+      dispatchSwap({ type: 'SUBMIT_ERROR', message, requestId });
       announce(ROLLBACK_MESSAGE);
       const failTime = Date.now();
       if (failTime - lastAnnounceAtRef.current >= 300) {
         lastAnnounceAtRef.current = failTime;
         setSlippageAnnouncement(
-          `Quote request failed: ${apiError.message ?? 'quote request failed'}`
+          `Quote request failed: ${message}`
         );
       }
     } finally {
       if (currentRequestId === activeRequestRef.current) {
-        setLoading(false);
         if (requestControllerRef.current === controller) {
           requestControllerRef.current = null;
         }
@@ -252,10 +256,8 @@ export default function QuoteClient() {
 
   // Retry wrapper for the quote request – re‑uses the existing submission logic.
   const retryQuote = useCallback(() => {
-    // Create a synthetic submit event to trigger the same validation & request flow.
-    // The event type is cast to any to satisfy the FormEvent generic.
-    onSubmit(new Event('submit') as any);
-  }, [onSubmit]);
+    executeQuoteRequest({ bypassCooldown: true });
+  }, [executeQuoteRequest]);
 
   // Stable identity across unrelated re-renders keeps QuoteHistory's memo
   // effective; the pending entry (if any) leads the rendered rows.
@@ -334,68 +336,7 @@ export default function QuoteClient() {
         </p>
       </form>
 
-      {quote &&
-        (() => {
-          const amountFmt = formatQuoteAmountDisplay(quote.amount);
-          const rateFmt = formatQuoteRateDisplay(quote.estimated_rate);
-          return (
-            <section
-              role="status"
-              aria-live="polite"
-              className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm dark:border-emerald-900 dark:bg-emerald-950"
-            >
-              <dl className="grid gap-2">
-                <div>
-                  <dt className="font-medium text-neutral-700 dark:text-neutral-300">
-                    Route
-                  </dt>
-                  <dd>{quote.route.join(' → ')}</dd>
-                </div>
-                <div>
-                  <dt className="font-medium text-neutral-700 dark:text-neutral-300">
-                    Amount
-                  </dt>
-                  <dd title={amountFmt.title}>{amountFmt.display}</dd>
-                </div>
-                <div>
-                  <dt className="font-medium text-neutral-700 dark:text-neutral-300">
-                    Estimated rate
-                  </dt>
-                  <dd title={rateFmt.title}>{rateFmt.display}</dd>
-                </div>
-              </dl>
-            </section>
-          );
-        })()}
-      {/* Slippage status UI */}
-      <SlippageView
-        status={
-          loading
-            ? 'loading'
-            : formError
-              ? 'error'
-              : quote
-                ? 'success'
-                : 'empty'
-        }
-        slippage={
-          quote
-            ? `${((Number(quote.estimated_rate) - 1) * 100).toFixed(2)}%`
-            : undefined
-        }
-        errorMessage={formError ?? undefined}
-        onRetry={formError ? retryQuote : undefined}
-      />
-      {formError && (
-        <div role="alert" className="text-sm text-rose-700 dark:text-rose-400">
-          <p>{formError}</p>
-          {requestId && (
-            <p className="mt-1 text-xs">
-              Request ID: <code>{requestId}</code>
-            </p>
-          )}
-        </div>
-      )}
+      <SwapResultView state={swapState} onRetry={retryQuote} />
       <div className="sr-only" aria-live="polite" aria-atomic="true">
         {slippageAnnouncement}
       </div>
