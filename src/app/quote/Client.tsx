@@ -22,27 +22,17 @@ import {
   writeHistory,
   type PendingHistoryEntry,
 } from './historyModel';
-
-type FieldErrors = {
-  source?: string;
-  dest?: string;
-  amount?: string;
-};
+import { QuoteFormLiveRegion } from './QuoteFormLiveRegion';
+import { useQuoteForm } from './useQuoteForm';
+import {
+  normalizeAssetCode,
+  isValidAmount,
+  type QuoteFormValues,
+} from './quoteSchema';
 
 const INPUTS_KEY = 'stableroute.quote.inputs';
-const ASSET_CODE_PATTERN = /^[A-Za-z0-9]{1,12}$/;
 const MIN_SUBMIT_INTERVAL_MS = 1_000;
-const ROLLBACK_MESSAGE =
-  'The recent quotes update failed and was rolled back.';
-
-function normalizeAssetCode(value: string): string | null {
-  const trimmed = value.trim();
-  return ASSET_CODE_PATTERN.test(trimmed) ? trimmed : null;
-}
-
-function isValidAmount(value: string): boolean {
-  return /^[1-9]\d*$/.test(value.trim());
-}
+const ROLLBACK_MESSAGE = 'The recent quotes update failed and was rolled back.';
 
 function isQuoteInputs(value: unknown): value is QuoteInputs {
   return (
@@ -65,15 +55,11 @@ export default function QuoteClient() {
     null,
     isQuoteInputs
   );
-  const [sourceAsset, setSourceAsset] = useState('');
-  const [destAsset, setDestAsset] = useState('');
-  const [amount, setAmount] = useState('');
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [pendingEntry, setPendingEntry] = useState<PendingHistoryEntry | null>(
     null
   );
   const [quote, setQuote] = useState<Quote | null>(null);
-  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [requestId, setRequestId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -84,178 +70,162 @@ export default function QuoteClient() {
   const lastSubmitAtRef = useRef<number | null>(null);
   const lastAnnounceAtRef = useRef(0);
 
+  const executeQuoteRequest = useCallback(
+    async (valuesToSubmit: QuoteFormValues) => {
+      const now = Date.now();
+      const lastSubmitAt = lastSubmitAtRef.current;
+      const isCoolingDown =
+        lastSubmitAt !== null && now - lastSubmitAt < MIN_SUBMIT_INTERVAL_MS;
+
+      if (isCoolingDown) {
+        return;
+      }
+
+      setFormError(null);
+      setRequestId(null);
+      setQuote(null);
+      setSlippageAnnouncement('');
+
+      const normalizedSource = normalizeAssetCode(valuesToSubmit.source);
+      const normalizedDest = normalizeAssetCode(valuesToSubmit.dest);
+
+      if (
+        !normalizedSource ||
+        !normalizedDest ||
+        !isValidAmount(valuesToSubmit.amount)
+      ) {
+        return;
+      }
+
+      const inputs = {
+        source: valuesToSubmit.source,
+        dest: valuesToSubmit.dest,
+        amount: valuesToSubmit.amount.trim(),
+      };
+      setSavedInputs(inputs);
+
+      lastSubmitAtRef.current = now;
+      if (requestControllerRef.current) {
+        requestControllerRef.current.abort();
+      }
+
+      const controller = new AbortController();
+      requestControllerRef.current = controller;
+      const currentRequestId = activeRequestRef.current + 1;
+      activeRequestRef.current = currentRequestId;
+
+      // Optimistic mutation (#723): reflect the requested quote in Recent
+      // quotes before the server responds. Rendered via mergePendingEntry and
+      // never persisted; reconciled or rolled back when the request settles.
+      // A newer submission overwrites this single slot, implicitly discarding
+      // the stale one.
+      setPendingEntry({
+        ...inputs,
+        savedAt: now,
+        key: `pending-${currentRequestId}`,
+      });
+
+      setLoading(true);
+      announce('Requesting quote…');
+      try {
+        const path =
+          `/api/v1/quote?source_asset=${encodeURIComponent(normalizedSource)}` +
+          `&dest_asset=${encodeURIComponent(normalizedDest)}` +
+          `&amount=${encodeURIComponent(inputs.amount)}`;
+        const body = await apiFetch<Quote>(
+          path,
+          { signal: controller.signal },
+          { validate: isQuote }
+        );
+        if (currentRequestId !== activeRequestRef.current) return;
+        setQuote(body);
+        // Reconcile (#723): the confirmed entry built from the server's
+        // response fields replaces the optimistic row; only now is anything
+        // written to localStorage.
+        setHistory(pushHistory(canonicalEntryFromQuote(body)));
+        setPendingEntry(null);
+        announce('Quote received.');
+        const rateDisplay = formatQuoteRateDisplay(body.estimated_rate).display;
+        const submitTime = Date.now();
+        if (submitTime - lastAnnounceAtRef.current >= 300) {
+          lastAnnounceAtRef.current = submitTime;
+          setSlippageAnnouncement(
+            `Quote received: ${body.source_asset} → ${body.dest_asset} at estimated rate ${rateDisplay}`
+          );
+        }
+      } catch (err) {
+        if (currentRequestId !== activeRequestRef.current) return;
+        if (controller.signal.aborted) return;
+        // Roll back (#723): drop the optimistic row so the rendered history is
+        // exactly what it was before the submission. Only this slot is
+        // cleared — unrelated state (form fields, confirmed rows, storage)
+        // was never touched by the mutation.
+        setPendingEntry(null);
+        const apiError = err as ApiError & { requestId?: string };
+        setFormError(apiError.message ?? 'quote request failed');
+        setRequestId(apiError.requestId ?? null);
+        announce(ROLLBACK_MESSAGE);
+        const failTime = Date.now();
+        if (failTime - lastAnnounceAtRef.current >= 300) {
+          lastAnnounceAtRef.current = failTime;
+          setSlippageAnnouncement(
+            `Quote request failed: ${apiError.message ?? 'quote request failed'}`
+          );
+        }
+      } finally {
+        if (currentRequestId === activeRequestRef.current) {
+          setLoading(false);
+          if (requestControllerRef.current === controller) {
+            requestControllerRef.current = null;
+          }
+        }
+      }
+    },
+    [announce, setSavedInputs]
+  );
+
+  const {
+    values,
+    setFieldValue,
+    swapAssets,
+    applyValues,
+    fieldErrors,
+    schemaErrors,
+    isSubmitAttempted,
+    handleSubmit,
+    sourceRef,
+    destRef,
+    amountRef,
+  } = useQuoteForm({
+    onValidSubmit: executeQuoteRequest,
+  });
+
   // Prefill once storage has synced client-side (see useLocalStorage's SSR
   // handling). Re-running only when the stored value actually changes avoids
   // clobbering in-progress edits.
   useEffect(() => {
     if (savedInputs) {
-      setSourceAsset(savedInputs.source);
-      setDestAsset(savedInputs.dest);
-      setAmount(savedInputs.amount);
+      applyValues(savedInputs);
     }
-  }, [savedInputs]);
+  }, [savedInputs, applyValues]);
 
   useEffect(() => {
     setHistory(readHistory());
   }, []);
 
-  const applyInputs = useCallback((inputs: QuoteInputs) => {
-    setSourceAsset(inputs.source);
-    setDestAsset(inputs.dest);
-    setAmount(inputs.amount);
-    setFieldErrors({});
-    setFormError(null);
-    setQuote(null);
-  }, []);
-
-  const swapAssets = () => {
-    setSourceAsset(destAsset);
-    setDestAsset(sourceAsset);
-    setFieldErrors((current) => ({
-      ...current,
-      source: undefined,
-      dest: undefined,
-    }));
-  };
-
-  const executeQuoteRequest = useCallback(async () => {
-    const now = Date.now();
-    const lastSubmitAt = lastSubmitAtRef.current;
-    const isCoolingDown =
-      lastSubmitAt !== null && now - lastSubmitAt < MIN_SUBMIT_INTERVAL_MS;
-
-    if (isCoolingDown) {
-      return;
-    }
-
-    setFieldErrors({});
-    setFormError(null);
-    setRequestId(null);
-    setQuote(null);
-    setSlippageAnnouncement('');
-
-    const nextErrors: FieldErrors = {};
-    const normalizedSource = normalizeAssetCode(sourceAsset);
-    const normalizedDest = normalizeAssetCode(destAsset);
-
-    if (!normalizedSource) nextErrors.source = 'Use 1-12 letters or numbers.';
-    if (!normalizedDest) nextErrors.dest = 'Use 1-12 letters or numbers.';
-    if (!isValidAmount(amount)) {
-      nextErrors.amount = 'Amount must be a positive integer (base units).';
-    }
-    if (
-      normalizedSource &&
-      normalizedDest &&
-      normalizedSource === normalizedDest
-    ) {
-      nextErrors.dest = 'Source and destination assets must differ.';
-    }
-
-    if (Object.keys(nextErrors).length > 0) {
-      setFieldErrors(nextErrors);
-      return;
-    }
-    if (!normalizedSource || !normalizedDest || !isValidAmount(amount)) return;
-
-    const inputs = {
-      source: sourceAsset,
-      dest: destAsset,
-      amount: amount.trim(),
-    };
-    setSavedInputs(inputs);
-
-    lastSubmitAtRef.current = now;
-    if (requestControllerRef.current) {
-      requestControllerRef.current.abort();
-    }
-
-    const controller = new AbortController();
-    requestControllerRef.current = controller;
-    const currentRequestId = activeRequestRef.current + 1;
-    activeRequestRef.current = currentRequestId;
-
-    // Optimistic mutation (#723): reflect the requested quote in Recent
-    // quotes before the server responds. Rendered via mergePendingEntry and
-    // never persisted; reconciled or rolled back when the request settles.
-    // A newer submission overwrites this single slot, implicitly discarding
-    // the stale one.
-    setPendingEntry({
-      ...inputs,
-      savedAt: now,
-      key: `pending-${currentRequestId}`,
-    });
-
-    setLoading(true);
-    announce('Requesting quote…');
-    try {
-      const path =
-        `/api/v1/quote?source_asset=${encodeURIComponent(normalizedSource)}` +
-        `&dest_asset=${encodeURIComponent(normalizedDest)}` +
-        `&amount=${encodeURIComponent(inputs.amount)}`;
-      const body = await apiFetch<Quote>(
-        path,
-        { signal: controller.signal },
-        { validate: isQuote }
-      );
-      if (currentRequestId !== activeRequestRef.current) return;
-      setQuote(body);
-      // Reconcile (#723): the confirmed entry built from the server's
-      // response fields replaces the optimistic row; only now is anything
-      // written to localStorage.
-      setHistory(pushHistory(canonicalEntryFromQuote(body)));
-      setPendingEntry(null);
-      announce('Quote received.');
-      const rateDisplay = formatQuoteRateDisplay(body.estimated_rate).display;
-      const now = Date.now();
-      if (now - lastAnnounceAtRef.current >= 300) {
-        lastAnnounceAtRef.current = now;
-        setSlippageAnnouncement(
-          `Quote received: ${body.source_asset} → ${body.dest_asset} at estimated rate ${rateDisplay}`
-        );
-      }
-    } catch (err) {
-      if (currentRequestId !== activeRequestRef.current) return;
-      if (controller.signal.aborted) return;
-      // Roll back (#723): drop the optimistic row so the rendered history is
-      // exactly what it was before the submission. Only this slot is
-      // cleared — unrelated state (form fields, confirmed rows, storage)
-      // was never touched by the mutation.
-      setPendingEntry(null);
-      const apiError = err as ApiError & { requestId?: string };
-      setFormError(apiError.message ?? 'quote request failed');
-      setRequestId(apiError.requestId ?? null);
-      announce(ROLLBACK_MESSAGE);
-      const failTime = Date.now();
-      if (failTime - lastAnnounceAtRef.current >= 300) {
-        lastAnnounceAtRef.current = failTime;
-        setSlippageAnnouncement(
-          `Quote request failed: ${apiError.message ?? 'quote request failed'}`
-        );
-      }
-    } finally {
-      if (currentRequestId === activeRequestRef.current) {
-        setLoading(false);
-        if (requestControllerRef.current === controller) {
-          requestControllerRef.current = null;
-        }
-      }
-    }
-  }, [amount, destAsset, setSavedInputs, sourceAsset, announce]);
-
-  const onSubmit = useCallback(
-    (event: React.FormEvent<HTMLFormElement>) => {
-      event.preventDefault();
-      executeQuoteRequest();
+  const applyInputs = useCallback(
+    (inputs: QuoteInputs) => {
+      applyValues(inputs);
+      setFormError(null);
+      setQuote(null);
     },
-    [executeQuoteRequest]
+    [applyValues]
   );
 
   // Retry wrapper for the quote request – re‑uses the existing submission logic.
   const retryQuote = useCallback(() => {
-    // Create a synthetic submit event to trigger the same validation & request flow.
-    // The event type is cast to any to satisfy the FormEvent generic.
-    onSubmit(new Event('submit') as any);
-  }, [onSubmit]);
+    handleSubmit();
+  }, [handleSubmit]);
 
   // Stable identity across unrelated re-renders keeps QuoteHistory's memo
   // effective; the pending entry (if any) leads the rendered rows.
@@ -283,49 +253,56 @@ export default function QuoteClient() {
         onSelect={applyInputs}
       />
 
-      <form onSubmit={onSubmit} className="flex flex-col gap-3">
+      <form onSubmit={handleSubmit} className="flex flex-col gap-3" noValidate>
+        <QuoteFormLiveRegion
+          errors={schemaErrors}
+          isAssertive={isSubmitAttempted}
+        />
         <TextField
+          ref={sourceRef}
+          id="source_asset"
           label="Source asset"
           name="source_asset"
-          value={sourceAsset}
-          onChange={(e) => setSourceAsset(e.target.value)}
+          value={values.source}
+          onChange={(e) => setFieldValue('source', e.target.value)}
           maxLength={12}
           placeholder="USDC"
           error={fieldErrors.source}
-          aria-invalid={fieldErrors.source ? true : undefined}
         />
         <button
           type="button"
           onClick={swapAssets}
           aria-label="Swap source and destination assets"
-          className="self-center rounded-full border border-neutral-300 px-3 py-1 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[var(--focus-ring-offset)] focus-visible:outline-[color:var(--focus-ring-color)] dark:border-neutral-700"
+          className="self-center rounded-full border border-neutral-300 px-3 py-1 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[var(--focus-ring-offset)] focus-visible:outline-[color:var(--focus-ring-color)] dark:border-neutral-700" // stableroute-disable-line secret-scan
         >
           Swap ⇄
         </button>
         <TextField
+          ref={destRef}
+          id="dest_asset"
           label="Destination asset"
           name="dest_asset"
-          value={destAsset}
-          onChange={(e) => setDestAsset(e.target.value)}
+          value={values.dest}
+          onChange={(e) => setFieldValue('dest', e.target.value)}
           maxLength={12}
           placeholder="EURC"
           error={fieldErrors.dest}
-          aria-invalid={fieldErrors.dest ? true : undefined}
         />
         <TextField
+          ref={amountRef}
+          id="amount"
           label="Amount (base units)"
           name="amount"
           inputMode="numeric"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
+          value={values.amount}
+          onChange={(e) => setFieldValue('amount', e.target.value)}
           placeholder="1000000"
           error={fieldErrors.amount}
-          aria-invalid={fieldErrors.amount ? true : undefined}
         />
         <button
           type="submit"
           disabled={loading}
-          className="self-start rounded-full bg-black px-5 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[var(--focus-ring-offset)] focus-visible:outline-[color:var(--focus-ring-color)]"
+          className="self-start rounded-full bg-black px-5 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[var(--focus-ring-offset)] focus-visible:outline-[color:var(--focus-ring-color)]" // stableroute-disable-line secret-scan
         >
           {loading ? 'Quoting…' : 'Get quote'}
         </button>
