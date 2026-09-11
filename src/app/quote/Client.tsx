@@ -22,6 +22,8 @@ import {
   writeHistory,
   type PendingHistoryEntry,
 } from './historyModel';
+import { useOfflineQueue } from './useOfflineQueue';
+import { type QueuedSwapMutation } from './offlineQueueModel';
 
 type FieldErrors = {
   source?: string;
@@ -83,6 +85,50 @@ export default function QuoteClient() {
   const requestControllerRef = useRef<AbortController | null>(null);
   const lastSubmitAtRef = useRef<number | null>(null);
   const lastAnnounceAtRef = useRef(0);
+
+  const handleFlushItem = useCallback(
+    async (item: QueuedSwapMutation) => {
+      const normSource = normalizeAssetCode(item.source);
+      const normDest = normalizeAssetCode(item.dest);
+      if (!normSource || !normDest || !isValidAmount(item.amount)) {
+        return {
+          success: false,
+          conflictReason: 'Invalid queued mutation parameters',
+        };
+      }
+      try {
+        const path =
+          `/api/v1/quote?source_asset=${encodeURIComponent(normSource)}` +
+          `&dest_asset=${encodeURIComponent(normDest)}` +
+          `&amount=${encodeURIComponent(item.amount.trim())}`;
+        const body = await apiFetch<Quote>(path, {}, { validate: isQuote });
+        setQuote(body);
+        setHistory(pushHistory(canonicalEntryFromQuote(body)));
+        announce(
+          `Reconciled offline quote for ${body.source_asset} → ${body.dest_asset}.`
+        );
+        return { success: true, result: body };
+      } catch (err: any) {
+        const apiError = err as ApiError;
+        return {
+          success: false,
+          conflictReason: apiError.message ?? 'Server rejected quote',
+        };
+      }
+    },
+    [announce]
+  );
+
+  const {
+    isOffline,
+    queue: offlineQueue,
+    isFlushing: isOfflineFlushing,
+    conflicts: offlineConflicts,
+    enqueueMutation,
+    clearConflict,
+  } = useOfflineQueue({
+    onFlushItem: handleFlushItem,
+  });
 
   // Prefill once storage has synced client-side (see useLocalStorage's SSR
   // handling). Re-running only when the stored value actually changes avoids
@@ -164,6 +210,13 @@ export default function QuoteClient() {
     };
     setSavedInputs(inputs);
 
+    // If offline: queue mutation and provide feedback without attempting network call (#729)
+    if (isOffline) {
+      enqueueMutation(inputs);
+      announce('Offline: quote request queued.');
+      return;
+    }
+
     lastSubmitAtRef.current = now;
     if (requestControllerRef.current) {
       requestControllerRef.current.abort();
@@ -240,7 +293,7 @@ export default function QuoteClient() {
         }
       }
     }
-  }, [amount, destAsset, setSavedInputs, sourceAsset, announce]);
+  }, [amount, destAsset, setSavedInputs, sourceAsset, announce, isOffline, enqueueMutation]);
 
   const onSubmit = useCallback(
     (event: React.FormEvent<HTMLFormElement>) => {
@@ -276,6 +329,102 @@ export default function QuoteClient() {
           Request a routing quote for a (source, destination, amount) triple.
         </p>
       </header>
+
+      {/* Offline Status Indicator (#729) */}
+      {isOffline && (
+        <div
+          role="status"
+          aria-live="polite"
+          data-testid="offline-indicator"
+          className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-200"
+        >
+          <p className="font-semibold">You are currently offline.</p>
+          <p className="mt-1">
+            Swap requests are queued locally and will be reconciled when you reconnect.
+          </p>
+        </div>
+      )}
+
+      {/* Flushing Reconnect Indicator (#729) */}
+      {isOfflineFlushing && (
+        <div
+          role="status"
+          aria-live="polite"
+          data-testid="flushing-indicator"
+          className="rounded-lg border border-sky-200 bg-sky-50 p-4 text-sm text-sky-900 dark:border-sky-800 dark:bg-sky-950/50 dark:text-sky-200"
+        >
+          Reconnected to network. Reconciling queued swap mutations in order…
+        </div>
+      )}
+
+      {/* Offline Reconciliation Conflicts (#729) */}
+      {offlineConflicts.length > 0 && (
+        <div
+          role="alert"
+          data-testid="conflict-alert"
+          className="flex flex-col gap-2 rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900 dark:border-rose-900 dark:bg-rose-950/50 dark:text-rose-200"
+        >
+          <h3 className="font-semibold">Reconciliation Conflicts:</h3>
+          <ul className="flex flex-col gap-2">
+            {offlineConflicts.map((c) => (
+              <li
+                key={c.id}
+                data-testid={`conflict-item-${c.id}`}
+                className="flex items-center justify-between gap-2"
+              >
+                <span>
+                  {c.source} → {c.dest} ({c.amount}): {c.reason}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => clearConflict(c.id)}
+                  aria-label={`Dismiss conflict for ${c.source} to ${c.dest}`}
+                  className="rounded border border-rose-300 px-2 py-0.5 text-xs hover:bg-rose-100 dark:border-rose-700 dark:hover:bg-rose-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-rose-500"
+                >
+                  Dismiss
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Offline Queued Mutations List (#729) */}
+      {offlineQueue.length > 0 && (
+        <section
+          aria-label="Offline queued mutations"
+          data-testid="offline-queue-section"
+          className="flex flex-col gap-2 rounded-lg border border-neutral-200 bg-neutral-50 p-4 text-sm dark:border-neutral-800 dark:bg-neutral-900/50"
+        >
+          <h3 className="font-medium text-neutral-700 dark:text-neutral-300">
+            Offline Queued Mutations ({offlineQueue.length})
+          </h3>
+          <ul className="flex flex-col gap-1.5">
+            {offlineQueue.map((item) => (
+              <li
+                key={item.id}
+                data-testid={`queued-row-${item.id}`}
+                className="flex items-center justify-between rounded border border-neutral-200 bg-white px-3 py-2 text-xs dark:border-neutral-800 dark:bg-neutral-950"
+              >
+                <span className="font-mono">
+                  {item.source} → {item.dest} · {item.amount}
+                </span>
+                <span
+                  className={`rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${
+                    item.status === 'conflict'
+                      ? 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300'
+                      : item.status === 'flushing'
+                        ? 'bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300'
+                        : 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300'
+                  }`}
+                >
+                  {item.status}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <QuoteHistory
         history={historyView}
