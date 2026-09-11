@@ -30,7 +30,7 @@ type Props = {
 function SlippageBase({ status, slippage, errorMessage, onRetry }: Props) {
   // Accessible live region – always present, content changes with status.
   const liveRegion = (
-    <span role="status" aria-live="polite" data-testid="slippage-status">
+    <span aria-live="polite" data-testid="slippage-status">
       {status === 'empty' && 'No slippage data'}
       {status === 'loading' && 'Calculating slippage…'}
       {status === 'error' && `Error: ${errorMessage ?? 'Unable to calculate'}`}
