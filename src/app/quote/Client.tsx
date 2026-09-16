@@ -29,6 +29,7 @@ import {
   isValidAmount,
   type QuoteFormValues,
 } from './quoteSchema';
+import { SwapModal } from './SwapModal';
 
 const INPUTS_KEY = 'stableroute.quote.inputs';
 const MIN_SUBMIT_INTERVAL_MS = 1_000;
@@ -62,6 +63,7 @@ export default function QuoteClient() {
   const [quote, setQuote] = useState<Quote | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [requestId, setRequestId] = useState<string | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const { message: formStatus, announce } = useFormAnnouncement();
   const [slippageAnnouncement, setSlippageAnnouncement] = useState('');
@@ -85,6 +87,7 @@ export default function QuoteClient() {
       setRequestId(null);
       setQuote(null);
       setSlippageAnnouncement('');
+      setModalOpen(false);
 
       const normalizedSource = normalizeAssetCode(valuesToSubmit.source);
       const normalizedDest = normalizeAssetCode(valuesToSubmit.dest);
@@ -321,29 +324,48 @@ export default function QuoteClient() {
               aria-live="polite"
               className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm dark:border-emerald-900 dark:bg-emerald-950"
             >
-              <dl className="grid gap-2">
-                <div>
-                  <dt className="font-medium text-neutral-700 dark:text-neutral-300">
-                    Route
-                  </dt>
-                  <dd>{quote.route.join(' → ')}</dd>
-                </div>
-                <div>
-                  <dt className="font-medium text-neutral-700 dark:text-neutral-300">
-                    Amount
-                  </dt>
-                  <dd title={amountFmt.title}>{amountFmt.display}</dd>
-                </div>
-                <div>
-                  <dt className="font-medium text-neutral-700 dark:text-neutral-300">
-                    Estimated rate
-                  </dt>
-                  <dd title={rateFmt.title}>{rateFmt.display}</dd>
-                </div>
-              </dl>
+              <div className="flex items-center justify-between">
+                <dl className="grid gap-2">
+                  <div>
+                    <dt className="font-medium text-neutral-700 dark:text-neutral-300">
+                      Route
+                    </dt>
+                    <dd>{quote.route.join(' → ')}</dd>
+                  </div>
+                  <div>
+                    <dt className="font-medium text-neutral-700 dark:text-neutral-300">
+                      Amount
+                    </dt>
+                    <dd title={amountFmt.title}>{amountFmt.display}</dd>
+                  </div>
+                  <div>
+                    <dt className="font-medium text-neutral-700 dark:text-neutral-300">
+                      Estimated rate
+                    </dt>
+                    <dd title={rateFmt.title}>{rateFmt.display}</dd>
+                  </div>
+                </dl>
+                <button
+                  type="button"
+                  className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[var(--focus-ring-offset)] focus-visible:outline-[color:var(--focus-ring-color)]" // stableroute-disable-line secret-scan
+                  onClick={() => setModalOpen(true)}
+                >
+                  Review swap
+                </button>
+              </div>
             </section>
           );
         })()}
+
+      <SwapModal
+        quote={quote}
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onConfirm={() => {
+          setModalOpen(false);
+          announce('Swap confirmed.');
+        }}
+      />
       {/* Slippage status UI */}
       <SlippageView
         status={
