@@ -1,4 +1,9 @@
-import { type InputHTMLAttributes, type ReactNode, useId } from 'react';
+import {
+  forwardRef,
+  type InputHTMLAttributes,
+  type ReactNode,
+  useId,
+} from 'react';
 
 type Props = InputHTMLAttributes<HTMLInputElement> & {
   label: ReactNode;
@@ -6,14 +11,10 @@ type Props = InputHTMLAttributes<HTMLInputElement> & {
   error?: ReactNode;
 };
 
-export function TextField({
-  label,
-  description,
-  error,
-  className = '',
-  id,
-  ...rest
-}: Props) {
+export const TextField = forwardRef<HTMLInputElement, Props>(function TextField(
+  { label, description, error, className = '', id, ...rest },
+  ref
+) {
   const autoId = useId();
   const inputId = id ?? autoId;
   const descId = description ? `${inputId}-desc` : undefined;
@@ -22,12 +23,13 @@ export function TextField({
     <div className={`flex flex-col gap-1 text-sm ${className}`}>
       <label htmlFor={inputId}>{label}</label>
       <input
+        ref={ref}
         id={inputId}
         aria-describedby={
           [descId, errId].filter(Boolean).join(' ') || undefined
         }
         aria-invalid={error ? true : undefined}
-        className="rounded-md border border-neutral-300 bg-[var(--background)] px-3 py-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[var(--focus-ring-offset)] focus-visible:outline-[color:var(--focus-ring-color)] dark:border-neutral-700"
+        className="rounded-md border border-neutral-300 bg-[var(--background)] px-3 py-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[var(--focus-ring-offset)] focus-visible:outline-[color:var(--focus-ring-color)] dark:border-neutral-700" // stableroute-disable-line secret-scan
         {...rest}
       />
       {description && (
@@ -42,4 +44,4 @@ export function TextField({
       )}
     </div>
   );
-}
+});

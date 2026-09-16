@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useRef, type ReactNode } from 'react';
+import { type ReactNode, useRef } from 'react';
 import { Button } from './Button';
+import { useFocusTrap } from '@/lib/useFocusTrap';
 
 type Tone = 'danger' | 'default';
 
@@ -27,16 +28,7 @@ export function ConfirmDialog({
   onCancel,
 }: Props) {
   const panelRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onCancel();
-    };
-    window.addEventListener('keydown', onKeyDown);
-    panelRef.current?.querySelector<HTMLElement>('button')?.focus();
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [open, onCancel]);
+  useFocusTrap(panelRef, { isActive: open, onClose: onCancel });
 
   if (!open) return null;
   return (
