@@ -13,6 +13,7 @@ import {
   type SortDir,
 } from './tableModel';
 import { useTableViewState } from './useTableViewState';
+import { SwapSearchBar } from './SwapSearchBar';
 
 export type { HistoryEntry, QuoteInputs } from './tableModel';
 
@@ -92,16 +93,14 @@ export const QuoteHistory = memo(function QuoteHistory({
 
       {history.length > 0 && (
         <div className="flex flex-wrap items-end gap-3">
-          <label className="flex flex-col gap-1 text-sm">
-            <span>Filter quotes</span>
-            <input
-              type="search"
-              value={filterInput}
-              onChange={(event) => setFilterInput(event.target.value)}
-              placeholder="Search by asset code"
-              className="rounded-md border border-neutral-300 px-3 py-1.5 dark:border-neutral-700 dark:bg-neutral-900"
-            />
-          </label>
+          <SwapSearchBar
+            query={filterInput}
+            onQueryChange={setFilterInput}
+            onClear={() => setFilterInput('')}
+            label="Filter quotes"
+            placeholder="Search by asset code"
+            resultsCount={derived.totalFiltered}
+          />
           <label className="flex flex-col gap-1 text-sm">
             <span>Source asset</span>
             <select
