@@ -22,7 +22,7 @@ export default function StatusClient() {
     setRunning(true);
     const start = performance.now();
     try {
-      await apiGet<unknown>('/api/v1/health', { timeoutMs: 5_000 });
+      await apiGet<unknown>('/health', { timeoutMs: 5_000 });
       setProbe({
         status: 'ok',
         httpStatus: 200,
