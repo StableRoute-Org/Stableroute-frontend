@@ -1,5 +1,15 @@
 # stableroute-frontend
 
+## Live
+
+- **Website:** https://stableroute-frontend.vercel.app
+- **Docs:** https://stableroute-frontend.vercel.app/docs
+- **API:** https://stableroute-backend.vercel.app ([Swagger docs](https://stableroute-backend.vercel.app/docs))
+- **Contract (Stellar testnet):** [`CCKXEUALSDINT6FWCPZRK4BS5NJ5J5JBGM6GAKHSB6JAN7MOTWFI6IHD`](https://stellar.expert/explorer/testnet/contract/CCKXEUALSDINT6FWCPZRK4BS5NJ5J5JBGM6GAKHSB6JAN7MOTWFI6IHD)
+
+Configuration (all optional, defaults point at the live deployment): `NEXT_PUBLIC_STABLEROUTE_API_BASE`,
+`NEXT_PUBLIC_STABLEROUTE_CONTRACT_ID`, `NEXT_PUBLIC_STELLAR_NETWORK` — see `.env.example`.
+
 Next.js frontend application for [StableRoute](https://github.com/StableRoute-Org/Stableroute) — the Stellar liquidity routing protocol. It provides user interfaces for obtaining path routing quotes, managing liquidity pairs, viewing stats, configuring API keys and webhooks, browsing audit logs, adjusting developer settings, and reading endpoint documentation.
 
 ## What this repo contains

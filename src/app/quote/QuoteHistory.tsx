@@ -2,6 +2,8 @@
 
 import React, { memo } from 'react';
 import type { HistoryEntry, QuoteInputs } from './historyModel';
+import { applyViewState, distinctSources, type SortColumn, type SortDir } from './tableModel';
+import { useTableViewState } from './useTableViewState';
 
 export type { HistoryEntry, QuoteInputs } from './historyModel';
 

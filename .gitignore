@@ -7,3 +7,6 @@ out/
 coverage/
 .DS_Store
 build-log.txt
+tsconfig.tsbuildinfo
+.idea/
+.vercel

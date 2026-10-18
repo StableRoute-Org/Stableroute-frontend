@@ -61,10 +61,16 @@ export const ROUTES = {
     description: 'Appearance and API configuration.',
     group: 'Reference',
   },
+  about: {
+    href: '/about',
+    title: 'About',
+    description: 'What StableRoute is and why it exists.',
+    group: 'Reference',
+  },
   docs: {
     href: '/docs',
     title: 'Docs',
-    description: 'HTTP API reference.',
+    description: 'Product guide, architecture and API reference.',
     group: 'Reference',
   },
 } as const satisfies Record<

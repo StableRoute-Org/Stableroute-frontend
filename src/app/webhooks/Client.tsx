@@ -122,7 +122,7 @@ export default function WebhooksClient() {
     <main
       id="main-content"
       tabIndex={-1}
-      className="mx-auto flex min-h-[60vh] max-w-3xl flex-col gap-6 p-8"
+      className="mx-auto flex min-h-[60vh] max-w-3xl flex-col gap-6 px-4 py-12 sm:px-8"
     >
       <h1 className="text-3xl font-semibold tracking-tight">Webhooks</h1>
       <form

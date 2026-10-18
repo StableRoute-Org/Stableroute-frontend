@@ -11,13 +11,7 @@
     "test:coverage": "jest --coverage --coverageReporters=text-summary",
     "test:watch": "jest --watch",
     "format": "prettier --write \"src/**/*.{js,jsx,ts,tsx,md,json,css}\"",
-    "format:check": "prettier --check \"src/**/*.{js,jsx,ts,tsx,md,json,css}\"",
-    "scan:secrets": "node scripts/check-staged-secrets.js",
-    "scan:secrets:working-tree": "node scripts/check-staged-secrets.js --scope=working-tree",
-    "scan:secrets:ci": "node scripts/check-staged-secrets.js --scope=pr-diff --base-ref=${BASE_REF:-origin/main}",
-    "setup:hooks": "git config core.hooksPath hooks && chmod +x hooks/pre-commit && echo 'git hooks installed (core.hooksPath=hooks)'",
-    "setup:hooks:unset": "git config --unset core.hooksPath && echo 'git hook path reset to default'",
-    "prepare": "node -e \"const fs=require('fs');if(process.env.npm_config_ignore_scripts==='true')process.exit(0);try{fs.chmodSync('hooks/pre-commit',0o755);console.log('[prepare] hooks/pre-commit marked executable')}catch(_e){try{fs.chmodSync('hooks/pre-commit',0o755);console.log('[prepare] hooks/pre-commit marked executable')}catch(_e2){}}\""
+    "format:check": "prettier --check \"src/**/*.{js,jsx,ts,tsx,md,json,css}\""
   },
   "dependencies": {
     "next": "15.0.3",

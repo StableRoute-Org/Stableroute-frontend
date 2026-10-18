@@ -268,7 +268,7 @@ export default function QuoteClient() {
     <main
       id="main-content"
       tabIndex={-1}
-      className="mx-auto flex min-h-screen max-w-2xl flex-col gap-10 p-8 focus:outline-none"
+      className="mx-auto flex min-h-screen max-w-2xl flex-col gap-10 px-4 py-12 sm:px-8 focus:outline-none"
     >
       <header className="flex flex-col gap-2">
         <h1 className="text-3xl font-semibold tracking-tight">Get a quote</h1>

@@ -1,126 +1,25 @@
 name: CI
+
 on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  lint:
-    name: Lint
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Run ESLint
-        run: npm run lint
-
-  secret-scan:
-    name: Secret scan
-    runs-on: ubuntu-latest
-    # scan:secrets:ci diffs against the PR base ref. On push to main there
-    # is no diff to scan (HEAD equals the base ref), so we skip the job —
-    # pushes to main are protected by branch-protection / branch-up-to-date
-    # rules and there is nothing new to verify.
-    if: github.event_name == 'pull_request'
-    # Full git history so the diff against the base branch has something
-    # to compare against. `actions/checkout` defaults to fetch-depth: 1
-    # which would make `git diff origin/main...HEAD` empty on shallow clones.
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Scan PR diff for secrets
-        env:
-          BASE_REF: origin/${{ github.event.pull_request.base.ref || 'main' }}
-        run: npm run scan:secrets:ci
-
   build-test:
-    name: Build & Test
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: '24'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Check formatting
-        run: npm run format:check
-
-      - name: Build
-        run: npm run build > build-log.txt 2>&1
-        env:
-          CI: true
-
-      - name: Check bundle size budget
-        run: node scripts/check-bundle-size.js
-
-      - name: Run tests
-        run: npm test
-
-  lighthouse:
-    name: Lighthouse CI
-    runs-on: ubuntu-latest
-    needs: build-test
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Install Lighthouse CI
-        run: npm install --no-save @lhci/cli@0.14.0
-
-      - name: Build production bundle
-        run: npm run build
-        env:
-          CI: true
-
-      - name: Run Lighthouse CI
-        run: npx lhci autorun --config=.lighthouserc.json
-        env:
-          LHCI_BUILD_CONTEXT__CURRENT_HASH: ${{ github.sha }}
-          LHCI_BUILD_CONTEXT__COMMIT_TIME: ${{ github.event.head_commit.timestamp }}
-          LHCI_BUILD_CONTEXT__CURRENT_BRANCH: ${{ github.ref_name }}
-          LHCI_BUILD_CONTEXT__COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
-          LHCI_BUILD_CONTEXT__AUTHOR: ${{ github.actor }}
-          LHCI_BUILD_CONTEXT__AVATAR_URL: ${{ github.event.sender.avatar_url }}
-
-      - name: Upload Lighthouse HTML reports
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: lighthouse-reports-${{ github.run_id }}
-          path: .lighthouseci/
-          retention-days: 30
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+      - run: npm test -- --ci

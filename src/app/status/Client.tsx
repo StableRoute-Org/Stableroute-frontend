@@ -53,7 +53,7 @@ export default function StatusClient() {
     <main
       id="main-content"
       tabIndex={-1}
-      className="mx-auto flex min-h-[60vh] max-w-3xl flex-col gap-6 p-8 focus:outline-none"
+      className="mx-auto flex min-h-[60vh] max-w-3xl flex-col gap-6 px-4 py-12 sm:px-8 focus:outline-none"
     >
       <h1 className="text-3xl font-semibold tracking-tight">Status</h1>
 

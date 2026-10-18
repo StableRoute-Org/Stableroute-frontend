@@ -5,7 +5,7 @@ export type ApiConnectionTroubleshootingEntry = {
 };
 
 /** Default local API base when no env override is set. */
-export const DEFAULT_API_BASE = 'http://localhost:3001';
+export const DEFAULT_API_BASE = 'https://stableroute-backend.vercel.app';
 
 /**
  * Resolved StableRoute API base URL (env override or local default).

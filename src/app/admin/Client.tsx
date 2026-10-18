@@ -54,7 +54,7 @@ export default function AdminClient() {
     <main
       id="main-content"
       tabIndex={-1}
-      className="mx-auto flex min-h-[60vh] max-w-xl flex-col gap-6 p-8 focus:outline-none"
+      className="mx-auto flex min-h-[60vh] max-w-xl flex-col gap-6 px-4 py-12 sm:px-8 focus:outline-none"
     >
       <h1 className="text-3xl font-semibold tracking-tight">Admin</h1>
       {paused === null && !error && <p>Loading status…</p>}
